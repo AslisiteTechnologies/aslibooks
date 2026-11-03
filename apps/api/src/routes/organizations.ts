@@ -1,0 +1,69 @@
+import { Router, type RequestHandler } from 'express';
+import mongoose from 'mongoose';
+import { z } from 'zod';
+import { OrganizationModel } from '../models/organization.js';
+import { MembershipModel } from '../models/membership.js';
+
+const createOrganizationSchema = z.object({
+  name: z.string().trim().min(2).max(160),
+  slug: z.string().trim().toLowerCase().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).min(3).max(64),
+}).strict();
+
+type AuthUser = { id: string };
+export function organizationRouter(resolveUser: (headers: Headers) => Promise<AuthUser | null>): Router {
+  const router = Router();
+
+  const requireUser: RequestHandler = async (req, res, next) => {
+    try {
+      const headers = new Headers();
+      for (const [key, value] of Object.entries(req.headers)) {
+        if (typeof value === 'string') headers.set(key, value);
+      }
+      const user = await resolveUser(headers);
+      if (!user) { res.status(401).json({ error: 'Authentication required' }); return; }
+      res.locals.authUserId = user.id;
+      next();
+    } catch (error) { next(error); }
+  };
+
+  router.post('/', requireUser, async (req, res, next) => {
+    const parsed = createOrganizationSchema.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: 'Invalid organization data' }); return; }
+    const session = await mongoose.startSession();
+    try {
+      let organizationId: string | undefined;
+      await session.withTransaction(async () => {
+        const [organization] = await OrganizationModel.create([parsed.data], { session });
+        await MembershipModel.create([{
+          organizationId: organization._id,
+          authUserId: res.locals.authUserId as string,
+          role: 'owner',
+          status: 'active',
+        }], { session });
+        organizationId = organization._id.toString();
+      });
+      res.status(201).json({ id: organizationId });
+    } catch (error) {
+      if (error instanceof Error && 'code' in error && error.code === 11000) {
+        res.status(409).json({ error: 'Organization slug already exists' });
+        return;
+      }
+      next(error);
+    } finally { await session.endSession(); }
+  });
+
+  router.get('/', requireUser, async (_req, res, next) => {
+    try {
+      const memberships = await MembershipModel.find({ authUserId: res.locals.authUserId, status: 'active' })
+        .select('organizationId role').lean();
+      const ids = memberships.map((m: { organizationId: mongoose.Types.ObjectId }) => m.organizationId);
+      const organizations = await OrganizationModel.find({ _id: { $in: ids } })
+        .select('name slug baseCurrency').lean();
+      res.json({ organizations: organizations.map((o: { _id: mongoose.Types.ObjectId; name: string; slug: string; baseCurrency: string }) => ({
+        id: o._id.toString(), name: o.name, slug: o.slug, baseCurrency: o.baseCurrency,
+      })) });
+    } catch (error) { next(error); }
+  });
+
+  return router;
+}
