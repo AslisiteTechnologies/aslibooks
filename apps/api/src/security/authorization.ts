@@ -1,4 +1,4 @@
-import { Types } from 'mongoose';
+import { Types, type ClientSession } from 'mongoose';
 import { MembershipModel, membershipRoles } from '../models/membership.js';
 
 export type Role = (typeof membershipRoles)[number];
@@ -24,4 +24,32 @@ export async function hasPermission(authUserId: string, organizationId: string, 
     organizationId: new Types.ObjectId(organizationId), authUserId, status: 'active',
   }).select('role').lean<{ role: Role }>();
   return roleAllows(membership?.role, permission);
+}
+
+/**
+ * Transactional write fence for ledger posting. Revocation and role updates
+ * must write the SAME membership document, creating a MongoDB write conflict
+ * if they race with a ledger transaction. A read-only snapshot check cannot
+ * provide this guarantee.
+ *
+ * Invoke inside the SAME transaction as journal and audit writes.
+ * A transient conflict must restart the entire transaction and reauthorize.
+ */
+export async function fenceLedgerPermission(
+  authUserId: string,
+  organizationId: string,
+  session: ClientSession,
+): Promise<boolean> {
+  if (!authUserId || !Types.ObjectId.isValid(organizationId)) return false;
+  const result = await MembershipModel.updateOne(
+    {
+      organizationId: new Types.ObjectId(organizationId),
+      authUserId,
+      status: 'active',
+      role: { $in: ['owner', 'admin', 'accountant'] },
+    },
+    { $inc: { ledgerAuthorizationFence: 1 } },
+    { session, strict: false },
+  );
+  return result.matchedCount === 1 && result.modifiedCount === 1;
 }
