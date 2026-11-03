@@ -75,7 +75,7 @@ describe.skipIf(!enabled)('authorized ledger posting integration', () => {
     expect(original).toBeTruthy();
     const before = await MembershipModel.findOne({
       organizationId: org, authUserId: actor,
-    }).lean();
+    }).lean<{ ledgerAuthorizationFence?: number }>();
     const initialFence = before!.ledgerAuthorizationFence ?? 0;
     const posted = await postAuthorizedJournal(actor, input);
     expect(posted).toEqual({ journalId: String(original!._id), replayed: true });
@@ -88,7 +88,7 @@ describe.skipIf(!enabled)('authorized ledger posting integration', () => {
     expect(reversed.replayed).toBe(true);
     const after = await MembershipModel.findOne({
       organizationId: org, authUserId: actor,
-    }).lean();
+    }).lean<{ ledgerAuthorizationFence?: number }>();
     expect(after!.ledgerAuthorizationFence).toBe(initialFence + 2);
     expect(await JournalModel.countDocuments({
       organizationId: org, idempotencyKey: input.idempotencyKey,
