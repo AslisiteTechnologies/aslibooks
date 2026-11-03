@@ -78,6 +78,16 @@ describe.skipIf(!enabled)('authorized ledger posting integration', () => {
       { $set: { status: 'suspended' } },
     );
     try {
+      // Authorization must precede even an idempotent replay: a revoked
+      // member must not learn a previously posted journal's identifier.
+      await expect(postAuthorizedJournal(actor, input))
+        .rejects.toBeInstanceOf(LedgerAccessDenied);
+      await expect(postAuthorizedReversal(actor, {
+        organizationId: org.toHexString(),
+        originalJournalId: String(original!._id),
+        idempotencyKey: `auth-reverse:${suffix}`,
+        reason: 'Correction',
+      })).rejects.toBeInstanceOf(LedgerAccessDenied);
       const blockedKey = `revoked-post:${suffix}`;
       await expect(postAuthorizedJournal(actor, {
         ...input, idempotencyKey: blockedKey,
