@@ -21,6 +21,7 @@ const slug = `auth-${suffix}`;
 describe.skipIf(!enabled)('real Better Auth HTTP session and organization integration', () => {
   const app = express();
   let agent: ReturnType<typeof request.agent>;
+  let otherAgent: ReturnType<typeof request.agent>;
   let organizationId: string | undefined;
 
   beforeAll(async () => {
@@ -41,6 +42,7 @@ describe.skipIf(!enabled)('real Better Auth HTTP session and organization integr
       return session?.user ? { id: session.user.id } : null;
     }));
     agent = request.agent(app);
+    otherAgent = request.agent(app);
   });
 
   it('rejects anonymous company creation', async () => {
@@ -68,9 +70,24 @@ describe.skipIf(!enabled)('real Better Auth HTTP session and organization integr
     expect(membership?.authUserId).toBeTruthy();
   });
 
-  it('does not expose the owner company to an unrelated session', async () => {
-    const response = await request(app).get('/api/organizations').expect(401);
-    expect(response.body.organizations).toBeUndefined();
+  it('does not expose the owner company to another authenticated user', async () => {
+    const otherEmail = `other-${suffix}@example.test`;
+    await otherAgent.post('/api/auth/sign-up/email').set('Origin', origin)
+      .send({ name: 'Other Owner', email: otherEmail, password }).expect(200);
+    const response = await otherAgent.get('/api/organizations').expect(200);
+    expect(response.body.organizations).not.toContainEqual(expect.objectContaining({ id: organizationId }));
+    const ownerResponse = await agent.get('/api/organizations').expect(200);
+    expect(ownerResponse.body.organizations).toContainEqual(expect.objectContaining({ id: organizationId }));
+  });
+
+  it('rejects a forged user ID on organization creation', async () => {
+    const response = await otherAgent.post('/api/organizations')
+      .send({ name: 'Injected', slug: `injected-${suffix}`, authUserId: 'owner-forged' }).expect(400);
+    expect(response.body.error).toBeDefined();
+  });
+
+  it('denies unauthenticated access', async () => {
+    await request(app).get('/api/organizations').expect(401);
   });
 
   it('invalidates the session after logout', async () => {
