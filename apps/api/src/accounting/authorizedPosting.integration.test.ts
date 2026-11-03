@@ -291,6 +291,42 @@ describe.skipIf(!enabled)('authorized ledger posting integration', () => {
     }
   });
 
+  it('keeps a concurrent authorized journal and membership suspension consistent', async () => {
+    // The winner may vary by scheduling, but posting must never succeed
+    // after revocation has committed. A committed posting must be complete.
+    const key = `concurrent-post-suspend:${suffix}`;
+    const auditBefore = await AuditEventModel.countDocuments({ organizationId: org });
+    const posting = postAuthorizedJournal(actor, {
+      ...input, idempotencyKey: key,
+    }).then(value => ({ ok: true as const, value }),
+      error => ({ ok: false as const, error }));
+    const suspension = MembershipModel.updateOne(
+      { organizationId: org, authUserId: actor },
+      { $set: { status: 'suspended' } },
+    ).exec();
+    try {
+      const [outcome] = await Promise.all([posting, suspension]);
+      const journals = await JournalModel.find({
+        organizationId: org, idempotencyKey: key,
+      }).lean();
+      expect(journals.length).toBe(outcome.ok ? 1 : 0);
+      if (outcome.ok) {
+        expect(outcome.value.replayed).toBe(false);
+        expect(String(journals[0]._id)).toBe(outcome.value.journalId);
+      }
+      expect(await AuditEventModel.countDocuments({ organizationId: org }))
+        .toBe(auditBefore + (outcome.ok ? 1 : 0));
+      await expect(postAuthorizedJournal(actor, {
+        ...input, idempotencyKey: key,
+      })).rejects.toBeInstanceOf(LedgerAccessDenied);
+    } finally {
+      await MembershipModel.updateOne(
+        { organizationId: org, authUserId: actor },
+        { $set: { status: 'active' } },
+      );
+    }
+  });
+
   it('aborts a stale membership-fenced transaction when suspension wins', async () => {
     // A transaction that started before revocation must not use its stale
     // snapshot to post after revocation has committed.
