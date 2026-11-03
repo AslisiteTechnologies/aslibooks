@@ -2,6 +2,7 @@ import mongoose, { Types } from 'mongoose';
 import { AccountModel } from '../models/account.js';
 import { JournalModel } from '../models/journal.js';
 import { AuditEventModel } from '../models/auditEvent.js';
+import { fenceLedgerPermission } from '../security/authorization.js';
 
 export type PostingLine = { accountId: string; debitPaise: number; creditPaise: number };
 export type PostingCommand = {
@@ -46,9 +47,14 @@ function samePayload(existing: { description: string; lines: PostingLine[] }, co
 }
 
 /** Internal-only posting primitive. Caller MUST verify active tenant membership and ledger:post permission. */
-export async function postJournal(command: PostingCommand): Promise<{ journalId: string; replayed: boolean }> {
+export async function postJournal(command: PostingCommand, options: { enforceMembershipFence?: boolean } = {}): Promise<{ journalId: string; replayed: boolean }> {
   validatePosting(command);
   const organizationId = new Types.ObjectId(command.organizationId);
+  if (options.enforceMembershipFence) {
+    // Fast-path replay cannot bypass the transaction-time membership check.
+    // All authorized calls must enter the transaction before inspecting the key.
+    return postJournalFenced(command);
+  }
   const existing = await JournalModel.findOne({ organizationId, idempotencyKey: command.idempotencyKey }).exec();
   if (existing) {
     if (!samePayload(existing, command))
@@ -112,4 +118,40 @@ export async function postJournal(command: PostingCommand): Promise<{ journalId:
     }
     throw error;
   }
+}
+
+/** Transactional authorization path. Do not call from unverified HTTP input. */
+async function postJournalFenced(command: PostingCommand): Promise<{ journalId: string; replayed: boolean }> {
+  const organizationId = new Types.ObjectId(command.organizationId);
+  return mongoose.connection.transaction(async (session) => {
+    if (!await fenceLedgerPermission(command.actorAuthUserId, command.organizationId, session))
+      throw new PostingError('CONFLICT', 'Ledger posting permission denied');
+    const existing = await JournalModel.findOne({
+      organizationId, idempotencyKey: command.idempotencyKey,
+    }).session(session).exec();
+    if (existing) {
+      if (!samePayload(existing, command))
+        throw new PostingError('CONFLICT', 'Idempotency key already used with different journal');
+      return { journalId: String(existing._id), replayed: true };
+    }
+    const accounts = await AccountModel.find({
+      _id: { $in: command.lines.map(line => new Types.ObjectId(line.accountId)) },
+      organizationId, active: true,
+    }).session(session).select('_id').lean();
+    const available = new Set(accounts.map(account => String(account._id)));
+    if (command.lines.some(line => !available.has(line.accountId)))
+      throw new PostingError('ACCOUNT', 'Account missing, inactive, or outside organization');
+    const [journal] = await JournalModel.create([{
+      organizationId, idempotencyKey: command.idempotencyKey, currency: 'INR',
+      description: command.description, lines: command.lines.map(line => ({
+        accountId: new Types.ObjectId(line.accountId),
+        debitPaise: line.debitPaise, creditPaise: line.creditPaise,
+      })), postedAt: new Date(),
+    }], { session });
+    await AuditEventModel.create([{
+      organizationId, actorAuthUserId: command.actorAuthUserId,
+      action: 'journal.posted', resourceType: 'journal', resourceId: String(journal._id),
+    }], { session });
+    return { journalId: String(journal._id), replayed: false };
+  });
 }
