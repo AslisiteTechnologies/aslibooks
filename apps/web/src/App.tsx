@@ -11,6 +11,7 @@ const drawerWidth = 248;
 
 export function App() {
   const [section, setSection] = useState('Overview');
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [authState, setAuthState] = useState<'loading' | 'signed-out' | 'onboarding' | 'ready'>('loading');
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [authError, setAuthError] = useState('');
@@ -34,7 +35,6 @@ export function App() {
   if (authState === 'loading') return <Box sx={{ p: 5 }} role="status">Loading Aslibooks…</Box>;
   if (authState === 'signed-out') return <><AuthScreen onAuthenticated={refreshSession} />{authError && <Box role="alert" sx={{ p: 2 }}>{authError}</Box>}</>;
   if (authState === 'onboarding') return <OnboardingScreen onCreated={refreshSession} />;
-  const [mobileOpen, setMobileOpen] = useState(false);
   const sidebar = (
     <Box sx={{ p: 2 }}>
       <Stack direction="row" alignItems="center" spacing={1.5} sx={{ px: 1, py: 2 }}>
