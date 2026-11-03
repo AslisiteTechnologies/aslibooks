@@ -5,6 +5,7 @@ import { AccountModel } from '../models/account.js';
 import { JournalModel } from '../models/journal.js';
 import { AuditEventModel } from '../models/auditEvent.js';
 import { LedgerAccessDenied, postAuthorizedJournal, postAuthorizedReversal } from './authorizedPosting.js';
+import { fenceLedgerPermission } from '../security/authorization.js';
 
 const uri = process.env.MONGODB_TEST_URI;
 const dbName = process.env.MONGODB_TEST_DB_NAME;
@@ -155,6 +156,30 @@ describe.skipIf(!enabled)('authorized ledger posting integration', () => {
       expect(await JournalModel.countDocuments({
         organizationId: org, idempotencyKey: key,
       })).toBe(0);
+    } finally {
+      await MembershipModel.updateOne(
+        { organizationId: org, authUserId: actor },
+        { $set: { role: 'owner' } },
+      );
+    }
+  });
+
+  it('rejects a downgraded role inside the transaction fence', async () => {
+    await MembershipModel.updateOne(
+      { organizationId: org, authUserId: actor },
+      { $set: { role: 'viewer' } },
+    );
+    const before = await MembershipModel.findOne({
+      organizationId: org, authUserId: actor,
+    }).lean<{ ledgerAuthorizationFence?: number }>();
+    try {
+      const result = await mongoose.connection.transaction(async (session) =>
+        fenceLedgerPermission(actor, org.toHexString(), session));
+      expect(result).toBe(false);
+      const after = await MembershipModel.findOne({
+        organizationId: org, authUserId: actor,
+      }).lean<{ ledgerAuthorizationFence?: number }>();
+      expect(after!.ledgerAuthorizationFence).toBe(before!.ledgerAuthorizationFence);
     } finally {
       await MembershipModel.updateOne(
         { organizationId: org, authUserId: actor },
