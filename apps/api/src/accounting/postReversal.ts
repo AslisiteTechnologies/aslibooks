@@ -127,6 +127,12 @@ export async function postReversal(request: ReversalRequest, options: { enforceM
   } catch (error) {
     if (error instanceof PostingError) throw error;
     if (typeof error === 'object' && error !== null && 'code' in error && error.code === 11000) {
+      // Never resolve a fenced request using a non-transactional replay read:
+      // the membership may have been revoked while the transaction failed.
+      // A caller can retry through the authorized entry point, which fences
+      // membership again before returning an existing journal.
+      if (options.enforceMembershipFence)
+        throw new PostingError('CONFLICT', 'Concurrent reversal; retry authorized request');
       const existing = await findExisting();
       if (existing && matchesRequest(existing, request.originalJournalId, {
         organizationId: request.organizationId,
