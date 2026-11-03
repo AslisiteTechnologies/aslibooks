@@ -19,7 +19,7 @@ export async function postAuthorizedJournal(
   if (!await hasPermission(verifiedAuthUserId, command.organizationId, 'ledger:post')) {
     throw new LedgerAccessDenied();
   }
-  return postJournal({ ...command, actorAuthUserId: verifiedAuthUserId });
+  return postJournal({ ...command, actorAuthUserId: verifiedAuthUserId }, { enforceMembershipFence: true });
 }
 
 export async function postAuthorizedReversal(
@@ -29,5 +29,5 @@ export async function postAuthorizedReversal(
   if (!await hasPermission(verifiedAuthUserId, request.organizationId, 'ledger:post')) {
     throw new LedgerAccessDenied();
   }
-  return postReversal({ ...request, actorAuthUserId: verifiedAuthUserId });
+  return postReversal({ ...request, actorAuthUserId: verifiedAuthUserId }, { enforceMembershipFence: true });
 }
