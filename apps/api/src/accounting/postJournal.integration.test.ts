@@ -83,6 +83,25 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
     expect(await AuditEventModel.countDocuments({ organizationId: orgA, action: 'journal.posted' })).toBe(1);
   });
 
+  it('rejects an unbalanced journal before writing any financial or audit records', async () => {
+    const key = `unbalanced:${suffix}`;
+    const beforeAuditCount = await AuditEventModel.countDocuments({
+      organizationId: orgA, action: 'journal.posted',
+    });
+    await expect(postJournal({
+      ...command,
+      idempotencyKey: key,
+      lines: [
+        command.lines[0],
+        { ...command.lines[1], creditPaise: 12499 },
+      ],
+    })).rejects.toMatchObject({ code: 'INVALID' } satisfies Partial<PostingError>);
+    expect(await JournalModel.countDocuments({ organizationId: orgA, idempotencyKey: key })).toBe(0);
+    expect(await AuditEventModel.countDocuments({
+      organizationId: orgA, action: 'journal.posted',
+    })).toBe(beforeAuditCount);
+  });
+
   it('rejects inactive accounts and writes nothing', async () => {
     await AccountModel.updateOne({ _id: accountB, organizationId: orgA }, { $set: { active: false } });
     const key = `inactive:${suffix}`;
