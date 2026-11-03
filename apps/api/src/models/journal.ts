@@ -19,4 +19,10 @@ const journalSchema = new Schema({
 
 journalSchema.index({ organizationId: 1, idempotencyKey: 1 }, { unique: true });
 journalSchema.index({ organizationId: 1, postedAt: -1 });
+// One reversal per original journal, scoped to its organization.
+// The partial filter excludes normal journals without reversalOf.
+journalSchema.index(
+  { organizationId: 1, reversalOf: 1 },
+  { unique: true, partialFilterExpression: { reversalOf: { $type: 'objectId' } } },
+);
 export const JournalModel = models.Journal || model('Journal', journalSchema);
