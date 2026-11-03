@@ -216,7 +216,14 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
       throw new Error('Injected reversal audit failure');
     });
     try {
-      await expect(postReversal(request)).rejects.toThrow('Injected reversal audit failure');
+      await postReversal(request).then(
+        () => { throw new Error('Expected reversal posting to fail'); },
+        (error: unknown) => {
+          if (!(error instanceof Error)) throw error;
+          console.error('REVERSAL_ROLLBACK_DIAGNOSTIC', error.stack);
+          expect(error.message).toContain('Injected reversal audit failure');
+        },
+      );
       expect(auditFailure).toHaveBeenCalled();
     } finally {
       auditFailure.mockRestore();
