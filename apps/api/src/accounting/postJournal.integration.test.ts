@@ -119,6 +119,31 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
     }
   });
 
+  it('database rejects a second reversal of the same original journal', async () => {
+    const original = await JournalModel.findOne({
+      organizationId: orgA, idempotencyKey: command.idempotencyKey,
+    });
+    expect(original).toBeTruthy();
+    const reversalBase = {
+      organizationId: orgA,
+      currency: 'INR',
+      description: 'Reversal constraint integration test',
+      lines: [
+        { accountId: accountA, debitPaise: 0, creditPaise: 12500 },
+        { accountId: accountB, debitPaise: 12500, creditPaise: 0 },
+      ],
+      postedAt: new Date(),
+      reversalOf: original!._id,
+    };
+    await JournalModel.create({ ...reversalBase, idempotencyKey: `reversal-a:${suffix}` });
+    await expect(JournalModel.create({
+      ...reversalBase, idempotencyKey: `reversal-b:${suffix}`,
+    })).rejects.toMatchObject({ code: 11000 });
+    expect(await JournalModel.countDocuments({
+      organizationId: orgA, reversalOf: original!._id,
+    })).toBe(1);
+  });
+
   it('rejects inactive accounts and writes nothing', async () => {
     await AccountModel.updateOne({ _id: accountB, organizationId: orgA }, { $set: { active: false } });
     const key = `inactive:${suffix}`;
