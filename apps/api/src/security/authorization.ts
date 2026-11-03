@@ -17,6 +17,6 @@ export async function hasPermission(authUserId: string, organizationId: string, 
   if (!authUserId || !Types.ObjectId.isValid(organizationId)) return false;
   const membership = await MembershipModel.findOne({
     organizationId: new Types.ObjectId(organizationId), authUserId, status: 'active',
-  }).select('role').lean();
+  }).select('role').lean<{ role: Role }>();
   return !!membership && (permissionRoles[permission] as readonly string[]).includes(membership.role);
 }
