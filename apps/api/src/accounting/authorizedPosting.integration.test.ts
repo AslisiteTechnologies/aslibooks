@@ -68,6 +68,36 @@ describe.skipIf(!enabled)('authorized ledger posting integration', () => {
     expect(await AuditEventModel.countDocuments({ organizationId: org, resourceId: reversed.journalId, action: 'journal.reversed' })).toBe(1);
   });
 
+  it('fences authorized journal and reversal replays in a MongoDB transaction', async () => {
+    const original = await JournalModel.findOne({
+      organizationId: org, idempotencyKey: input.idempotencyKey,
+    });
+    expect(original).toBeTruthy();
+    const before = await MembershipModel.findOne({
+      organizationId: org, authUserId: actor,
+    }).lean();
+    const initialFence = before!.ledgerAuthorizationFence ?? 0;
+    const posted = await postAuthorizedJournal(actor, input);
+    expect(posted).toEqual({ journalId: String(original!._id), replayed: true });
+    const reversed = await postAuthorizedReversal(actor, {
+      organizationId: org.toHexString(),
+      originalJournalId: String(original!._id),
+      idempotencyKey: `auth-reverse:${suffix}`,
+      reason: 'Correction',
+    });
+    expect(reversed.replayed).toBe(true);
+    const after = await MembershipModel.findOne({
+      organizationId: org, authUserId: actor,
+    }).lean();
+    expect(after!.ledgerAuthorizationFence).toBe(initialFence + 2);
+    expect(await JournalModel.countDocuments({
+      organizationId: org, idempotencyKey: input.idempotencyKey,
+    })).toBe(1);
+    expect(await JournalModel.countDocuments({
+      organizationId: org, idempotencyKey: `auth-reverse:${suffix}`,
+    })).toBe(1);
+  });
+
   it('rejects new journal and reversal requests after membership suspension', async () => {
     const original = await JournalModel.findOne({
       organizationId: org, idempotencyKey: input.idempotencyKey,
