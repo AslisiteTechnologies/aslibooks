@@ -251,6 +251,46 @@ describe.skipIf(!enabled)('authorized ledger posting integration', () => {
     expect(await AuditEventModel.countDocuments({ organizationId: org })).toBe(auditCount);
   });
 
+  it('serializes a concurrent suspension behind an in-flight posting fence', async () => {
+    // Hold the membership document's transactional write lock while an
+    // independent connection attempts to suspend the same actor.
+    const session = await mongoose.startSession();
+    let suspension: Promise<unknown> | undefined;
+    try {
+      session.startTransaction();
+      expect(await fenceLedgerPermission(actor, org.toHexString(), session)).toBe(true);
+      suspension = MembershipModel.updateOne(
+        { organizationId: org, authUserId: actor },
+        { $set: { status: 'suspended' } },
+      ).exec();
+      // The revocation must not be able to commit ahead of the transaction
+      // that already acquired the membership write fence.
+      const observed = await Promise.race([
+        suspension.then(() => 'suspended'),
+        new Promise<'pending'>(resolve => setTimeout(() => resolve('pending'), 100)),
+      ]);
+      expect(observed).toBe('pending');
+      await session.commitTransaction();
+      await suspension;
+      const membership = await MembershipModel.findOne({
+        organizationId: org, authUserId: actor,
+      }).lean<{ status: string }>();
+      expect(membership!.status).toBe('suspended');
+      await expect(postAuthorizedJournal(actor, {
+        ...input, idempotencyKey: `post-after-race:${suffix}`,
+      })).rejects.toBeInstanceOf(LedgerAccessDenied);
+    } finally {
+      if (session.inTransaction()) await session.abortTransaction();
+      // Release the transaction lock before awaiting a queued suspension.
+      if (suspension) await suspension;
+      await session.endSession();
+      await MembershipModel.updateOne(
+        { organizationId: org, authUserId: actor },
+        { $set: { status: 'active' } },
+      );
+    }
+  });
+
   it('aborts a stale membership-fenced transaction when suspension wins', async () => {
     // A transaction that started before revocation must not use its stale
     // snapshot to post after revocation has committed.
