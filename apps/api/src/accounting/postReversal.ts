@@ -83,10 +83,10 @@ export async function postReversal(request: ReversalRequest): Promise<ReversalRe
       const accounts = await AccountModel.find({
         organizationId,
         active: true,
-        _id: { $in: lines.map(line => new Types.ObjectId(line.accountId)) },
+        _id: { $in: lines.map((line: { accountId: string }) => new Types.ObjectId(line.accountId)) },
       }).session(session).select('_id').lean();
       const activeIds = new Set(accounts.map(account => String(account._id)));
-      if (lines.some(line => !activeIds.has(line.accountId))) {
+      if (lines.some((line: { accountId: string }) => !activeIds.has(line.accountId))) {
         throw new PostingError('ACCOUNT', 'Reversal account missing, inactive, or outside organization');
       }
       const [journal] = await JournalModel.create([{
