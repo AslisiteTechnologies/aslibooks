@@ -68,6 +68,40 @@ describe.skipIf(!enabled)('authorized ledger posting integration', () => {
     expect(await AuditEventModel.countDocuments({ organizationId: org, resourceId: reversed.journalId, action: 'journal.reversed' })).toBe(1);
   });
 
+  it('rejects new journal and reversal requests after membership suspension', async () => {
+    const original = await JournalModel.findOne({
+      organizationId: org, idempotencyKey: input.idempotencyKey,
+    });
+    expect(original).toBeTruthy();
+    await MembershipModel.updateOne(
+      { organizationId: org, authUserId: actor },
+      { $set: { status: 'suspended' } },
+    );
+    try {
+      const blockedKey = `revoked-post:${suffix}`;
+      await expect(postAuthorizedJournal(actor, {
+        ...input, idempotencyKey: blockedKey,
+      })).rejects.toBeInstanceOf(LedgerAccessDenied);
+      await expect(postAuthorizedReversal(actor, {
+        organizationId: org.toHexString(),
+        originalJournalId: String(original!._id),
+        idempotencyKey: `revoked-reverse:${suffix}`,
+        reason: 'Revoked user must not reverse',
+      })).rejects.toBeInstanceOf(LedgerAccessDenied);
+      expect(await JournalModel.countDocuments({
+        organizationId: org, idempotencyKey: blockedKey,
+      })).toBe(0);
+      expect(await JournalModel.countDocuments({
+        organizationId: org, idempotencyKey: `revoked-reverse:${suffix}`,
+      })).toBe(0);
+    } finally {
+      await MembershipModel.updateOne(
+        { organizationId: org, authUserId: actor },
+        { $set: { status: 'active' } },
+      );
+    }
+  });
+
   afterAll(async () => {
     if (!enabled) return;
     const journals = await JournalModel.find({ organizationId: org }).select('_id').lean();
