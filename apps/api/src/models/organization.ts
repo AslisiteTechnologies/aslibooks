@@ -1,0 +1,12 @@
+import { Schema, model, models, type InferSchemaType } from 'mongoose';
+
+const organizationSchema = new Schema({
+  name: { type: String, required: true, trim: true, maxlength: 160 },
+  slug: { type: String, required: true, lowercase: true, trim: true },
+  gstin: { type: String, trim: true, uppercase: true },
+  baseCurrency: { type: String, required: true, default: 'INR', enum: ['INR'] },
+}, { timestamps: true, strict: 'throw' });
+
+organizationSchema.index({ slug: 1 }, { unique: true });
+export type Organization = InferSchemaType<typeof organizationSchema>;
+export const OrganizationModel = models.Organization || model('Organization', organizationSchema);
