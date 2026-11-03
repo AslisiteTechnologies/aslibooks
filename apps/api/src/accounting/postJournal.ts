@@ -49,9 +49,9 @@ function samePayload(existing: { description: string; lines: PostingLine[] }, co
 export async function postJournal(command: PostingCommand): Promise<{ journalId: string; replayed: boolean }> {
   validatePosting(command);
   const organizationId = new Types.ObjectId(command.organizationId);
-  const existing = await JournalModel.findOne({ organizationId, idempotencyKey: command.idempotencyKey }).lean();
+  const existing = await JournalModel.findOne({ organizationId, idempotencyKey: command.idempotencyKey }).exec();
   if (existing) {
-    if (!samePayload(existing as { description: string; lines: PostingLine[] }, command))
+    if (!samePayload(existing, command))
       throw new PostingError('CONFLICT', 'Idempotency key already used with different journal');
     return { journalId: String(existing._id), replayed: true };
   }
@@ -90,8 +90,8 @@ export async function postJournal(command: PostingCommand): Promise<{ journalId:
     if (error instanceof PostingError) throw error;
     // Unique index guarantees a concurrent retry cannot post the same key twice.
     if (typeof error === 'object' && error !== null && 'code' in error && error.code === 11000) {
-      const retry = await JournalModel.findOne({ organizationId, idempotencyKey: command.idempotencyKey }).lean();
-      if (retry && samePayload(retry as { description: string; lines: PostingLine[] }, command))
+      const retry = await JournalModel.findOne({ organizationId, idempotencyKey: command.idempotencyKey }).exec();
+      if (retry && samePayload(retry, command))
         return { journalId: String(retry._id), replayed: true };
       throw new PostingError('CONFLICT', 'Idempotency key conflict');
     }
