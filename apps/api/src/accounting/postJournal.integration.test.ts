@@ -4,6 +4,7 @@ import { AccountModel } from '../models/account.js';
 import { JournalModel } from '../models/journal.js';
 import { AuditEventModel } from '../models/auditEvent.js';
 import { postJournal, PostingError, type PostingCommand } from './postJournal.js';
+import { postReversal } from './postReversal.js';
 
 const uri = process.env.MONGODB_TEST_URI;
 const dbName = process.env.MONGODB_TEST_DB_NAME;
@@ -144,6 +145,38 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
     })).toBe(1);
   });
 
+  it('posts an atomic reversal with swapped lines, audit, and idempotent replay', async () => {
+    const original = await JournalModel.findOne({
+      organizationId: orgA, idempotencyKey: command.idempotencyKey,
+    });
+    expect(original).toBeTruthy();
+    // The earlier uniqueness test already reversed the primary journal.
+    // Use a separate ordinary journal to exercise the reversal service.
+    const base = await postJournal({ ...command, idempotencyKey: `reversal-source:${suffix}` });
+    const request = {
+      organizationId: orgA.toHexString(),
+      originalJournalId: base.journalId,
+      actorAuthUserId: 'ledger-integration-test',
+      idempotencyKey: `reversal-service:${suffix}`,
+      reason: 'Correct erroneous posting',
+    };
+    const first = await postReversal(request);
+    expect(first.replayed).toBe(false);
+    const reversal = await JournalModel.findById(first.journalId);
+    expect(String(reversal?.reversalOf)).toBe(base.journalId);
+    expect(reversal?.lines.map((line: { debitPaise: number; creditPaise: number }) =>
+      [line.debitPaise, line.creditPaise])).toEqual([[0, 12500], [12500, 0]]);
+    expect(await AuditEventModel.countDocuments({
+      organizationId: orgA, resourceId: first.journalId, action: 'journal.reversed',
+    })).toBe(1);
+    expect(await postReversal(request)).toEqual({ journalId: first.journalId, replayed: true });
+    await expect(postReversal({ ...request, idempotencyKey: `different-reversal:${suffix}` }))
+      .rejects.toMatchObject({ code: 'CONFLICT' } satisfies Partial<PostingError>);
+    expect(await JournalModel.countDocuments({
+      organizationId: orgA, reversalOf: new Types.ObjectId(base.journalId),
+    })).toBe(1);
+  });
+
   it('rejects inactive accounts and writes nothing', async () => {
     await AccountModel.updateOne({ _id: accountB, organizationId: orgA }, { $set: { active: false } });
     const key = `inactive:${suffix}`;
@@ -158,6 +191,8 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
     await JournalModel.deleteMany({ organizationId: orgA, idempotencyKey: { $in: [
       command.idempotencyKey, `foreign:${suffix}`, `inactive:${suffix}`, `rollback:${suffix}`,
       `unbalanced:${suffix}`, `concurrent:${suffix}`,
+      `reversal-a:${suffix}`, `reversal-b:${suffix}`,
+      `reversal-source:${suffix}`, `reversal-service:${suffix}`,
     ] } });
     await AccountModel.deleteMany({ _id: { $in: [accountA, accountB, foreignAccount] } });
     await mongoose.disconnect();
