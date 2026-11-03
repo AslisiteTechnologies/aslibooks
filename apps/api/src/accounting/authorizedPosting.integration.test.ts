@@ -6,6 +6,8 @@ import { JournalModel } from '../models/journal.js';
 import { AuditEventModel } from '../models/auditEvent.js';
 import { LedgerAccessDenied, postAuthorizedJournal, postAuthorizedReversal } from './authorizedPosting.js';
 import { fenceLedgerPermission } from '../security/authorization.js';
+import { postJournal, PostingError } from './postJournal.js';
+import { postReversal } from './postReversal.js';
 
 const uri = process.env.MONGODB_TEST_URI;
 const dbName = process.env.MONGODB_TEST_DB_NAME;
@@ -184,6 +186,45 @@ describe.skipIf(!enabled)('authorized ledger posting integration', () => {
       await MembershipModel.updateOne(
         { organizationId: org, authUserId: actor },
         { $set: { role: 'owner' } },
+      );
+    }
+  });
+
+  it('blocks direct fenced journal and reversal operations for a suspended member', async () => {
+    // Bypass the preliminary authorized-service check deliberately. The
+    // transactional fence must independently reject both accounting paths.
+    const original = await JournalModel.findOne({
+      organizationId: org, idempotencyKey: input.idempotencyKey,
+    });
+    expect(original).toBeTruthy();
+    const journalKey = `fenced-denied-post:${suffix}`;
+    const reversalKey = `fenced-denied-reverse:${suffix}`;
+    await MembershipModel.updateOne(
+      { organizationId: org, authUserId: actor },
+      { $set: { status: 'suspended' } },
+    );
+    try {
+      await expect(postJournal({
+        ...input, actorAuthUserId: actor, idempotencyKey: journalKey,
+      }, { enforceMembershipFence: true })).rejects.toBeInstanceOf(PostingError);
+      await expect(postReversal({
+        organizationId: org.toHexString(),
+        actorAuthUserId: actor,
+        originalJournalId: String(original!._id),
+        idempotencyKey: reversalKey,
+        reason: 'Suspended actor cannot reverse',
+      }, { enforceMembershipFence: true })).rejects.toBeInstanceOf(PostingError);
+      expect(await JournalModel.countDocuments({
+        organizationId: org, idempotencyKey: { $in: [journalKey, reversalKey] },
+      })).toBe(0);
+      expect(await AuditEventModel.countDocuments({
+        organizationId: org, actorAuthUserId: actor,
+        resourceId: { $in: [journalKey, reversalKey] },
+      })).toBe(0);
+    } finally {
+      await MembershipModel.updateOne(
+        { organizationId: org, authUserId: actor },
+        { $set: { status: 'active' } },
       );
     }
   });
