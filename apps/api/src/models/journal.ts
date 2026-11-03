@@ -5,7 +5,7 @@ const lineSchema = new Schema({
   accountId: { type: Schema.Types.ObjectId, required: true },
   debitPaise: { type: Number, required: true, min: 0, validate: Number.isSafeInteger },
   creditPaise: { type: Number, required: true, min: 0, validate: Number.isSafeInteger },
-}, { _id: false, strict: 'throw' });
+}, { _id: false, strict: true, versionKey: false });
 
 const journalSchema = new Schema({
   organizationId: { type: Schema.Types.ObjectId, required: true, immutable: true },
