@@ -142,6 +142,27 @@ describe.skipIf(!enabled)('authorized ledger posting integration', () => {
     }
   });
 
+  it('denies a downgraded viewer even when membership remains active', async () => {
+    const key = `role-downgrade:${suffix}`;
+    await MembershipModel.updateOne(
+      { organizationId: org, authUserId: actor },
+      { $set: { role: 'viewer' } },
+    );
+    try {
+      await expect(postAuthorizedJournal(actor, {
+        ...input, idempotencyKey: key,
+      })).rejects.toBeInstanceOf(LedgerAccessDenied);
+      expect(await JournalModel.countDocuments({
+        organizationId: org, idempotencyKey: key,
+      })).toBe(0);
+    } finally {
+      await MembershipModel.updateOne(
+        { organizationId: org, authUserId: actor },
+        { $set: { role: 'owner' } },
+      );
+    }
+  });
+
   it('aborts a stale membership-fenced transaction when suspension wins', async () => {
     // A transaction that started before revocation must not use its stale
     // snapshot to post after revocation has committed.
