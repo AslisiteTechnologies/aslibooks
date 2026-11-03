@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import mongoose, { Types } from 'mongoose';
 import { AccountModel } from '../models/account.js';
 import { JournalModel } from '../models/journal.js';
@@ -68,6 +68,19 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
     expect(await AuditEventModel.countDocuments({ organizationId: orgA, action: 'journal.posted' })).toBe(1);
   });
 
+  it('rolls back journal insertion if audit event creation fails', async () => {
+    const key = `rollback:${suffix}`;
+    const auditFailure = vi.spyOn(AuditEventModel, 'create').mockRejectedValueOnce(new Error('Injected audit write failure'));
+    try {
+      await expect(postJournal({ ...command, idempotencyKey: key }))
+        .rejects.toThrow('Injected audit write failure');
+    } finally {
+      auditFailure.mockRestore();
+    }
+    expect(await JournalModel.countDocuments({ organizationId: orgA, idempotencyKey: key })).toBe(0);
+    expect(await AuditEventModel.countDocuments({ organizationId: orgA, action: 'journal.posted' })).toBe(1);
+  });
+
   it('rejects inactive accounts and writes nothing', async () => {
     await AccountModel.updateOne({ _id: accountB, organizationId: orgA }, { $set: { active: false } });
     const key = `inactive:${suffix}`;
@@ -80,7 +93,7 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
     if (!enabled) return;
     await AuditEventModel.deleteMany({ organizationId: orgA, actorAuthUserId: 'ledger-integration-test' });
     await JournalModel.deleteMany({ organizationId: orgA, idempotencyKey: { $in: [
-      command.idempotencyKey, `foreign:${suffix}`, `inactive:${suffix}`,
+      command.idempotencyKey, `foreign:${suffix}`, `inactive:${suffix}`, `rollback:${suffix}`,
     ] } });
     await AccountModel.deleteMany({ _id: { $in: [accountA, accountB, foreignAccount] } });
     await mongoose.disconnect();
