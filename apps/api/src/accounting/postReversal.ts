@@ -2,6 +2,7 @@ import mongoose, { Types } from 'mongoose';
 import { JournalModel } from '../models/journal.js';
 import { AccountModel } from '../models/account.js';
 import { AuditEventModel } from '../models/auditEvent.js';
+import { fenceLedgerPermission } from '../security/authorization.js';
 import { PostingError, validatePosting, type PostingCommand } from './postJournal.js';
 import type { ReversalRequest } from './reversal.js';
 
@@ -21,7 +22,7 @@ function matchesRequest(existing: {
  * Internal accounting primitive only. Caller MUST authorize active membership
  * and ledger:post for the organization. Never expose directly as an HTTP route.
  */
-export async function postReversal(request: ReversalRequest): Promise<ReversalResult> {
+export async function postReversal(request: ReversalRequest, options: { enforceMembershipFence?: boolean } = {}): Promise<ReversalResult> {
   if (!Types.ObjectId.isValid(request.organizationId) ||
       !Types.ObjectId.isValid(request.originalJournalId)) {
     throw new PostingError('INVALID', 'Invalid journal or organization ID');
@@ -48,7 +49,7 @@ export async function postReversal(request: ReversalRequest): Promise<ReversalRe
       { reversalOf: originalId },
     ],
   }).exec();
-  const prior = await findExisting();
+  const prior = options.enforceMembershipFence ? null : await findExisting();
   if (prior) {
     if (matchesRequest(prior, request.originalJournalId, {
       organizationId: request.organizationId,
@@ -60,6 +61,26 @@ export async function postReversal(request: ReversalRequest): Promise<ReversalRe
   }
   try {
     return await mongoose.connection.transaction(async (session) => {
+      if (options.enforceMembershipFence &&
+          !await fenceLedgerPermission(request.actorAuthUserId, request.organizationId, session))
+        throw new PostingError('CONFLICT', 'Ledger posting permission denied');
+      if (options.enforceMembershipFence) {
+        const existing = await JournalModel.findOne({
+          organizationId, $or: [
+            { idempotencyKey: request.idempotencyKey },
+            { reversalOf: originalId },
+          ],
+        }).session(session).exec();
+        if (existing) {
+          if (matchesRequest(existing, request.originalJournalId, {
+            organizationId: request.organizationId,
+            actorAuthUserId: request.actorAuthUserId,
+            idempotencyKey: request.idempotencyKey,
+            description, lines: [],
+          })) return { journalId: String(existing._id), replayed: true };
+          throw new PostingError('CONFLICT', 'Journal already reversed or idempotency key reused');
+        }
+      }
       const original = await JournalModel.findOne({
         _id: originalId, organizationId,
       }).session(session).exec();
