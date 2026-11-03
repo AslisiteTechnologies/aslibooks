@@ -55,10 +55,10 @@ export function organizationRouter(resolveUser: (headers: Headers) => Promise<Au
   router.get('/', requireUser, async (_req, res, next) => {
     try {
       const memberships = await MembershipModel.find({ authUserId: res.locals.authUserId, status: 'active' })
-        .select('organizationId role').lean();
+        .select('organizationId role').lean<Array<{ organizationId: mongoose.Types.ObjectId; role: string }>>();
       const ids = memberships.map((m: { organizationId: mongoose.Types.ObjectId }) => m.organizationId);
       const organizations = await OrganizationModel.find({ _id: { $in: ids } })
-        .select('name slug baseCurrency').lean();
+        .select('name slug baseCurrency').lean<Array<{ _id: mongoose.Types.ObjectId; name: string; slug: string; baseCurrency: string }>>();
       res.json({ organizations: organizations.map((o: { _id: mongoose.Types.ObjectId; name: string; slug: string; baseCurrency: string }) => ({
         id: o._id.toString(), name: o.name, slug: o.slug, baseCurrency: o.baseCurrency,
       })) });
