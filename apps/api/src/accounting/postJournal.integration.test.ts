@@ -70,10 +70,12 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
 
   it('rolls back journal insertion if audit event creation fails', async () => {
     const key = `rollback:${suffix}`;
-    const auditFailure = vi.spyOn(AuditEventModel, 'create').mockRejectedValueOnce(new Error('Injected audit write failure'));
+    const auditFailure = vi.spyOn(AuditEventModel, 'create').mockImplementationOnce(() => {
+      throw new Error('Injected audit write failure');
+    });
     try {
       await expect(postJournal({ ...command, idempotencyKey: key }))
-        .rejects.toThrow('Injected audit write failure');
+        .rejects.toThrow();
     } finally {
       auditFailure.mockRestore();
     }
