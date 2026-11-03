@@ -243,6 +243,30 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
     })).toBe(0);
   });
 
+  it('rejects a reversal key already used by an ordinary journal', async () => {
+    const source = await postJournal({
+      ...command, idempotencyKey: `collision-source:${suffix}`,
+    });
+    const occupiedKey = `collision-key:${suffix}`;
+    const occupied = await postJournal({ ...command, idempotencyKey: occupiedKey });
+    await expect(postReversal({
+      organizationId: orgA.toHexString(),
+      originalJournalId: source.journalId,
+      actorAuthUserId: 'ledger-integration-test',
+      idempotencyKey: occupiedKey,
+      reason: 'Correct collision source',
+    })).rejects.toMatchObject({ code: 'CONFLICT' } satisfies Partial<PostingError>);
+    expect(await JournalModel.countDocuments({
+      organizationId: orgA, reversalOf: new Types.ObjectId(source.journalId),
+    })).toBe(0);
+    expect(await JournalModel.countDocuments({
+      organizationId: orgA, idempotencyKey: occupiedKey,
+    })).toBe(1);
+    expect(await AuditEventModel.countDocuments({
+      organizationId: orgA, resourceId: occupied.journalId,
+    })).toBe(1);
+  });
+
   it('rejects inactive accounts and writes nothing', async () => {
     await AccountModel.updateOne({ _id: accountB, organizationId: orgA }, { $set: { active: false } });
     const key = `inactive:${suffix}`;
@@ -261,6 +285,7 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
       `reversal-source:${suffix}`, `reversal-service:${suffix}`,
       `race-source:${suffix}`, `race-reversal:${suffix}`,
       `audit-source:${suffix}`, `audit-reversal:${suffix}`,
+      `collision-source:${suffix}`, `collision-key:${suffix}`,
     ] } });
     await AccountModel.deleteMany({ _id: { $in: [accountA, accountB, foreignAccount] } });
     await mongoose.disconnect();
