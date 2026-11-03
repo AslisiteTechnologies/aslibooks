@@ -192,7 +192,8 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
     const results = await Promise.allSettled(
       Array.from({ length: 4 }, () => postReversal(request)),
     );
-    expect(results.some(result => result.status === 'fulfilled')).toBe(true);
+    expect(results.filter(result => result.status === 'rejected')).toEqual([]);
+    expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(4);
     const reversals = await JournalModel.find({
       organizationId: orgA, reversalOf: new Types.ObjectId(base.journalId),
     });
