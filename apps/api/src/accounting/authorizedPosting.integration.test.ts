@@ -197,6 +197,7 @@ describe.skipIf(!enabled)('authorized ledger posting integration', () => {
       organizationId: org, idempotencyKey: input.idempotencyKey,
     });
     expect(original).toBeTruthy();
+    const auditCountBefore = await AuditEventModel.countDocuments({ organizationId: org });
     const journalKey = `fenced-denied-post:${suffix}`;
     const reversalKey = `fenced-denied-reverse:${suffix}`;
     await MembershipModel.updateOne(
@@ -217,10 +218,8 @@ describe.skipIf(!enabled)('authorized ledger posting integration', () => {
       expect(await JournalModel.countDocuments({
         organizationId: org, idempotencyKey: { $in: [journalKey, reversalKey] },
       })).toBe(0);
-      expect(await AuditEventModel.countDocuments({
-        organizationId: org, actorAuthUserId: actor,
-        resourceId: { $in: [journalKey, reversalKey] },
-      })).toBe(0);
+      expect(await AuditEventModel.countDocuments({ organizationId: org }))
+        .toBe(auditCountBefore);
     } finally {
       await MembershipModel.updateOne(
         { organizationId: org, authUserId: actor },
