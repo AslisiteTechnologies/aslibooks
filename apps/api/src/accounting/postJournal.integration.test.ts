@@ -71,12 +71,13 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
 
   it('rolls back journal insertion if audit event creation fails', async () => {
     const key = `rollback:${suffix}`;
-    const auditFailure = vi.spyOn(AuditEventModel, 'create').mockImplementationOnce(() => {
+    const auditFailure = vi.spyOn(AuditEventModel, 'create').mockImplementation(() => {
       throw new Error('Injected audit write failure');
     });
     try {
       await expect(postJournal({ ...command, idempotencyKey: key }))
-        .rejects.toThrow();
+        .rejects.toThrow('Injected audit write failure');
+      expect(auditFailure).toHaveBeenCalled();
     } finally {
       auditFailure.mockRestore();
     }
@@ -220,7 +221,6 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
         () => { throw new Error('Expected reversal posting to fail'); },
         (error: unknown) => {
           if (!(error instanceof Error)) throw error;
-          console.error('REVERSAL_ROLLBACK_DIAGNOSTIC', error.stack);
           expect(error.message).toContain('Injected reversal audit failure');
         },
       );
