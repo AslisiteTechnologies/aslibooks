@@ -177,6 +177,32 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
     })).toBe(1);
   });
 
+  it('concurrent reversal attempts create at most one reversal and audit event', async () => {
+    const base = await postJournal({ ...command, idempotencyKey: `race-source:${suffix}` });
+    const request = {
+      organizationId: orgA.toHexString(),
+      originalJournalId: base.journalId,
+      actorAuthUserId: 'ledger-integration-test',
+      idempotencyKey: `race-reversal:${suffix}`,
+      reason: 'Concurrent correction',
+    };
+    const results = await Promise.allSettled(
+      Array.from({ length: 4 }, () => postReversal(request)),
+    );
+    expect(results.some(result => result.status === 'fulfilled')).toBe(true);
+    const reversals = await JournalModel.find({
+      organizationId: orgA, reversalOf: new Types.ObjectId(base.journalId),
+    });
+    expect(reversals).toHaveLength(1);
+    const reversalId = String(reversals[0]._id);
+    expect(await AuditEventModel.countDocuments({
+      organizationId: orgA, resourceId: reversalId, action: 'journal.reversed',
+    })).toBe(1);
+    for (const result of results) {
+      if (result.status === 'fulfilled') expect(result.value.journalId).toBe(reversalId);
+    }
+  });
+
   it('rejects inactive accounts and writes nothing', async () => {
     await AccountModel.updateOne({ _id: accountB, organizationId: orgA }, { $set: { active: false } });
     const key = `inactive:${suffix}`;
@@ -193,6 +219,7 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
       `unbalanced:${suffix}`, `concurrent:${suffix}`,
       `reversal-a:${suffix}`, `reversal-b:${suffix}`,
       `reversal-source:${suffix}`, `reversal-service:${suffix}`,
+      `race-source:${suffix}`, `race-reversal:${suffix}`,
     ] } });
     await AccountModel.deleteMany({ _id: { $in: [accountA, accountB, foreignAccount] } });
     await mongoose.disconnect();
