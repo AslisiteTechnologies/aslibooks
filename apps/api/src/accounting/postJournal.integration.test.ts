@@ -203,6 +203,36 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
     }
   });
 
+  it('rolls back reversal journal when the audit write fails', async () => {
+    const source = await postJournal({ ...command, idempotencyKey: `audit-source:${suffix}` });
+    const request = {
+      organizationId: orgA.toHexString(),
+      originalJournalId: source.journalId,
+      actorAuthUserId: 'ledger-integration-test',
+      idempotencyKey: `audit-reversal:${suffix}`,
+      reason: 'Rollback test',
+    };
+    const auditFailure = vi.spyOn(AuditEventModel, 'create').mockImplementationOnce(() => {
+      throw new Error('Injected reversal audit failure');
+    });
+    try {
+      await expect(postReversal(request)).rejects.toThrow('Injected reversal audit failure');
+      expect(auditFailure).toHaveBeenCalledTimes(1);
+    } finally {
+      auditFailure.mockRestore();
+    }
+    expect(await JournalModel.countDocuments({
+      organizationId: orgA, idempotencyKey: request.idempotencyKey,
+    })).toBe(0);
+    expect(await JournalModel.countDocuments({
+      organizationId: orgA, reversalOf: new Types.ObjectId(source.journalId),
+    })).toBe(0);
+    expect(await AuditEventModel.countDocuments({
+      organizationId: orgA, action: 'journal.reversed',
+      resourceId: source.journalId,
+    })).toBe(0);
+  });
+
   it('rejects inactive accounts and writes nothing', async () => {
     await AccountModel.updateOne({ _id: accountB, organizationId: orgA }, { $set: { active: false } });
     const key = `inactive:${suffix}`;
@@ -220,6 +250,7 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
       `reversal-a:${suffix}`, `reversal-b:${suffix}`,
       `reversal-source:${suffix}`, `reversal-service:${suffix}`,
       `race-source:${suffix}`, `race-reversal:${suffix}`,
+      `audit-source:${suffix}`, `audit-reversal:${suffix}`,
     ] } });
     await AccountModel.deleteMany({ _id: { $in: [accountA, accountB, foreignAccount] } });
     await mongoose.disconnect();
