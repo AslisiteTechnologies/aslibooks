@@ -102,6 +102,23 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
     })).toBe(beforeAuditCount);
   });
 
+  it('handles concurrent identical posting attempts without duplicate financial records', async () => {
+    const key = `concurrent:${suffix}`;
+    const attempts = await Promise.allSettled(Array.from({ length: 4 }, () =>
+      postJournal({ ...command, idempotencyKey: key }),
+    ));
+    const successes = attempts.filter(result => result.status === 'fulfilled');
+    expect(successes.length).toBeGreaterThanOrEqual(1);
+    expect(await JournalModel.countDocuments({ organizationId: orgA, idempotencyKey: key })).toBe(1);
+    const journal = await JournalModel.findOne({ organizationId: orgA, idempotencyKey: key });
+    expect(await AuditEventModel.countDocuments({
+      organizationId: orgA, resourceId: String(journal!._id), action: 'journal.posted',
+    })).toBe(1);
+    for (const result of successes) {
+      if (result.status === 'fulfilled') expect(result.value.journalId).toBe(String(journal!._id));
+    }
+  });
+
   it('rejects inactive accounts and writes nothing', async () => {
     await AccountModel.updateOne({ _id: accountB, organizationId: orgA }, { $set: { active: false } });
     const key = `inactive:${suffix}`;
@@ -115,6 +132,7 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
     await AuditEventModel.deleteMany({ organizationId: orgA, actorAuthUserId: 'ledger-integration-test' });
     await JournalModel.deleteMany({ organizationId: orgA, idempotencyKey: { $in: [
       command.idempotencyKey, `foreign:${suffix}`, `inactive:${suffix}`, `rollback:${suffix}`,
+      `unbalanced:${suffix}`, `concurrent:${suffix}`,
     ] } });
     await AccountModel.deleteMany({ _id: { $in: [accountA, accountB, foreignAccount] } });
     await mongoose.disconnect();
