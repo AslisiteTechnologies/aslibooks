@@ -109,8 +109,10 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
     const attempts = await Promise.allSettled(Array.from({ length: 4 }, () =>
       postJournal({ ...command, idempotencyKey: key }),
     ));
+    const failures = attempts.filter(result => result.status === 'rejected');
+    expect(failures).toEqual([]);
     const successes = attempts.filter(result => result.status === 'fulfilled');
-    expect(successes.length).toBeGreaterThanOrEqual(1);
+    expect(successes).toHaveLength(4);
     expect(await JournalModel.countDocuments({ organizationId: orgA, idempotencyKey: key })).toBe(1);
     const journal = await JournalModel.findOne({ organizationId: orgA, idempotencyKey: key });
     expect(await AuditEventModel.countDocuments({
