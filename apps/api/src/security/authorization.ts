@@ -12,11 +12,16 @@ const permissionRoles = {
 
 export type Permission = keyof typeof permissionRoles;
 
+/** Pure policy check; database membership and active status are checked separately. */
+export function roleAllows(role: string | null | undefined, permission: Permission): boolean {
+  return !!role && (permissionRoles[permission] as readonly string[]).includes(role);
+}
+
 /** Never accept authUserId from request body: resolve it from verified auth session. */
 export async function hasPermission(authUserId: string, organizationId: string, permission: Permission): Promise<boolean> {
   if (!authUserId || !Types.ObjectId.isValid(organizationId)) return false;
   const membership = await MembershipModel.findOne({
     organizationId: new Types.ObjectId(organizationId), authUserId, status: 'active',
   }).select('role').lean<{ role: Role }>();
-  return !!membership && (permissionRoles[permission] as readonly string[]).includes(membership.role);
+  return roleAllows(membership?.role, permission);
 }
