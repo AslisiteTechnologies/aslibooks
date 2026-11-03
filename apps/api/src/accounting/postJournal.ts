@@ -95,6 +95,21 @@ export async function postJournal(command: PostingCommand): Promise<{ journalId:
         return { journalId: String(retry._id), replayed: true };
       throw new PostingError('CONFLICT', 'Idempotency key conflict');
     }
+    // A competing transaction can surface a transient write conflict instead
+    // of E11000. Resolve a committed identical posting before returning the error.
+    // Never assume a transient error means a journal was committed.
+    if (typeof error === 'object' && error !== null &&
+        'hasErrorLabel' in error && typeof error.hasErrorLabel === 'function' &&
+        error.hasErrorLabel('TransientTransactionError')) {
+      const committed = await JournalModel.findOne({
+        organizationId, idempotencyKey: command.idempotencyKey,
+      }).exec();
+      if (committed) {
+        if (!samePayload(committed, command))
+          throw new PostingError('CONFLICT', 'Idempotency key already used with different journal');
+        return { journalId: String(committed._id), replayed: true };
+      }
+    }
     throw error;
   }
 }
