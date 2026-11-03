@@ -49,7 +49,7 @@ export async function fenceLedgerPermission(
       role: { $in: ['owner', 'admin', 'accountant'] },
     },
     { $inc: { ledgerAuthorizationFence: 1 } },
-    { session, strict: false },
+    { session },
   );
   return result.matchedCount === 1 && result.modifiedCount === 1;
 }
