@@ -15,7 +15,7 @@ const journalSchema = new Schema({
   lines: { type: [lineSchema], required: true },
   postedAt: { type: Date, required: true, immutable: true },
   reversalOf: { type: Schema.Types.ObjectId, ref: 'Journal', immutable: true },
-}, { timestamps: true, strict: 'throw' });
+}, { timestamps: true, strict: 'throw', versionKey: false });
 
 journalSchema.index({ organizationId: 1, idempotencyKey: 1 }, { unique: true });
 journalSchema.index({ organizationId: 1, postedAt: -1 });
