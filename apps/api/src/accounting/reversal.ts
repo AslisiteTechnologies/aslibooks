@@ -1,6 +1,6 @@
 import { Types } from 'mongoose';
 import { JournalModel } from '../models/journal.js';
-import { postJournal, PostingError, type PostingCommand } from './postJournal.js';
+import { PostingError, type PostingCommand } from './postJournal.js';
 
 export type ReversalRequest = {
   organizationId: string;
@@ -51,6 +51,4 @@ export async function prepareReversal(request: ReversalRequest): Promise<Posting
   return command;
 }
 
-// Posting a reversal is intentionally not implemented here. Calling postJournal
-// directly would omit reversalOf linkage and double-reversal prevention.
-void postJournal;
+// Posting a reversal must atomically record reversalOf and prevent double reversal.
