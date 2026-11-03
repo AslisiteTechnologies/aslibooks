@@ -1,13 +1,8 @@
 import { Router, type RequestHandler } from 'express';
 import mongoose from 'mongoose';
-import { z } from 'zod';
+import { createOrganizationSchema } from './organizationValidation.js';
 import { OrganizationModel } from '../models/organization.js';
 import { MembershipModel } from '../models/membership.js';
-
-const createOrganizationSchema = z.object({
-  name: z.string().trim().min(2).max(160),
-  slug: z.string().trim().toLowerCase().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).min(3).max(64),
-}).strict();
 
 type AuthUser = { id: string };
 export function organizationRouter(resolveUser: (headers: Headers) => Promise<AuthUser | null>): Router {
