@@ -112,6 +112,45 @@ describe.skipIf(!enabled)('authorized ledger posting integration', () => {
     }
   });
 
+  it('aborts a stale membership-fenced transaction when suspension wins', async () => {
+    // A transaction that started before revocation must not use its stale
+    // snapshot to post after revocation has committed.
+    const session = await mongoose.startSession();
+    const concurrentKey = `stale-snapshot:${suffix}`;
+    try {
+      session.startTransaction();
+      await MembershipModel.findOne({
+        organizationId: org, authUserId: actor, status: 'active',
+      }).session(session);
+      await MembershipModel.updateOne(
+        { organizationId: org, authUserId: actor },
+        { $set: { status: 'suspended' } },
+      );
+      await expect(MembershipModel.updateOne(
+        {
+          organizationId: org, authUserId: actor,
+          status: 'active', role: { $in: ['owner', 'admin', 'accountant'] },
+        },
+        { $inc: { ledgerAuthorizationFence: 1 } },
+        { session },
+      )).rejects.toThrow();
+      await session.abortTransaction();
+      await expect(postAuthorizedJournal(actor, {
+        ...input, idempotencyKey: concurrentKey,
+      })).rejects.toBeInstanceOf(LedgerAccessDenied);
+      expect(await JournalModel.countDocuments({
+        organizationId: org, idempotencyKey: concurrentKey,
+      })).toBe(0);
+    } finally {
+      if (session.inTransaction()) await session.abortTransaction();
+      await session.endSession();
+      await MembershipModel.updateOne(
+        { organizationId: org, authUserId: actor },
+        { $set: { status: 'active' } },
+      );
+    }
+  });
+
   afterAll(async () => {
     if (!enabled) return;
     const journals = await JournalModel.find({ organizationId: org }).select('_id').lean();
