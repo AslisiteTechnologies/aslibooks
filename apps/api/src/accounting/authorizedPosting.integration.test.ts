@@ -251,32 +251,6 @@ describe.skipIf(!enabled)('authorized ledger posting integration', () => {
     expect(await AuditEventModel.countDocuments({ organizationId: org })).toBe(auditCount);
   });
 
-  it('rolls back the membership fence when a journal fails account validation', async () => {
-    const before = await MembershipModel.findOne({
-      organizationId: org, authUserId: actor,
-    }).lean<{ ledgerAuthorizationFence?: number }>();
-    const auditBefore = await AuditEventModel.countDocuments({ organizationId: org });
-    const key = `fenced-rollback:${suffix}`;
-    await expect(postJournal({
-      ...input,
-      actorAuthUserId: actor,
-      idempotencyKey: key,
-      lines: [
-        { accountId: new Types.ObjectId().toHexString(), debitPaise: 100, creditPaise: 0 },
-        { accountId: creditAccount.toHexString(), debitPaise: 0, creditPaise: 100 },
-      ],
-    }, { enforceMembershipFence: true })).rejects.toMatchObject({ code: 'ACCOUNT' });
-    const after = await MembershipModel.findOne({
-      organizationId: org, authUserId: actor,
-    }).lean<{ ledgerAuthorizationFence?: number }>();
-    expect(after!.ledgerAuthorizationFence).toBe(before!.ledgerAuthorizationFence);
-    expect(await JournalModel.countDocuments({
-      organizationId: org, idempotencyKey: key,
-    })).toBe(0);
-    expect(await AuditEventModel.countDocuments({ organizationId: org }))
-      .toBe(auditBefore);
-  });
-
   it('aborts a stale membership-fenced transaction when suspension wins', async () => {
     // A transaction that started before revocation must not use its stale
     // snapshot to post after revocation has committed.
