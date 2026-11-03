@@ -30,7 +30,6 @@ describe.skipIf(!enabled)('organization integration (isolated MongoDB test datab
     await mongoose.connect(uri!, { dbName: databaseName!, serverSelectionTimeoutMS: 10000 });
     await Promise.all([OrganizationModel.init(), MembershipModel.init()]);
   });
-  afterAll(async () => { if (enabled) await mongoose.disconnect(); });
 
   it('rejects unauthenticated organization creation', async () => {
     await request(app).post('/api/organizations').send({ name: 'Test Shop', slug }).expect(401);
@@ -69,8 +68,11 @@ describe.skipIf(!enabled)('organization integration (isolated MongoDB test datab
   });
 
   afterAll(async () => {
-    if (!enabled || !organizationId) return;
-    await MembershipModel.deleteMany({ organizationId });
-    await OrganizationModel.deleteOne({ _id: organizationId });
+    if (!enabled) return;
+    if (organizationId) {
+      await MembershipModel.deleteMany({ organizationId });
+      await OrganizationModel.deleteOne({ _id: organizationId });
+    }
+    await mongoose.disconnect();
   });
 });
