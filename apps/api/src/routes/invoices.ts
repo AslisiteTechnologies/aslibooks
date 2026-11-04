@@ -13,7 +13,7 @@ import { OrganizationModel } from '../models/organization.js';
 import { fenceLedgerPermission, hasPermission } from '../security/authorization.js';
 
 const lineInput = z.strictObject({ productId: z.string().regex(/^[a-f\d]{24}$/i), quantity: z.number().int().min(1).max(1_000_000) });
-const invoiceInput = z.strictObject({ customerId: z.string().regex(/^[a-f\d]{24}$/i), lines: z.array(lineInput).min(1).max(50) });
+const invoiceInput = z.strictObject({ customerId: z.string().regex(/^[a-f\d]{24}$/i), lines: z.array(lineInput).min(1).max(50), dueDate: z.string().date().optional() });
 const pageQuery = z.strictObject({ after: z.string().regex(/^[a-f\d]{24}$/i).optional(), limit: z.string().regex(/^\d{1,3}$/).optional() });
 const issueInput = z.strictObject({ idempotencyKey: z.string().regex(/^[a-zA-Z0-9:_-]{8,128}$/) });
 
@@ -25,6 +25,11 @@ function indiaYear(now: Date): { year: number; month: number } {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit' }).formatToParts(now);
   const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
   return { year: Number(values.year), month: Number(values.month) };
+}
+function indiaDateString(now: Date): string {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
 }
 
 function fiscalYearLabel(now: Date, startMonth: number): string {
@@ -56,8 +61,12 @@ const listInvoices: RequestHandler = async (req, res) => {
   if (!parsed.success) { res.status(400).json({ error: 'Invalid invoice cursor' }); return; }
   const limit = Math.min(Number(parsed.data.limit) || 50, 100);
   const rows = await InvoiceModel.find({ organizationId, ...(parsed.data.after ? { _id: { $lt: new Types.ObjectId(parsed.data.after) } } : {}) })
-    .sort({ _id: -1 }).limit(limit + 1).select('customerName status totalPaise amountPaidPaise invoiceNumber issuedAt createdAt').lean();
-  const invoices = rows.slice(0, limit).map(invoice => ({ ...invoice, id: String(invoice._id), _id: undefined }));
+    .sort({ _id: -1 }).limit(limit + 1).select('customerName status totalPaise amountPaidPaise invoiceNumber dueDate issuedAt createdAt').lean();
+  const today = indiaDateString(new Date());
+  const invoices = rows.slice(0, limit).map(invoice => ({ ...invoice,
+    overdue: (invoice.status === 'issued' || invoice.status === 'partially_paid') && !!invoice.dueDate && invoice.dueDate < today,
+    id: String(invoice._id), _id: undefined,
+  }));
   res.json({ invoices, next: rows.length > limit ? String(rows[limit - 1]._id) : null });
 };
 
@@ -93,18 +102,19 @@ const writeDraft: RequestHandler = async (req, res, next) => {
         const product = byId.get(line.productId.toLowerCase())!;
         const lineTotalPaise = product.unitPricePaise * line.quantity;
         if (!Number.isSafeInteger(lineTotalPaise)) throw new InvoiceError(400, 'Invoice line total exceeds the supported INR range');
-        return { productId: product._id, name: product.name, quantity: line.quantity, unitPricePaise: product.unitPricePaise, lineTotalPaise };
+      return { productId: product._id, name: product.name, quantity: line.quantity, unitPricePaise: product.unitPricePaise, lineTotalPaise };
       });
       const totalPaise = lines.reduce((sum, line) => sum + line.lineTotalPaise, 0);
       if (!Number.isSafeInteger(totalPaise) || totalPaise <= 0) throw new InvoiceError(400, 'Invoice total must be positive and within the supported INR range');
       if (req.method === 'POST') {
-        const [created] = await InvoiceModel.create([{ organizationId, customerId: customer._id, customerName: customer.displayName, lines, totalPaise, status: 'draft' }], { session });
+        const [created] = await InvoiceModel.create([{ organizationId, customerId: customer._id, customerName: customer.displayName, lines, totalPaise, ...(parsed.data.dueDate ? { dueDate: parsed.data.dueDate } : {}), status: 'draft' }], { session });
         await AuditEventModel.create([{ organizationId, actorAuthUserId: authUserId, action: 'invoice.draft_created', resourceType: 'invoice', resourceId: String(created._id) }], { session });
         return String(created._id);
       }
       const invoice = await InvoiceModel.findOne({ _id: id, organizationId, status: 'draft' }).session(session);
       if (!invoice) throw new InvoiceError(404, 'Draft invoice not found');
       invoice.customerId = customer._id; invoice.customerName = customer.displayName;
+      if (parsed.data.dueDate !== undefined) invoice.dueDate = parsed.data.dueDate;
       invoice.set('lines', lines); invoice.totalPaise = totalPaise;
       await invoice.save({ session });
       await AuditEventModel.create([{ organizationId, actorAuthUserId: authUserId, action: 'invoice.draft_updated', resourceType: 'invoice', resourceId: String(invoice._id) }], { session });

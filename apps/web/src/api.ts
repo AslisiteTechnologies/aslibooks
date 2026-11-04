@@ -11,9 +11,9 @@ const contactsPath = (org: string) => `/api/organizations/${org}/contacts`;
 export type ContactInput = { displayName: string; roles: Array<'customer' | 'vendor'>; email?: string; phone?: string; gstin?: string; address?: string };
 export type Contact = ContactInput & { _id: string; active: boolean };
 export type Product = { _id: string; code: string; name: string; description?: string; unitPricePaise: number; active: boolean };
-export type Invoice = { id: string; customerName: string; status: 'draft' | 'issued' | 'partially_paid' | 'paid'; totalPaise: number; amountPaidPaise: number; invoiceNumber?: string; issuedAt?: string; createdAt: string };
+export type Invoice = { id: string; customerName: string; status: 'draft' | 'issued' | 'partially_paid' | 'paid'; totalPaise: number; amountPaidPaise: number; invoiceNumber?: string; dueDate?: string; overdue?: boolean; issuedAt?: string; createdAt: string };
 export type Receipt = { id: string; customerName: string; amountPaise: number; receivedAt: string; journalId: string; allocations: Array<{ invoiceId: string; invoiceNumber: string; amountPaise: number }> };
-export type Bill = { id: string; vendorName: string; vendorReference: string; expenseAccountName: string; description: string; status: 'draft' | 'posted' | 'partially_paid' | 'paid'; amountPaise: number; amountPaidPaise: number; dueDate?: string; journalId?: string };
+export type Bill = { id: string; vendorName: string; vendorReference: string; expenseAccountName: string; description: string; status: 'draft' | 'posted' | 'partially_paid' | 'paid'; amountPaise: number; amountPaidPaise: number; dueDate?: string; overdue?: boolean; journalId?: string };
 export type VendorPayment = { id: string; vendorName: string; amountPaise: number; paidAt: string; journalId: string; allocations: Array<{ billId: string; vendorReference: string; amountPaise: number }> };
 export type OpeningBalance = { id: string; asOf: string; totalPaise: number; journalId: string; lines: Array<{ accountId: string; accountCode: string; accountName: string; side: 'debit' | 'credit'; amountPaise: number }> };
 export type Journal = { id: string; description: string; postedAt: string; reversalOf: string | null; lineCount: number };
@@ -35,6 +35,7 @@ export type BalanceSheetResult = {
   totalAssetsPaise: number; totalLiabilitiesPaise: number; totalEquityPaise: number;
   currentEarningsPaise: number; liabilitiesAndEquityPaise: number; balanced: boolean;
 };
+export type AgingSummary = { asOf: string; totalOutstandingPaise: number; documentCount: number; buckets: Record<'notDue' | 'current' | 'days1To30' | 'days31To60' | 'days61To90' | 'over90' | 'undated', { amountPaise: number; documentCount: number }> };
 
 async function jsonRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
@@ -64,7 +65,7 @@ export const api = {
   createProduct: (org: string, input: { code: string; name: string; unitPricePaise: number }) =>
     jsonRequest<{ id: string }>(`/api/organizations/${org}/products`, { method: 'POST', body: JSON.stringify(input) }),
   invoices: (org: string) => jsonRequest<{ invoices: Invoice[]; next: string | null }>(`/api/organizations/${org}/invoices`),
-  createInvoiceDraft: (org: string, input: { customerId: string; lines: Array<{ productId: string; quantity: number }> }) =>
+  createInvoiceDraft: (org: string, input: { customerId: string; lines: Array<{ productId: string; quantity: number }>; dueDate?: string }) =>
     jsonRequest<{ id: string; status: 'draft' }>(`/api/organizations/${org}/invoices`, { method: 'POST', body: JSON.stringify(input) }),
   issueInvoice: (org: string, id: string, idempotencyKey: string) =>
     jsonRequest<{ id: string; invoiceNumber: string; journalId: string; replayed: boolean; status: 'issued' | 'partially_paid' | 'paid' }>(
@@ -120,6 +121,8 @@ export const api = {
   balanceSheet: (org: string, asOf: string) => jsonRequest<BalanceSheetResult>(
     `/api/organizations/${org}/reports/balance-sheet?asOf=${encodeURIComponent(asOf)}`,
   ),
+  agedReceivables: (org: string, asOf: string) => jsonRequest<AgingSummary>(`/api/organizations/${org}/reports/aged-receivables?asOf=${encodeURIComponent(asOf)}`),
+  agedPayables: (org: string, asOf: string) => jsonRequest<AgingSummary>(`/api/organizations/${org}/reports/aged-payables?asOf=${encodeURIComponent(asOf)}`),
   generalLedger: (org: string, accountId: string, from: string, to: string, after = '') => {
     const query = new URLSearchParams({ accountId, ...(from ? { from } : {}), ...(to ? { to } : {}), ...(after ? { after } : {}) });
     return jsonRequest<GeneralLedgerResult>(`/api/organizations/${org}/reports/general-ledger?${query}`);

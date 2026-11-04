@@ -12,7 +12,7 @@ const billSchema = new Schema({
   status: { type: String, enum: ['draft', 'posted', 'partially_paid', 'paid'], default: 'draft', required: true },
   amountPaise: { type: Number, required: true, min: 1, validate: Number.isSafeInteger },
   amountPaidPaise: { type: Number, required: true, min: 0, default: 0, validate: Number.isSafeInteger },
-  dueDate: { type: Date },
+  dueDate: { type: String, match: /^\d{4}-\d{2}-\d{2}$/ },
   journalId: { type: Schema.Types.ObjectId, ref: 'Journal' },
   postIdempotencyKey: { type: String, maxlength: 128 },
   postedAt: { type: Date },

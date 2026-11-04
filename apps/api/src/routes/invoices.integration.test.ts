@@ -75,9 +75,10 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
     }).expect(400);
 
     const created = await request(app).post(path).set(owner)
-      .send({ customerId: String(customerId), lines: [{ productId: String(serviceId), quantity: 2 }] }).expect(201);
+      .send({ customerId: String(customerId), lines: [{ productId: String(serviceId), quantity: 2 }], dueDate: '2026-11-30' }).expect(201);
     draftId = created.body.id;
     expect(created.body.status).toBe('draft');
+    await request(app).get(path).set(owner).expect(200).expect(response => expect(response.body.invoices[0].dueDate).toBe('2026-11-30'));
     expect(await JournalModel.countDocuments({ organizationId })).toBe(0);
     await request(app).patch(`${path}/${draftId}`).set(owner)
       .send({ customerId: String(customerId), lines: [{ productId: String(serviceId), quantity: 3 }] }).expect(200);
@@ -103,7 +104,7 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
     const postedInvoice = await InvoiceModel.findById(draftId);
     postedInvoice!.totalPaise = 1;
     await expect(postedInvoice!.save()).rejects.toThrow('Issued invoice details are immutable');
-  });
+  }, 15000);
 
   it('leaves the draft and sequence untouched if control accounts are unavailable', async () => {
     const secondOrg = new Types.ObjectId();

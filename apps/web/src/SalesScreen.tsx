@@ -11,6 +11,7 @@ export function SalesScreen({ organization }: { organization: Organization }) {
   const [customerId, setCustomerId] = useState('');
   const [productId, setProductId] = useState('');
   const [quantity, setQuantity] = useState('1');
+  const [dueDate, setDueDate] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(true);
@@ -44,9 +45,9 @@ export function SalesScreen({ organization }: { organization: Organization }) {
     setSaving(true); setError(''); setNotice('');
     try {
       const result = await api.createInvoiceDraft(organization.id, {
-        customerId, lines: [{ productId, quantity: Number(quantity) }],
+        customerId, lines: [{ productId, quantity: Number(quantity) }], ...(dueDate ? { dueDate } : {}),
       });
-      setNotice('Draft saved. No journal or income has been recorded.'); setRevision(value => value + 1);
+      setNotice('Draft saved. No journal or income has been recorded.'); setDueDate(''); setRevision(value => value + 1);
       return result.id;
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Draft could not be saved.'); }
     finally { setSaving(false); }
@@ -76,6 +77,8 @@ export function SalesScreen({ organization }: { organization: Organization }) {
         </TextField>
         <TextField required label="Quantity" type="number" inputProps={{ min: 1, max: 1000000, step: 1 }} value={quantity}
           onChange={event => setQuantity(event.target.value)} />
+        <TextField label="Due date" type="date" slotProps={{ inputLabel: { shrink: true } }} value={dueDate}
+          onChange={event => setDueDate(event.target.value)} />
         <Typography>Total before tax: {formatMoney(totalPaise)}</Typography>
         <Button type="submit" variant="contained" disabled={saving || !customers.length || !products.length}>Save draft</Button>
         {!customers.length && <Typography color="text.secondary">Add a customer in Contacts before drafting an invoice.</Typography>}
@@ -89,7 +92,7 @@ export function SalesScreen({ organization }: { organization: Organization }) {
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
         <Stack spacing={0.5}>
           <Typography variant="h6">{invoice.invoiceNumber || 'Draft invoice'} · {invoice.customerName}</Typography>
-          <Typography>{invoice.status} · {formatMoney(invoice.totalPaise)}</Typography>
+          <Typography>{invoice.status}{invoice.dueDate ? ` · due ${invoice.dueDate}` : ''}{invoice.overdue ? ' · overdue' : ''} · {formatMoney(invoice.totalPaise)}</Typography>
         </Stack>
         {canWrite && invoice.status === 'draft' && <Button onClick={() => setToIssue(invoice)}>Review and issue</Button>}
       </Stack>

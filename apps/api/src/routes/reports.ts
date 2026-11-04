@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { Types } from 'mongoose';
 import { z } from 'zod';
 import { AccountModel } from '../models/account.js';
+import { BillModel } from '../models/bill.js';
+import { InvoiceModel } from '../models/invoice.js';
 import { JournalModel } from '../models/journal.js';
 import { OrganizationModel } from '../models/organization.js';
 import { hasPermission } from '../security/authorization.js';
@@ -19,7 +21,40 @@ const profitLossFilters = z.strictObject({
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 const balanceSheetFilters = z.strictObject({ asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() });
+const agingFilters = z.strictObject({ asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() });
 type NormalSide = 'debit' | 'credit';
+type AgingSource = { dueDate?: string; amountPaise: number; amountPaidPaise: number };
+
+function agingSummary(rows: AgingSource[], asOf: string) {
+  const buckets = {
+    notDue: { amountPaise: 0, documentCount: 0 }, current: { amountPaise: 0, documentCount: 0 },
+    days1To30: { amountPaise: 0, documentCount: 0 }, days31To60: { amountPaise: 0, documentCount: 0 },
+    days61To90: { amountPaise: 0, documentCount: 0 }, over90: { amountPaise: 0, documentCount: 0 },
+    undated: { amountPaise: 0, documentCount: 0 },
+  };
+  let totalOutstandingPaise = 0;
+  const asOfUtc = Date.parse(`${asOf}T00:00:00Z`);
+  for (const row of rows) {
+    const outstanding = row.amountPaise - row.amountPaidPaise;
+    if (!Number.isSafeInteger(outstanding) || outstanding <= 0) continue;
+    let key: keyof typeof buckets = 'undated';
+    if (row.dueDate) {
+      const dueUtc = Date.parse(`${row.dueDate}T00:00:00Z`);
+      const daysPastDue = Math.floor((asOfUtc - dueUtc) / 86_400_000);
+      if (daysPastDue < 0) key = 'notDue';
+      else if (daysPastDue === 0) key = 'current';
+      else if (daysPastDue <= 30) key = 'days1To30';
+      else if (daysPastDue <= 60) key = 'days31To60';
+      else if (daysPastDue <= 90) key = 'days61To90';
+      else key = 'over90';
+    }
+    buckets[key].amountPaise += outstanding;
+    buckets[key].documentCount += 1;
+    totalOutstandingPaise += outstanding;
+  }
+  const safe = Number.isSafeInteger(totalOutstandingPaise) && Object.values(buckets).every(bucket => Number.isSafeInteger(bucket.amountPaise));
+  return { asOf, buckets, totalOutstandingPaise, documentCount: Object.values(buckets).reduce((sum, bucket) => sum + bucket.documentCount, 0), safe };
+}
 
 function validDate(value: string): Date | null {
   const [year, month, day] = value.split('-').map(Number);
@@ -264,6 +299,32 @@ export function reportRouter() {
       totalEquityPaise: equity, currentEarningsPaise: earnings,
       liabilitiesAndEquityPaise: liabilitiesAndEquity, balanced: assets === liabilitiesAndEquity,
     });
+  });
+  router.get('/aged-receivables', async (req, res) => {
+    const { organizationId, authUserId } = res.locals;
+    if (!await hasPermission(authUserId, String(organizationId), 'ledger:read')) { res.status(403).json({ error: 'Report access denied' }); return; }
+    const parsed = agingFilters.safeParse(req.query);
+    if (!parsed.success) { res.status(400).json({ error: 'Invalid aging report date' }); return; }
+    const asOf = parsed.data.asOf ?? indiaToday();
+    if (!validDate(asOf)) { res.status(400).json({ error: 'Invalid aging report date' }); return; }
+    const invoices = await InvoiceModel.find({ organizationId, status: { $in: ['issued', 'partially_paid'] } })
+      .select('dueDate totalPaise amountPaidPaise').lean<Array<{ dueDate?: string; totalPaise: number; amountPaidPaise: number }>>();
+    const summary = agingSummary(invoices.map(row => ({ dueDate: row.dueDate, amountPaise: row.totalPaise, amountPaidPaise: row.amountPaidPaise })), asOf);
+    if (!summary.safe) { res.status(422).json({ error: 'Receivables aging exceeds the supported integer amount range' }); return; }
+    res.json({ asOf: summary.asOf, buckets: summary.buckets, totalOutstandingPaise: summary.totalOutstandingPaise, documentCount: summary.documentCount });
+  });
+  router.get('/aged-payables', async (req, res) => {
+    const { organizationId, authUserId } = res.locals;
+    if (!await hasPermission(authUserId, String(organizationId), 'ledger:read')) { res.status(403).json({ error: 'Report access denied' }); return; }
+    const parsed = agingFilters.safeParse(req.query);
+    if (!parsed.success) { res.status(400).json({ error: 'Invalid aging report date' }); return; }
+    const asOf = parsed.data.asOf ?? indiaToday();
+    if (!validDate(asOf)) { res.status(400).json({ error: 'Invalid aging report date' }); return; }
+    const bills = await BillModel.find({ organizationId, status: { $in: ['posted', 'partially_paid'] } })
+      .select('dueDate amountPaise amountPaidPaise').lean<Array<{ dueDate?: string; amountPaise: number; amountPaidPaise: number }>>();
+    const summary = agingSummary(bills.map(row => ({ dueDate: row.dueDate, amountPaise: row.amountPaise, amountPaidPaise: row.amountPaidPaise })), asOf);
+    if (!summary.safe) { res.status(422).json({ error: 'Payables aging exceeds the supported integer amount range' }); return; }
+    res.json({ asOf: summary.asOf, buckets: summary.buckets, totalOutstandingPaise: summary.totalOutstandingPaise, documentCount: summary.documentCount });
   });
   return router;
 }

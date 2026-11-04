@@ -16,6 +16,7 @@ const invoiceSchema = new Schema({
   status: { type: String, enum: ['draft', 'issued', 'partially_paid', 'paid'], required: true, default: 'draft' },
   lines: { type: [invoiceLineSchema], required: true },
   totalPaise: { type: Number, required: true, min: 1, validate: Number.isSafeInteger },
+  dueDate: { type: String, match: /^\d{4}-\d{2}-\d{2}$/ },
   amountPaidPaise: { type: Number, required: true, min: 0, default: 0, validate: Number.isSafeInteger },
   invoiceNumber: { type: String, maxlength: 40 },
   issueIdempotencyKey: { type: String, maxlength: 128 },

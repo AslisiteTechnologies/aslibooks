@@ -34,7 +34,7 @@ export function ExpensesScreen({ organization }: { organization: Organization })
     setSaving(true); setError(''); setNotice('');
     try {
       await api.createBillDraft(organization.id, { vendorId, vendorReference: reference, expenseAccountId, description, amountPaise: paise, ...(dueDate ? { dueDate } : {}) });
-      setNotice('Bill draft saved. It has not affected the ledger.'); setReference(''); setDescription(''); setAmount(''); setRevision(n => n + 1);
+      setNotice('Bill draft saved. It has not affected the ledger.'); setReference(''); setDescription(''); setAmount(''); setDueDate(''); setRevision(n => n + 1);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Bill draft could not be saved.'); }
     finally { setSaving(false); }
   }
@@ -74,7 +74,7 @@ export function ExpensesScreen({ organization }: { organization: Organization })
     {notice && <Typography role="status">{notice}</Typography>}
     {loading ? <Typography role="status">Loading bills…</Typography> : !error && !bills.length && <Typography>No bills yet.</Typography>}
     {bills.map(bill => <Paper key={bill.id} variant="outlined" sx={{ p: 2 }}><Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
-      <Stack><Typography variant="h6">{bill.vendorReference} · {bill.vendorName}</Typography><Typography>{bill.status} · {formatMoney(bill.amountPaise)} · {bill.expenseAccountName}</Typography><Typography color="text.secondary">{bill.description}</Typography></Stack>
+      <Stack><Typography variant="h6">{bill.vendorReference} · {bill.vendorName}</Typography><Typography>{bill.status}{bill.dueDate ? ` · due ${bill.dueDate}` : ''}{bill.overdue ? ' · overdue' : ''} · {formatMoney(bill.amountPaise)} · {bill.expenseAccountName}</Typography><Typography color="text.secondary">{bill.description}</Typography></Stack>
       {canWrite && bill.status === 'draft' && <Button onClick={() => setToPost(bill)}>Review and post</Button>}
       {canWrite && (bill.status === 'posted' || bill.status === 'partially_paid') && <Button onClick={() => { setToPay(bill); setPaymentAmount(((bill.amountPaise - bill.amountPaidPaise) / 100).toFixed(2)); }}>Record payment</Button>}
     </Stack></Paper>)}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
-import { api, type Account, type BalanceSheetResult, type GeneralLedgerResult, type Organization, type ProfitAndLossResult, type TrialBalanceRow } from './api';
+import { api, type Account, type AgingSummary, type BalanceSheetResult, type GeneralLedgerResult, type Organization, type ProfitAndLossResult, type TrialBalanceRow } from './api';
 
 function todayInIndia() {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
@@ -17,6 +17,8 @@ export function ReportsScreen({ organization }: { organization: Organization }) 
   const [trialBalance, setTrialBalance] = useState<TrialBalanceRow[]>([]);
   const [profitLoss, setProfitLoss] = useState<ProfitAndLossResult | null>(null);
   const [balanceSheet, setBalanceSheet] = useState<BalanceSheetResult | null>(null);
+  const [receivables, setReceivables] = useState<AgingSummary | null>(null);
+  const [payables, setPayables] = useState<AgingSummary | null>(null);
   const [trialTotals, setTrialTotals] = useState({ debit: 0, credit: 0, balanced: true });
   const [asOf, setAsOf] = useState(todayInIndia());
   const [accountId, setAccountId] = useState('');
@@ -32,9 +34,10 @@ export function ReportsScreen({ organization }: { organization: Organization }) 
     async function load() {
       setLoading(true); setError('');
       try {
-        const [firstPage, trial, pnl, balance] = await Promise.all([
+        const [firstPage, trial, pnl, balance, arAging, apAging] = await Promise.all([
           api.accounts(organization.id), api.trialBalance(organization.id, asOf),
           api.profitAndLoss(organization.id, asOf), api.balanceSheet(organization.id, asOf),
+          api.agedReceivables(organization.id, asOf), api.agedPayables(organization.id, asOf),
         ]);
         const all = [...firstPage.accounts];
         let cursor = firstPage.next;
@@ -47,6 +50,7 @@ export function ReportsScreen({ organization }: { organization: Organization }) 
           setTrialTotals({ debit: trial.debitTotalPaise, credit: trial.creditTotalPaise, balanced: trial.balanced });
           setProfitLoss(pnl);
           setBalanceSheet(balance);
+          setReceivables(arAging); setPayables(apAging);
         }
       } catch (cause) { if (current) setError(cause instanceof Error ? cause.message : 'Reports could not be loaded.'); }
       finally { if (current) setLoading(false); }
@@ -105,6 +109,17 @@ export function ReportsScreen({ organization }: { organization: Organization }) 
         </Stack>)}
         <Typography>Assets {money(balanceSheet.totalAssetsPaise)} · Liabilities {money(balanceSheet.totalLiabilitiesPaise)} · Equity {money(balanceSheet.totalEquityPaise)} · Current earnings {money(balanceSheet.currentEarningsPaise)}</Typography>
         <Typography color={balanceSheet.balanced ? 'success.main' : 'error.main'}>{balanceSheet.balanced ? 'Balance sheet balances' : 'Balance sheet out of balance'}</Typography>
+      </Stack>
+    </Paper>}
+    {receivables && payables && <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
+      <Stack spacing={2}>
+        <Typography variant="h6">Receivables and payables aging</Typography>
+        <Typography color="text.secondary">Outstanding document balances as of {asOf}; overdue days use India-local calendar dates. Undated documents are shown separately.</Typography>
+        {([['Receivables', receivables], ['Payables', payables]] as const).map(([label, summary]) => <Stack key={label} spacing={0.75}>
+          <Typography fontWeight={700}>{label} · {money(summary.totalOutstandingPaise)} ({summary.documentCount} documents)</Typography>
+          <Typography>Not due {money(summary.buckets.notDue.amountPaise)} · Due today {money(summary.buckets.current.amountPaise)}</Typography>
+          <Typography>1–30 days {money(summary.buckets.days1To30.amountPaise)} · 31–60 days {money(summary.buckets.days31To60.amountPaise)} · 61–90 days {money(summary.buckets.days61To90.amountPaise)} · Over 90 days {money(summary.buckets.over90.amountPaise)} · Undated {money(summary.buckets.undated.amountPaise)}</Typography>
+        </Stack>)}
       </Stack>
     </Paper>}
     <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>

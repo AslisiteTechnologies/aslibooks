@@ -17,6 +17,10 @@ const draftInput = z.strictObject({
 });
 const postInput = z.strictObject({ idempotencyKey: z.string().regex(/^[a-zA-Z0-9:_-]{8,128}$/) });
 class BillError extends Error { constructor(readonly status: number, message: string) { super(message); } }
+function indiaToday() {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+  const fields = Object.fromEntries(parts.map(part => [part.type, part.value])); return `${fields.year}-${fields.month}-${fields.day}`;
+}
 
 export function billRouter() {
   const router = Router({ mergeParams: true });
@@ -29,7 +33,11 @@ export function billRouter() {
     const { organizationId, authUserId } = res.locals;
     if (!await hasPermission(authUserId, String(organizationId), 'ledger:read')) { res.status(403).json({ error: 'Bill access denied' }); return; }
     const bills = await BillModel.find({ organizationId }).sort({ _id: -1 }).limit(100).lean();
-    res.json({ bills: bills.map(bill => ({ ...bill, id: String(bill._id), _id: undefined })) });
+    const today = indiaToday();
+    res.json({ bills: bills.map(bill => ({ ...bill,
+      overdue: (bill.status === 'posted' || bill.status === 'partially_paid') && !!bill.dueDate && bill.dueDate < today,
+      id: String(bill._id), _id: undefined,
+    })) });
   });
   router.post('/', writeDraft);
   router.patch('/:billId', writeDraft);
@@ -55,7 +63,7 @@ const writeDraft: RequestHandler = async (req, res, next) => {
       if (!account) throw new BillError(422, 'Select an active expense account in this organization');
       const values = { vendorId: vendor._id, vendorName: vendor.displayName, vendorReference: parsed.data.vendorReference,
         expenseAccountId: account._id, expenseAccountName: account.name, description: parsed.data.description,
-        amountPaise: parsed.data.amountPaise, ...(parsed.data.dueDate ? { dueDate: new Date(`${parsed.data.dueDate}T00:00:00.000Z`) } : {}) };
+        amountPaise: parsed.data.amountPaise, ...(parsed.data.dueDate ? { dueDate: parsed.data.dueDate } : {}) };
       if (req.method === 'POST') {
         const [created] = await BillModel.create([{ organizationId, ...values, status: 'draft' }], { session });
         await AuditEventModel.create([{ organizationId, actorAuthUserId: authUserId, action: 'bill.draft_created', resourceType: 'bill', resourceId: String(created._id) }], { session });
