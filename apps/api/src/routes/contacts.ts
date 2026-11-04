@@ -81,7 +81,10 @@ const write: RequestHandler = async (req, res, next) => {
       let idValue: string;
       let action: string;
       if (req.method === 'POST') {
-        const [created] = await ContactModel.create([{ ...parsed.data, email: parsed.data.email || undefined, organizationId }], { session });
+        const input = parsed.data;
+        const [created] = await ContactModel.create([{
+          ...input, email: 'email' in input ? input.email || undefined : undefined, organizationId,
+        }], { session });
         idValue = String(created._id); action = 'contact.created';
       } else {
         const existing = await ContactModel.findOne({ _id: id, organizationId, active: true }).session(session);
@@ -91,7 +94,8 @@ const write: RequestHandler = async (req, res, next) => {
           action = 'contact.archived';
         } else {
           const changes = parsed.data;
-          existing.set({ ...changes, email: 'email' in changes && !changes.email ? undefined : changes.email });
+          if ('email' in changes && !changes.email) changes.email = undefined;
+          existing.set(changes);
           action = 'contact.updated';
         }
         await existing.save({ session });
