@@ -12,6 +12,7 @@ import { reportRouter } from './reports.js';
 import { invoiceRouter } from './invoices.js';
 import { receiptRouter } from './receipts.js';
 import { billRouter } from './bills.js';
+import { vendorPaymentRouter } from './vendorPayments.js';
 
 type AuthUser = { id: string };
 export function organizationRouter(resolveUser: (headers: Headers) => Promise<AuthUser | null>): Router {
@@ -79,5 +80,6 @@ export function organizationRouter(resolveUser: (headers: Headers) => Promise<Au
   router.use('/:organizationId/invoices', requireUser, invoiceRouter());
   router.use('/:organizationId/receipts', requireUser, receiptRouter());
   router.use('/:organizationId/bills', requireUser, billRouter());
+  router.use('/:organizationId/vendor-payments', requireUser, vendorPaymentRouter());
   return router;
 }
