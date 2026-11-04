@@ -2,11 +2,11 @@
 
 ## Current checkpoint
 
-Branch `develop/phase-1-foundation`. The published starter-chart commit `11cdf6712cb1df0fd5e79038d3f00ff74f9a3b75` has green CI run #196 and MongoDB integration #133. The local invoice slice has passed all 75 API tests (including 2 MongoDB invoice tests), 5 accounting tests, workspace typecheck, lint, build and a Playwright customer-to-invoice-to-reports flow at 390px. Review and publish this slice, then start receipts/allocation. Preserve untracked `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`; never stage it.
+Branch `develop/phase-1-foundation`. Published invoice commit `65435336d9fa8e2f479465d0001ae65da902bad9` has green CI #198 and MongoDB #135. The local receipt slice has passed the full 77 API/5 accounting tests with MongoDB, workspace typecheck/lint and Playwright flow; confirm final build, then review and publish. Preserve untracked `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`; never stage it.
 
-## Next implementation task after invoices
+## Next implementation task after receipts
 
-Build receipts and allocation as the next phase-2 vertical slice. Define immutable receipt records and an atomic posting/allocation path: debit cash/bank, credit receivables, allocate no more than the invoice's remaining amount, update invoice settlement state transactionally, audit, and support idempotent retries. Include partial/final payment, overpayment, cross-tenant, inactive bank account, closed period and rollback tests. Expose explicit human confirmation in the UI. Do not add GST calculations without verified rules and professional review.
+Build vendor bills and expense capture next. Add a tenant-scoped draft/issue lifecycle, safe fiscal-year numbering, vendor and expense/asset account validation, immutable bill snapshots, atomic payable/expense journal and audit, idempotent posting, and a review-before-post UI. Then support vendor payment allocations and reconcile both control accounts. Keep tax-free posting until reviewed GST mechanics exist.
 
 ## Local verification commands
 
@@ -28,10 +28,9 @@ Publish only verified changes to `develop/phase-1-foundation`; use the connected
 
 ## Remaining MVP work
 
-- Receipts, payment allocation, invoice settlement and customer balance reconciliation.
 - Vendor bills/expenses and vendor payments.
 - Controlled opening balances and fiscal-year organization settings.
-- Contact edit/details, due dates, invoice print/PDF and credit notes.
+- Contact edit/details, invoice due dates, print/PDF and credit notes.
 - Receivable/payable aging, cash/bank reconciliation and exports.
 - Reviewed GST structures/calculations only after qualified review.
 - Optional AI drafts/explanations with explicit approval.

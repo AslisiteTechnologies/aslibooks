@@ -56,7 +56,7 @@ const listInvoices: RequestHandler = async (req, res) => {
   if (!parsed.success) { res.status(400).json({ error: 'Invalid invoice cursor' }); return; }
   const limit = Math.min(Number(parsed.data.limit) || 50, 100);
   const rows = await InvoiceModel.find({ organizationId, ...(parsed.data.after ? { _id: { $lt: new Types.ObjectId(parsed.data.after) } } : {}) })
-    .sort({ _id: -1 }).limit(limit + 1).select('customerName status totalPaise invoiceNumber issuedAt createdAt').lean();
+    .sort({ _id: -1 }).limit(limit + 1).select('customerName status totalPaise amountPaidPaise invoiceNumber issuedAt createdAt').lean();
   const invoices = rows.slice(0, limit).map(invoice => ({ ...invoice, id: String(invoice._id), _id: undefined }));
   res.json({ invoices, next: rows.length > limit ? String(rows[limit - 1]._id) : null });
 };
@@ -129,9 +129,9 @@ const issueInvoice: RequestHandler = async (req, res) => {
       if (!await fenceLedgerPermission(authUserId, String(organizationId), session)) throw new InvoiceError(403, 'Issuing an invoice requires posting permission');
       const invoice = await InvoiceModel.findOne({ _id: invoiceId, organizationId }).session(session);
       if (!invoice) throw new InvoiceError(404, 'Invoice not found');
-      if (invoice.status === 'issued') {
+      if (invoice.status !== 'draft') {
         if (invoice.issueIdempotencyKey !== parsed.data.idempotencyKey) throw new InvoiceError(409, 'Invoice has already been issued');
-        return { id: String(invoice._id), invoiceNumber: invoice.invoiceNumber!, journalId: String(invoice.journalId), replayed: true };
+        return { id: String(invoice._id), invoiceNumber: invoice.invoiceNumber!, journalId: String(invoice.journalId), replayed: true, status: invoice.status };
       }
       const customerActive = await ContactModel.exists({ _id: invoice.customerId, organizationId, active: true, roles: 'customer' }).session(session);
       if (!customerActive) throw new InvoiceError(422, 'The customer must remain active to issue this draft');
@@ -171,9 +171,9 @@ const issueInvoice: RequestHandler = async (req, res) => {
         { organizationId, actorAuthUserId: authUserId, action: 'journal.posted', resourceType: 'journal', resourceId: String(journal._id) },
         { organizationId, actorAuthUserId: authUserId, action: 'invoice.issued', resourceType: 'invoice', resourceId: String(invoice._id) },
       ], { session, ordered: true });
-      return { id: String(invoice._id), invoiceNumber, journalId: String(journal._id), replayed: false };
+      return { id: String(invoice._id), invoiceNumber, journalId: String(journal._id), replayed: false, status: 'issued' as const };
     });
-    res.status(result.replayed ? 200 : 201).json({ ...result, status: 'issued' });
+    res.status(result.replayed ? 200 : 201).json(result);
   } catch (error) {
     if (error instanceof InvoiceError) { res.status(error.status).json({ error: error.message }); return; }
     if (error instanceof PostingError) { res.status(error.code === 'PERIOD_CLOSED' ? 409 : 422).json({ error: error.message }); return; }

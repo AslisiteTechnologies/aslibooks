@@ -11,8 +11,9 @@ Covered: anonymous denial, atomic owner creation, duplicate slug handling, membe
 
 Separate suites cover real Better Auth signup/login, session cookies, logout,
 cross-tenant organization reads, ledger membership fencing, concurrent posting,
-reversals and audit rollback. Browser E2E, CSRF, email recovery, session expiry
-and full end-to-end financial journeys still require separate evidence.
+reversals, invoice issue and customer receipt allocation with audit rollback.
+Browser E2E, CSRF, email recovery, session expiry, vendor settlement and broader
+end-to-end financial journeys still require separate evidence.
 
 ## CI isolation
 

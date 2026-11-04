@@ -11,7 +11,8 @@ const contactsPath = (org: string) => `/api/organizations/${org}/contacts`;
 export type ContactInput = { displayName: string; roles: Array<'customer' | 'vendor'>; email?: string; phone?: string; gstin?: string; address?: string };
 export type Contact = ContactInput & { _id: string; active: boolean };
 export type Product = { _id: string; code: string; name: string; description?: string; unitPricePaise: number; active: boolean };
-export type Invoice = { id: string; customerName: string; status: 'draft' | 'issued'; totalPaise: number; invoiceNumber?: string; issuedAt?: string; createdAt: string };
+export type Invoice = { id: string; customerName: string; status: 'draft' | 'issued' | 'partially_paid' | 'paid'; totalPaise: number; amountPaidPaise: number; invoiceNumber?: string; issuedAt?: string; createdAt: string };
+export type Receipt = { id: string; customerName: string; amountPaise: number; receivedAt: string; journalId: string; allocations: Array<{ invoiceId: string; invoiceNumber: string; amountPaise: number }> };
 export type Journal = { id: string; description: string; postedAt: string; reversalOf: string | null; lineCount: number };
 export type JournalDetail = Omit<Journal, 'lineCount'> & { lines: Array<{ accountId: string; debitPaise: number; creditPaise: number }> };
 export type JournalInput = { idempotencyKey: string; description: string; lines: Array<{ accountId: string; debitPaise: number; creditPaise: number }> };
@@ -63,8 +64,13 @@ export const api = {
   createInvoiceDraft: (org: string, input: { customerId: string; lines: Array<{ productId: string; quantity: number }> }) =>
     jsonRequest<{ id: string; status: 'draft' }>(`/api/organizations/${org}/invoices`, { method: 'POST', body: JSON.stringify(input) }),
   issueInvoice: (org: string, id: string, idempotencyKey: string) =>
-    jsonRequest<{ id: string; invoiceNumber: string; journalId: string; replayed: boolean; status: 'issued' }>(
+    jsonRequest<{ id: string; invoiceNumber: string; journalId: string; replayed: boolean; status: 'issued' | 'partially_paid' | 'paid' }>(
       `/api/organizations/${org}/invoices/${id}/issue`, { method: 'POST', body: JSON.stringify({ idempotencyKey }) },
+    ),
+  receipts: (org: string) => jsonRequest<{ receipts: Receipt[] }>(`/api/organizations/${org}/receipts`),
+  recordReceipt: (org: string, input: { idempotencyKey: string; cashAccountId: string; allocations: Array<{ invoiceId: string; amountPaise: number }> }) =>
+    jsonRequest<{ id: string; journalId: string; amountPaise: number; replayed: boolean }>(
+      `/api/organizations/${org}/receipts`, { method: 'POST', body: JSON.stringify(input) },
     ),
   accounts: (org: string, after = '') => jsonRequest<{ accounts: Account[]; next: string | null }>(
     accountsPath(org) + (after ? `?after=${encodeURIComponent(after)}` : ''),

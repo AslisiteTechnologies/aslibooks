@@ -102,7 +102,7 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
     expect(await JournalModel.countDocuments({ organizationId })).toBe(1);
     const postedInvoice = await InvoiceModel.findById(draftId);
     postedInvoice!.totalPaise = 1;
-    await expect(postedInvoice!.save()).rejects.toThrow('Issued invoices are immutable');
+    await expect(postedInvoice!.save()).rejects.toThrow('Issued invoice details are immutable');
   });
 
   it('leaves the draft and sequence untouched if control accounts are unavailable', async () => {

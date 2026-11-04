@@ -10,9 +10,10 @@ const AccountingScreen = lazy(() => import('./AccountingScreen').then(module => 
 const ContactsScreen = lazy(() => import('./ContactsScreen').then(module => ({ default: module.ContactsScreen })));
 const ProductsScreen = lazy(() => import('./ProductsScreen').then(module => ({ default: module.ProductsScreen })));
 const SalesScreen = lazy(() => import('./SalesScreen').then(module => ({ default: module.SalesScreen })));
+const ReceiptsScreen = lazy(() => import('./ReceiptsScreen').then(module => ({ default: module.ReceiptsScreen })));
 const ReportsScreen = lazy(() => import('./ReportsScreen').then(module => ({ default: module.ReportsScreen })));
 
-const nav = ['Overview', 'Sales', 'Products', 'Expenses', 'Contacts', 'Accounting', 'GST', 'Reports', 'Settings'];
+const nav = ['Overview', 'Sales', 'Receipts', 'Products', 'Expenses', 'Contacts', 'Accounting', 'GST', 'Reports', 'Settings'];
 const drawerWidth = 248;
 
 export function App() {
@@ -86,6 +87,7 @@ export function App() {
           {section === 'Accounting' ? <AccountingScreen key={organization.id} organization={organization} /> :
           section === 'Contacts' ? <ContactsScreen key={organization.id} organization={organization} /> :
           section === 'Sales' ? <SalesScreen key={organization.id} organization={organization} /> :
+          section === 'Receipts' ? <ReceiptsScreen key={organization.id} organization={organization} /> :
           section === 'Products' ? <ProductsScreen key={organization.id} organization={organization} /> :
           section === 'Reports' ? <ReportsScreen key={organization.id} organization={organization} /> :
           <Paper variant="outlined" sx={{ p: { xs: 3, md: 5 } }}>

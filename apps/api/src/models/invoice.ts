@@ -7,20 +7,21 @@ const invoiceLineSchema = new Schema({
   quantity: { type: Number, required: true, min: 1, validate: Number.isSafeInteger },
   unitPricePaise: { type: Number, required: true, min: 0, validate: Number.isSafeInteger },
   lineTotalPaise: { type: Number, required: true, min: 0, validate: Number.isSafeInteger },
-}, { _id: false, strict: 'throw' });
+}, { _id: false, strict: 'throw', versionKey: false });
 
 const invoiceSchema = new Schema({
   organizationId: { type: Schema.Types.ObjectId, required: true, immutable: true },
   customerId: { type: Schema.Types.ObjectId, required: true },
   customerName: { type: String, required: true, maxlength: 160 },
-  status: { type: String, enum: ['draft', 'issued'], required: true, default: 'draft' },
+  status: { type: String, enum: ['draft', 'issued', 'partially_paid', 'paid'], required: true, default: 'draft' },
   lines: { type: [invoiceLineSchema], required: true },
   totalPaise: { type: Number, required: true, min: 1, validate: Number.isSafeInteger },
+  amountPaidPaise: { type: Number, required: true, min: 0, default: 0, validate: Number.isSafeInteger },
   invoiceNumber: { type: String, maxlength: 40 },
   issueIdempotencyKey: { type: String, maxlength: 128 },
   issuedAt: { type: Date },
   journalId: { type: Schema.Types.ObjectId, ref: 'Journal' },
-}, { timestamps: true, strict: 'throw' });
+}, { timestamps: true, strict: 'throw', versionKey: false });
 
 invoiceSchema.index({ organizationId: 1, createdAt: -1, _id: -1 });
 invoiceSchema.index({ organizationId: 1, invoiceNumber: 1 }, { unique: true, partialFilterExpression: { invoiceNumber: { $type: 'string' } } });
@@ -28,8 +29,12 @@ invoiceSchema.index({ organizationId: 1, issueIdempotencyKey: 1 }, { unique: tru
 invoiceSchema.pre('save', async function () {
   if (this.isNew) return;
   const current = await InvoiceModel.findById(this._id).session(this.$session() ?? null).select('status')
-    .lean<{ status: 'draft' | 'issued' } | null>();
-  if (current?.status === 'issued') throw new Error('Issued invoices are immutable');
+    .lean<{ status: 'draft' | 'issued' | 'partially_paid' | 'paid' } | null>();
+  if (current && current.status !== 'draft') {
+    const changed = this.modifiedPaths().filter(path => path !== 'updatedAt');
+    const settlementOnly = changed.includes('amountPaidPaise') && changed.every(path => path === 'status' || path === 'amountPaidPaise');
+    if (!settlementOnly) throw new Error('Issued invoice details are immutable');
+  }
 });
 const rejectInvoiceQueryMutation = () => { throw new Error('Use invoice draft or issue workflows'); };
 invoiceSchema.pre('updateOne', rejectInvoiceQueryMutation);
