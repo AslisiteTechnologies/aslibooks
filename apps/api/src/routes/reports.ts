@@ -133,10 +133,10 @@ export function reportRouter() {
     const payableLedger = byId.get(String(payablesAccount._id));
     const [invoices, bills] = await Promise.all([
       InvoiceModel.find({ organizationId, status: { $in: ['issued', 'partially_paid', 'partially_credited'] } }).select('totalPaise amountPaidPaise amountCreditedPaise').lean<Array<{ totalPaise: number; amountPaidPaise: number; amountCreditedPaise: number }>>(),
-      BillModel.find({ organizationId, status: { $in: ['posted', 'partially_paid'] } }).select('amountPaise amountPaidPaise').lean<Array<{ amountPaise: number; amountPaidPaise: number }>>(),
+      BillModel.find({ organizationId, status: { $in: ['posted', 'partially_paid', 'partially_credited'] } }).select('amountPaise amountPaidPaise amountCreditedPaise').lean<Array<{ amountPaise: number; amountPaidPaise: number; amountCreditedPaise?: number }>>(),
     ]);
     const arSubledger = invoices.reduce((sum, invoice) => sum + invoice.totalPaise - invoice.amountPaidPaise - (invoice.amountCreditedPaise ?? 0), 0);
-    const apSubledger = bills.reduce((sum, bill) => sum + bill.amountPaise - bill.amountPaidPaise, 0);
+    const apSubledger = bills.reduce((sum, bill) => sum + bill.amountPaise - bill.amountPaidPaise - (bill.amountCreditedPaise ?? 0), 0);
     const arLedger = (receivableLedger?.debit ?? 0) - (receivableLedger?.credit ?? 0);
     const apLedger = (payableLedger?.credit ?? 0) - (payableLedger?.debit ?? 0);
     const values = [arSubledger, apSubledger, arLedger, apLedger, arLedger - arSubledger, apLedger - apSubledger];
@@ -350,9 +350,9 @@ export function reportRouter() {
     if (!parsed.success) { res.status(400).json({ error: 'Invalid aging report date' }); return; }
     const asOf = parsed.data.asOf ?? indiaToday();
     if (!validDate(asOf)) { res.status(400).json({ error: 'Invalid aging report date' }); return; }
-    const bills = await BillModel.find({ organizationId, status: { $in: ['posted', 'partially_paid'] } })
-      .select('dueDate amountPaise amountPaidPaise').lean<Array<{ dueDate?: string; amountPaise: number; amountPaidPaise: number }>>();
-    const summary = agingSummary(bills.map(row => ({ dueDate: row.dueDate, amountPaise: row.amountPaise, amountPaidPaise: row.amountPaidPaise })), asOf);
+    const bills = await BillModel.find({ organizationId, status: { $in: ['posted', 'partially_paid', 'partially_credited'] } })
+      .select('dueDate amountPaise amountPaidPaise amountCreditedPaise').lean<Array<{ dueDate?: string; amountPaise: number; amountPaidPaise: number; amountCreditedPaise?: number }>>();
+    const summary = agingSummary(bills.map(row => ({ dueDate: row.dueDate, amountPaise: row.amountPaise - (row.amountCreditedPaise ?? 0), amountPaidPaise: row.amountPaidPaise })), asOf);
     if (!summary.safe) { res.status(422).json({ error: 'Payables aging exceeds the supported integer amount range' }); return; }
     res.json({ asOf: summary.asOf, buckets: summary.buckets, totalOutstandingPaise: summary.totalOutstandingPaise, documentCount: summary.documentCount });
   });

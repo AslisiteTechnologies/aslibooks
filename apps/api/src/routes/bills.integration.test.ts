@@ -4,7 +4,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AccountModel } from '../models/account.js';
 import { AuditEventModel } from '../models/auditEvent.js';
-import { BillModel } from '../models/bill.js';
+import { BillModel, VendorCreditModel } from '../models/bill.js';
 import { ContactModel } from '../models/contact.js';
 import { FiscalPeriodModel } from '../models/fiscalPeriod.js';
 import { JournalModel } from '../models/journal.js';
@@ -26,7 +26,7 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
   let draftId = '';
   beforeAll(async () => {
     await mongoose.connect(uri!, { dbName });
-    await Promise.all([AccountModel.init(), AuditEventModel.init(), BillModel.init(), ContactModel.init(), FiscalPeriodModel.init(), JournalModel.init(), MembershipModel.init(), OrganizationModel.init(), VendorPaymentModel.init()]);
+    await Promise.all([AccountModel.init(), AuditEventModel.init(), BillModel.init(), VendorCreditModel.init(), ContactModel.init(), FiscalPeriodModel.init(), JournalModel.init(), MembershipModel.init(), OrganizationModel.init(), VendorPaymentModel.init()]);
     await OrganizationModel.create([{ _id: organizationId, name: 'Bill fixture', slug: `bill-${organizationId}` }, { _id: peerId, name: 'Bill peer', slug: `bill-peer-${peerId}` }]);
     await MembershipModel.create([{ organizationId, authUserId: 'bill-owner', role: 'owner' }, { organizationId, authUserId: 'bill-viewer', role: 'viewer' }, { organizationId: peerId, authUserId: 'bill-peer', role: 'owner' }]);
     await ContactModel.create([{ _id: vendorId, organizationId, displayName: 'Vendor One', roles: ['vendor'] }, { _id: peerVendorId, organizationId: peerId, displayName: 'Peer Vendor', roles: ['vendor'] }]);
@@ -84,6 +84,33 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     expect(await AuditEventModel.countDocuments({ organizationId: paymentOrg, action: 'vendor_payment.recorded' })).toBe(2);
     expect(await JournalModel.countDocuments({ organizationId: paymentOrg })).toBe(3);
     expect(partial.body.journalId).not.toBe(final.body.journalId);
+  });
+  it('issues audited vendor credits against unpaid bills and reconciles later payments to the remaining balance', async () => {
+    const creditOrg = new Types.ObjectId(); const creditVendor = new Types.ObjectId(); const creditExpense = new Types.ObjectId(); const creditCash = new Types.ObjectId(); const creditPayable = new Types.ObjectId();
+    await OrganizationModel.create({ _id: creditOrg, name: 'Vendor credit fixture', slug: `bill-credit-${creditOrg}` });
+    await MembershipModel.create([{ organizationId: creditOrg, authUserId: 'bill-owner', role: 'owner' }, { organizationId: creditOrg, authUserId: 'bill-viewer', role: 'viewer' }]);
+    await ContactModel.create({ _id: creditVendor, organizationId: creditOrg, displayName: 'Credit Vendor', roles: ['vendor'] });
+    await AccountModel.create([{ _id: creditExpense, organizationId: creditOrg, code: '5000', name: 'Expense', type: 'expense' },
+      { _id: creditCash, organizationId: creditOrg, code: '1000', name: 'Cash', type: 'asset' },
+      { _id: creditPayable, organizationId: creditOrg, code: '2000', name: 'Payables', type: 'liability' }]);
+    const creditPath = `/orgs/${creditOrg}`;
+    const draft = await request(app).post(`${creditPath}/bills`).set(owner).send({ vendorId: String(creditVendor), vendorReference: 'CREDIT-1', expenseAccountId: String(creditExpense), description: 'Returned supplies', amountPaise: 10000 }).expect(201);
+    const billPath = `${creditPath}/bills/${draft.body.id}`;
+    await request(app).post(`${billPath}/post`).set(owner).send({ idempotencyKey: 'bill-credit-post-1' }).expect(201);
+    await request(app).post(`${creditPath}/vendor-payments`).set(owner).send({ idempotencyKey: 'bill-credit-payment-1', cashAccountId: String(creditCash), allocations: [{ billId: draft.body.id, amountPaise: 2000 }] }).expect(201);
+    const input = { idempotencyKey: 'vendor-credit-key-1', amountPaise: 3000, reason: 'Returned items' };
+    await request(app).post(`${billPath}/credit-notes`).set({ 'x-fixture-actor': 'bill-viewer' }).send(input).expect(403);
+    const credit = await request(app).post(`${billPath}/credit-notes`).set(owner).send(input).expect(201);
+    const journal = await JournalModel.findById(credit.body.journalId).lean<{ lines: Array<{ accountId: Types.ObjectId; debitPaise: number; creditPaise: number }> }>();
+    expect(journal!.lines.map(line => [String(line.accountId), line.debitPaise, line.creditPaise])).toEqual([[String(creditPayable), 3000, 0], [String(creditExpense), 0, 3000]]);
+    expect(await BillModel.findById(draft.body.id)).toMatchObject({ status: 'partially_credited', amountPaidPaise: 2000, amountCreditedPaise: 3000 });
+    await request(app).post(`${billPath}/credit-notes`).set(owner).send(input).expect(200).expect(response => expect(response.body).toMatchObject({ replayed: true, journalId: credit.body.journalId }));
+    await request(app).post(`${billPath}/credit-notes`).set(owner).send({ ...input, amountPaise: 3001 }).expect(409);
+    await request(app).post(`${billPath}/credit-notes`).set(owner).send({ ...input, idempotencyKey: 'vendor-credit-key-2', amountPaise: 5001 }).expect(409);
+    await request(app).post(`${creditPath}/vendor-payments`).set(owner).send({ idempotencyKey: 'bill-credit-payment-final', cashAccountId: String(creditCash), allocations: [{ billId: draft.body.id, amountPaise: 5000 }] }).expect(201);
+    expect(await BillModel.findById(draft.body.id)).toMatchObject({ status: 'credited', amountPaidPaise: 7000, amountCreditedPaise: 3000 });
+    expect(await AuditEventModel.countDocuments({ organizationId: creditOrg, action: 'vendor_credit.issued' })).toBe(1);
+    expect(await JournalModel.countDocuments({ organizationId: creditOrg })).toBe(4);
   });
   afterAll(async () => { await mongoose.disconnect(); });
 });

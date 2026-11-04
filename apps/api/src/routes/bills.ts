@@ -5,7 +5,7 @@ import { assertPostingPeriodOpen } from '../accounting/fiscalPeriods.js';
 import { PostingError } from '../accounting/postJournal.js';
 import { AccountModel, markPostingAccounts } from '../models/account.js';
 import { AuditEventModel } from '../models/auditEvent.js';
-import { BillModel } from '../models/bill.js';
+import { BillModel, VendorCreditModel } from '../models/bill.js';
 import { ContactModel } from '../models/contact.js';
 import { JournalModel } from '../models/journal.js';
 import { fenceLedgerPermission, hasPermission } from '../security/authorization.js';
@@ -35,13 +35,15 @@ export function billRouter() {
     const bills = await BillModel.find({ organizationId }).sort({ _id: -1 }).limit(100).lean();
     const today = indiaToday();
     res.json({ bills: bills.map(bill => ({ ...bill,
-      overdue: (bill.status === 'posted' || bill.status === 'partially_paid') && !!bill.dueDate && bill.dueDate < today,
+      amountCreditedPaise: bill.amountCreditedPaise ?? 0,
+      overdue: ['posted', 'partially_paid', 'partially_credited'].includes(bill.status) && !!bill.dueDate && bill.dueDate < today,
       id: String(bill._id), _id: undefined,
     })) });
   });
   router.post('/', writeDraft);
   router.patch('/:billId', writeDraft);
   router.post('/:billId/post', postBill);
+  router.post('/:billId/credit-notes', issueVendorCredit);
   return router;
 }
 
@@ -130,5 +132,68 @@ const postBill: RequestHandler = async (req, res) => {
     if (error instanceof PostingError) { res.status(error.code === 'PERIOD_CLOSED' ? 409 : 422).json({ error: error.message }); return; }
     if (error instanceof Error && 'code' in error && error.code === 11000) { res.status(409).json({ error: 'Bill posting or reference conflict; retry with the same key' }); return; }
     res.status(500).json({ error: 'Bill could not be posted' });
+  }
+};
+
+const issueVendorCredit: RequestHandler = async (req, res) => {
+  const { organizationId, authUserId } = res.locals;
+  const billId = req.params.billId;
+  if (typeof billId !== 'string' || !Types.ObjectId.isValid(billId)) { res.status(400).json({ error: 'Invalid bill ID' }); return; }
+  if (!req.is('application/json')) { res.status(415).json({ error: 'Send JSON vendor credit data' }); return; }
+  const parsed = z.strictObject({
+    idempotencyKey: z.string().regex(/^[a-zA-Z0-9:_-]{8,128}$/),
+    amountPaise: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER), reason: z.string().trim().min(3).max(500),
+  }).safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: 'Provide a valid idempotency key, positive amount and credit reason' }); return; }
+  try {
+    const result = await mongoose.connection.transaction(async session => {
+      if (!await fenceLedgerPermission(authUserId, String(organizationId), session)) throw new BillError(403, 'Vendor credits require posting permission');
+      const prior = await VendorCreditModel.findOne({ organizationId, idempotencyKey: parsed.data.idempotencyKey }).session(session);
+      if (prior) {
+        if (String(prior.billId) !== billId.toLowerCase() || prior.amountPaise !== parsed.data.amountPaise || prior.reason !== parsed.data.reason.trim()) throw new BillError(409, 'Vendor credit key was already used with different details');
+        return { id: String(prior._id), journalId: String(prior.journalId), replayed: true as const };
+      }
+      const bill = await BillModel.findOne({ _id: billId, organizationId }).session(session);
+      if (!bill) throw new BillError(404, 'Bill not found');
+      if (!['posted', 'partially_paid', 'partially_credited'].includes(bill.status)) throw new BillError(409, 'Only posted bills with an outstanding balance can receive a vendor credit');
+      const outstanding = bill.amountPaise - bill.amountPaidPaise - (bill.amountCreditedPaise ?? 0);
+      if (parsed.data.amountPaise > outstanding) throw new BillError(409, 'Vendor credit exceeds the unpaid bill balance');
+      await assertPostingPeriodOpen(organizationId, session);
+      const [expense, payable] = await Promise.all([
+        AccountModel.findOne({ _id: bill.expenseAccountId, organizationId, type: 'expense', active: true }).session(session),
+        AccountModel.findOne({ organizationId, code: '2000', type: 'liability', active: true }).session(session),
+      ]);
+      if (!expense || !payable) throw new BillError(422, 'Keep the selected expense account and accounts-payable control 2000 active');
+      const lines = [
+        { accountId: String(payable._id), debitPaise: parsed.data.amountPaise, creditPaise: 0 },
+        { accountId: String(expense._id), debitPaise: 0, creditPaise: parsed.data.amountPaise },
+      ];
+      if (!await markPostingAccounts(organizationId, lines, session)) throw new BillError(422, 'Vendor credit accounts became unavailable');
+      const creditId = new Types.ObjectId();
+      const [journal] = await JournalModel.create([{
+        organizationId, idempotencyKey: `vendor-credit:${parsed.data.idempotencyKey}`, currency: 'INR',
+        description: `Vendor credit for ${bill.vendorReference} — ${bill.vendorName}`,
+        lines: lines.map(line => ({ accountId: new Types.ObjectId(line.accountId), debitPaise: line.debitPaise, creditPaise: line.creditPaise })), postedAt: new Date(),
+      }], { session });
+      await VendorCreditModel.create([{
+        _id: creditId, organizationId, billId: bill._id, vendorReference: bill.vendorReference, vendorName: bill.vendorName,
+        amountPaise: parsed.data.amountPaise, reason: parsed.data.reason.trim(), idempotencyKey: parsed.data.idempotencyKey,
+        journalId: journal._id, issuedAt: new Date(),
+      }], { session });
+      bill.amountCreditedPaise = (bill.amountCreditedPaise ?? 0) + parsed.data.amountPaise;
+      bill.status = bill.amountPaidPaise + bill.amountCreditedPaise === bill.amountPaise ? 'credited' : 'partially_credited';
+      await bill.save({ session });
+      await AuditEventModel.create([
+        { organizationId, actorAuthUserId: authUserId, action: 'journal.posted', resourceType: 'journal', resourceId: String(journal._id) },
+        { organizationId, actorAuthUserId: authUserId, action: 'vendor_credit.issued', resourceType: 'vendor_credit', resourceId: String(creditId) },
+      ], { session, ordered: true });
+      return { id: String(creditId), journalId: String(journal._id), replayed: false as const };
+    });
+    res.status(result.replayed ? 200 : 201).json(result);
+  } catch (error) {
+    if (error instanceof BillError) { res.status(error.status).json({ error: error.message }); return; }
+    if (error instanceof PostingError) { res.status(error.code === 'PERIOD_CLOSED' ? 409 : 422).json({ error: error.message }); return; }
+    if (error instanceof Error && 'code' in error && error.code === 11000) { res.status(409).json({ error: 'Vendor credit idempotency conflict; retry the original request with the same key' }); return; }
+    res.status(500).json({ error: 'Vendor credit could not be issued' });
   }
 };

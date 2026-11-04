@@ -49,8 +49,8 @@ export function vendorPaymentRouter() {
         for (const allocation of parsed.data.allocations) {
           const bill = byId.get(allocation.billId.toLowerCase());
           if (!bill || String(bill.vendorId) !== vendorId) throw new PaymentError(422, 'A payment can only allocate bills for one vendor');
-          if (bill.status !== 'posted' && bill.status !== 'partially_paid') throw new PaymentError(409, 'Only posted bills with outstanding balances can be paid');
-          if (allocation.amountPaise > bill.amountPaise - bill.amountPaidPaise) throw new PaymentError(409, 'Payment allocation exceeds the bill outstanding balance');
+          if (!['posted', 'partially_paid', 'partially_credited'].includes(bill.status)) throw new PaymentError(409, 'Only posted bills with outstanding balances can be paid');
+          if (allocation.amountPaise > bill.amountPaise - bill.amountPaidPaise - (bill.amountCreditedPaise ?? 0)) throw new PaymentError(409, 'Payment allocation exceeds the bill outstanding balance');
           total += allocation.amountPaise; if (!Number.isSafeInteger(total)) throw new PaymentError(400, 'Payment exceeds the supported INR range');
         }
         await assertPostingPeriodOpen(organizationId, session);
@@ -62,7 +62,13 @@ export function vendorPaymentRouter() {
         await VendorPaymentModel.create([{ _id: paymentId, organizationId, vendorId: bills[0].vendorId, vendorName: bills[0].vendorName,
           idempotencyKey: parsed.data.idempotencyKey, cashAccountId: cash._id, amountPaise: total, paidAt: new Date(), journalId: journal._id,
           allocations: parsed.data.allocations.map(row => ({ billId: new Types.ObjectId(row.billId), vendorReference: byId.get(row.billId.toLowerCase())!.vendorReference, amountPaise: row.amountPaise })) }], { session });
-        for (const allocation of parsed.data.allocations) { const bill = byId.get(allocation.billId.toLowerCase())!; bill.amountPaidPaise += allocation.amountPaise; bill.status = bill.amountPaidPaise === bill.amountPaise ? 'paid' : 'partially_paid'; await bill.save({ session }); }
+        for (const allocation of parsed.data.allocations) {
+          const bill = byId.get(allocation.billId.toLowerCase())!; bill.amountPaidPaise += allocation.amountPaise;
+          const totalSettled = bill.amountPaidPaise + (bill.amountCreditedPaise ?? 0);
+          bill.status = totalSettled === bill.amountPaise ? (bill.amountCreditedPaise ?? 0) > 0 ? 'credited' : 'paid'
+            : (bill.amountCreditedPaise ?? 0) > 0 ? 'partially_credited' : 'partially_paid';
+          await bill.save({ session });
+        }
         await AuditEventModel.create([{ organizationId, actorAuthUserId: authUserId, action: 'journal.posted', resourceType: 'journal', resourceId: String(journal._id) },
           { organizationId, actorAuthUserId: authUserId, action: 'vendor_payment.recorded', resourceType: 'vendor_payment', resourceId: String(paymentId) }], { session, ordered: true });
         return { id: String(paymentId), journalId: String(journal._id), amountPaise: total, replayed: false };
