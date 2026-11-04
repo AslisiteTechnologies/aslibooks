@@ -1,0 +1,64 @@
+import express from 'express';
+import mongoose, { Types } from 'mongoose';
+import request from 'supertest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { AccountModel } from '../models/account.js';
+import { AuditEventModel } from '../models/auditEvent.js';
+import { BillModel } from '../models/bill.js';
+import { ContactModel } from '../models/contact.js';
+import { FiscalPeriodModel } from '../models/fiscalPeriod.js';
+import { JournalModel } from '../models/journal.js';
+import { MembershipModel } from '../models/membership.js';
+import { OrganizationModel } from '../models/organization.js';
+import { organizationRouter } from './organizations.js';
+
+const uri = process.env.MONGODB_TEST_URI; const dbName = process.env.MONGODB_TEST_DB_NAME;
+const enabled = !!uri && !!dbName && /^aslibooks_test_[a-z0-9_]+$/i.test(dbName);
+describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
+  const app = express(); app.use(express.json());
+  app.use('/orgs', organizationRouter(async headers => { const id = headers.get('x-fixture-actor'); return id ? { id } : null; }));
+  app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => { res.status(500).json({ error: String(error) }); });
+  const organizationId = new Types.ObjectId(); const peerId = new Types.ObjectId();
+  const vendorId = new Types.ObjectId(); const peerVendorId = new Types.ObjectId();
+  const expenseId = new Types.ObjectId(); const payableId = new Types.ObjectId();
+  const owner = { 'x-fixture-actor': 'bill-owner' }; const path = `/orgs/${organizationId}/bills`;
+  let draftId = '';
+  beforeAll(async () => {
+    await mongoose.connect(uri!, { dbName });
+    await Promise.all([AccountModel.init(), AuditEventModel.init(), BillModel.init(), ContactModel.init(), FiscalPeriodModel.init(), JournalModel.init(), MembershipModel.init(), OrganizationModel.init()]);
+    await OrganizationModel.create([{ _id: organizationId, name: 'Bill fixture', slug: `bill-${organizationId}` }, { _id: peerId, name: 'Bill peer', slug: `bill-peer-${peerId}` }]);
+    await MembershipModel.create([{ organizationId, authUserId: 'bill-owner', role: 'owner' }, { organizationId, authUserId: 'bill-viewer', role: 'viewer' }, { organizationId: peerId, authUserId: 'bill-peer', role: 'owner' }]);
+    await ContactModel.create([{ _id: vendorId, organizationId, displayName: 'Vendor One', roles: ['vendor'] }, { _id: peerVendorId, organizationId: peerId, displayName: 'Peer Vendor', roles: ['vendor'] }]);
+    await AccountModel.create([{ _id: expenseId, organizationId, code: '5000', name: 'Office supplies', type: 'expense' }, { _id: payableId, organizationId, code: '2000', name: 'Accounts payable', type: 'liability' }]);
+  });
+  it('creates drafts without posting, validates tenant and roles, then posts atomically and idempotently', async () => {
+    const payload = { vendorId: String(vendorId), vendorReference: 'INV-100', expenseAccountId: String(expenseId), description: 'Paper and stationery', amountPaise: 12345, dueDate: '2026-11-30' };
+    await request(app).post(path).set(owner).send({ ...payload, taxRate: 18 }).expect(400);
+    await request(app).post(path).set(owner).send({ ...payload, vendorId: String(peerVendorId) }).expect(422);
+    await request(app).post(path).set({ 'x-fixture-actor': 'bill-viewer' }).send(payload).expect(403);
+    const created = await request(app).post(path).set(owner).send(payload).expect(201); draftId = created.body.id;
+    expect(await JournalModel.countDocuments({ organizationId })).toBe(0);
+    await request(app).post(`${path}/${draftId}/post`).set(owner).send({ idempotencyKey: 'bill-post-0001' }).expect(201);
+    const bill = await BillModel.findById(draftId).lean<{ journalId: Types.ObjectId; status: string; amountPaise: number } | null>(); expect(bill).toMatchObject({ status: 'posted', amountPaise: 12345 });
+    const journal = await JournalModel.findOne({ _id: bill!.journalId }).lean<{ lines: Array<{ accountId: Types.ObjectId; debitPaise: number; creditPaise: number }> }>();
+    expect(journal!.lines.map(line => [String(line.accountId), line.debitPaise, line.creditPaise])).toEqual([[String(expenseId), 12345, 0], [String(payableId), 0, 12345]]);
+    await request(app).post(`${path}/${draftId}/post`).set(owner).send({ idempotencyKey: 'bill-post-0001' }).expect(200).expect(response => expect(response.body.replayed).toBe(true));
+    await request(app).post(`${path}/${draftId}/post`).set(owner).send({ idempotencyKey: 'bill-post-0002' }).expect(409);
+    await request(app).patch(`${path}/${draftId}`).set(owner).send(payload).expect(404);
+    await request(app).get(`/orgs/${peerId}/bills`).set({ 'x-fixture-actor': 'bill-peer' }).expect(200).expect(response => expect(response.body.bills).toHaveLength(0));
+    expect(await AuditEventModel.countDocuments({ organizationId, action: 'bill.posted' })).toBe(1);
+    expect(await JournalModel.countDocuments({ organizationId })).toBe(1);
+  });
+  it('rejects a posting when accounts payable control is missing without changing the draft', async () => {
+    const secondOrg = new Types.ObjectId(); const secondVendor = new Types.ObjectId(); const secondExpense = new Types.ObjectId();
+    await OrganizationModel.create({ _id: secondOrg, name: 'No payable', slug: `bill-nopayable-${secondOrg}` });
+    await MembershipModel.create({ organizationId: secondOrg, authUserId: 'bill-owner', role: 'owner' });
+    await ContactModel.create({ _id: secondVendor, organizationId: secondOrg, displayName: 'Vendor', roles: ['vendor'] });
+    await AccountModel.create({ _id: secondExpense, organizationId: secondOrg, code: '5000', name: 'Expense', type: 'expense' });
+    const secondPath = `/orgs/${secondOrg}/bills`;
+    const draft = await request(app).post(secondPath).set(owner).send({ vendorId: String(secondVendor), vendorReference: 'V-2', expenseAccountId: String(secondExpense), description: 'Test', amountPaise: 100 }).expect(201);
+    await request(app).post(`${secondPath}/${draft.body.id}/post`).set(owner).send({ idempotencyKey: 'bill-no-control-1' }).expect(422);
+    expect(await BillModel.findById(draft.body.id)).toMatchObject({ status: 'draft' }); expect(await JournalModel.countDocuments({ organizationId: secondOrg })).toBe(0);
+  });
+  afterAll(async () => { await mongoose.disconnect(); });
+});

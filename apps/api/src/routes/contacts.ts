@@ -30,7 +30,7 @@ const querySchema = z.strictObject({
   role: z.enum(contactRoles).optional(),
   limit: z.string().regex(/^\d{1,3}$/).optional(),
 });
-const positive = (value: unknown) => Number.isSafeInteger(Number(value)) && Number(value) > 0 ? Number(value) : 1;
+const positive = (value: unknown, fallback = 50) => Number.isSafeInteger(Number(value)) && Number(value) > 0 ? Number(value) : fallback;
 
 export function contactRouter() {
   const router = Router({ mergeParams: true });

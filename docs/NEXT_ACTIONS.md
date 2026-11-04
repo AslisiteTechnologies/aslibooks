@@ -2,11 +2,11 @@
 
 ## Current checkpoint
 
-Branch `develop/phase-1-foundation`. Published invoice commit `65435336d9fa8e2f479465d0001ae65da902bad9` has green CI #198 and MongoDB #135. The local receipt slice has passed the full 77 API/5 accounting tests with MongoDB, workspace typecheck/lint and Playwright flow; confirm final build, then review and publish. Preserve untracked `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`; never stage it.
+Branch `develop/phase-1-foundation`. Customer receipt commit `b0f0f8793d3b4df244deefa3d7f0e939c9c3fb54` is published; CI #200 and MongoDB #137 passed. Vendor bill API/UI passed 79 API/5 accounting tests, focused regression tests, workspace typecheck/lint/build, and full Playwright. Publish the verified bill slice, verify CI, then implement vendor payment allocation. Preserve untracked `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`; never stage it.
 
 ## Next implementation task after receipts
 
-Build vendor bills and expense capture next. Add a tenant-scoped draft/issue lifecycle, safe fiscal-year numbering, vendor and expense/asset account validation, immutable bill snapshots, atomic payable/expense journal and audit, idempotent posting, and a review-before-post UI. Then support vendor payment allocations and reconcile both control accounts. Keep tax-free posting until reviewed GST mechanics exist.
+Publish the vendor bill checkpoint. Next implement vendor payment allocation against posted bills and reconcile both accounts-payable and cash control balances. Keep tax-free posting until reviewed GST mechanics exist.
 
 ## Local verification commands
 
@@ -28,7 +28,7 @@ Publish only verified changes to `develop/phase-1-foundation`; use the connected
 
 ## Remaining MVP work
 
-- Vendor bills/expenses and vendor payments.
+- Vendor payments, partial settlement, and bill status allocation lifecycle.
 - Controlled opening balances and fiscal-year organization settings.
 - Contact edit/details, invoice due dates, print/PDF and credit notes.
 - Receivable/payable aging, cash/bank reconciliation and exports.

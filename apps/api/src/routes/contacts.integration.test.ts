@@ -61,6 +61,9 @@ describe.skipIf(!enabled)('contacts API', () => {
     await request(app).patch(path + '/' + id).set(owner).send({ displayName: 'Coastal Supply' }).expect(200);
     const filtered = await request(app).get(path + '?q=Coastal&role=vendor').set(owner).expect(200);
     expect(filtered.body.contacts[0].displayName).toBe('Coastal Supply');
+    const defaultPage = await request(app).get(path).set(owner).expect(200);
+    expect(defaultPage.body.contacts.length).toBeGreaterThan(1);
+    expect(defaultPage.body.next).toBeNull();
     await request(app).patch(path + '/' + id).set(owner).send({ active: false }).expect(200);
     expect((await request(app).get(path + '?q=Coastal').set(owner)).body.contacts).toHaveLength(0);
     expect(await AuditEventModel.distinct('action', { organizationId: org, resourceId: id }))

@@ -13,6 +13,7 @@ export type Contact = ContactInput & { _id: string; active: boolean };
 export type Product = { _id: string; code: string; name: string; description?: string; unitPricePaise: number; active: boolean };
 export type Invoice = { id: string; customerName: string; status: 'draft' | 'issued' | 'partially_paid' | 'paid'; totalPaise: number; amountPaidPaise: number; invoiceNumber?: string; issuedAt?: string; createdAt: string };
 export type Receipt = { id: string; customerName: string; amountPaise: number; receivedAt: string; journalId: string; allocations: Array<{ invoiceId: string; invoiceNumber: string; amountPaise: number }> };
+export type Bill = { id: string; vendorName: string; vendorReference: string; expenseAccountName: string; description: string; status: 'draft' | 'posted'; amountPaise: number; dueDate?: string; journalId?: string };
 export type Journal = { id: string; description: string; postedAt: string; reversalOf: string | null; lineCount: number };
 export type JournalDetail = Omit<Journal, 'lineCount'> & { lines: Array<{ accountId: string; debitPaise: number; creditPaise: number }> };
 export type JournalInput = { idempotencyKey: string; description: string; lines: Array<{ accountId: string; debitPaise: number; creditPaise: number }> };
@@ -72,6 +73,12 @@ export const api = {
     jsonRequest<{ id: string; journalId: string; amountPaise: number; replayed: boolean }>(
       `/api/organizations/${org}/receipts`, { method: 'POST', body: JSON.stringify(input) },
     ),
+  bills: (org: string) => jsonRequest<{ bills: Bill[] }>(`/api/organizations/${org}/bills`),
+  createBillDraft: (org: string, input: { vendorId: string; vendorReference: string; expenseAccountId: string; description: string; amountPaise: number; dueDate?: string }) =>
+    jsonRequest<{ id: string; status: 'draft' }>(`/api/organizations/${org}/bills`, { method: 'POST', body: JSON.stringify(input) }),
+  postBill: (org: string, id: string, idempotencyKey: string) => jsonRequest<{ id: string; journalId: string; replayed: boolean }>(
+    `/api/organizations/${org}/bills/${id}/post`, { method: 'POST', body: JSON.stringify({ idempotencyKey }) },
+  ),
   accounts: (org: string, after = '') => jsonRequest<{ accounts: Account[]; next: string | null }>(
     accountsPath(org) + (after ? `?after=${encodeURIComponent(after)}` : ''),
   ),
