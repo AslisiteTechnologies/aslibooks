@@ -17,6 +17,21 @@ const journalSchema = new Schema({
   reversalOf: { type: Schema.Types.ObjectId, ref: 'Journal', immutable: true },
 }, { timestamps: true, strict: 'throw', versionKey: false });
 
+// Application-level append-only protection for posted journals.
+// Direct MongoDB collection access requires separate operational controls.
+const rejectJournalMutation = () => {
+  throw new Error('Posted journals are immutable; use a reversal journal');
+};
+journalSchema.pre('save', function () {
+  if (!this.isNew) rejectJournalMutation();
+});
+journalSchema.pre('updateOne', rejectJournalMutation);
+journalSchema.pre('updateMany', rejectJournalMutation);
+journalSchema.pre('findOneAndUpdate', rejectJournalMutation);
+journalSchema.pre('replaceOne', rejectJournalMutation);
+journalSchema.pre('findOneAndReplace', rejectJournalMutation);
+journalSchema.pre('deleteOne', rejectJournalMutation);
+journalSchema.pre('findOneAndDelete', rejectJournalMutation);
 journalSchema.index({ organizationId: 1, idempotencyKey: 1 }, { unique: true });
 journalSchema.index({ organizationId: 1, postedAt: -1 });
 // One reversal per original journal, scoped to its organization.
