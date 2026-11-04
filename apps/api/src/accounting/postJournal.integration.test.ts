@@ -148,6 +148,9 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
     })).rejects.toThrow('Posted journals are immutable');
     await expect(JournalModel.findOneAndDelete({ _id: id }))
       .rejects.toThrow('Posted journals are immutable');
+    await expect(JournalModel.bulkWrite([{
+      updateOne: { filter: { _id: id }, update: { $set: { description: 'Bulk tamper' } } },
+    }])).rejects.toThrow('Posted journals are immutable');
     await expect(JournalModel.deleteOne({ _id: id }))
       .rejects.toThrow('Posted journals are immutable');
     posted!.description = 'Tampered through save';
