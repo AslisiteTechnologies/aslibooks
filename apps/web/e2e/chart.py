@@ -13,7 +13,7 @@ def test_chart():
             page.wait_for_load_state("networkidle", timeout=90000)
             page.get_by_role("button", name="Create account", exact=True).click()
             page.get_by_label("Full name").fill("Test Owner")
-            page.get_by_label("Email", exact=True).fill(f"chart-{run}@example.com")
+            page.get_by_label("Email", exact=False).fill(f"chart-{run}@example.com")
             page.get_by_label("Password").fill(f"Fixture-{run}!")
             page.get_by_role("button", name="Create account", exact=True).click()
             page.get_by_label("Business name").fill(f"Fixture Shop {run}")

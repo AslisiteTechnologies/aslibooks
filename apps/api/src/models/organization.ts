@@ -1,4 +1,5 @@
-import { Schema, model, models, type InferSchemaType } from 'mongoose';
+import mongoose, { type InferSchemaType } from 'mongoose';
+const { Schema } = mongoose;
 
 const organizationSchema = new Schema({
   name: { type: String, required: true, trim: true, maxlength: 160 },
@@ -10,4 +11,4 @@ const organizationSchema = new Schema({
 
 organizationSchema.index({ slug: 1 }, { unique: true });
 export type Organization = InferSchemaType<typeof organizationSchema>;
-export const OrganizationModel = models.Organization || model('Organization', organizationSchema);
+export const OrganizationModel = mongoose.models.Organization || mongoose.model('Organization', organizationSchema);

@@ -7,6 +7,7 @@ import { AccountModel } from '../models/account.js';
 import { AuditEventModel } from '../models/auditEvent.js';
 import { JournalModel } from '../models/journal.js';
 import { MembershipModel } from '../models/membership.js';
+import { OrganizationModel } from '../models/organization.js';
 import { organizationRouter } from './organizations.js';
 
 const uri = process.env.MONGODB_TEST_URI;
@@ -31,7 +32,11 @@ describe.skipIf(!enabled)('chart of accounts HTTP', () => {
   const owner = { 'x-fixture-actor': 'owner' };
   beforeAll(async () => {
     await mongoose.connect(uri!, { dbName });
-    await Promise.all([AccountModel.init(), MembershipModel.init(), JournalModel.init(), AuditEventModel.init()]);
+    await Promise.all([OrganizationModel.init(), AccountModel.init(), MembershipModel.init(), JournalModel.init(), AuditEventModel.init()]);
+    await OrganizationModel.create([
+      { _id: org, name: 'Account route test', slug: `accounts-${org}` },
+      { _id: other, name: 'Account route peer', slug: `accounts-peer-${other}` },
+    ]);
     await MembershipModel.create([
       { organizationId: org, authUserId: 'owner', role: 'owner' },
       { organizationId: org, authUserId: 'viewer', role: 'viewer' },
@@ -98,6 +103,7 @@ describe.skipIf(!enabled)('chart of accounts HTTP', () => {
     await AuditEventModel.deleteMany(filter);
     await AccountModel.deleteMany(filter);
     await MembershipModel.deleteMany(filter);
+    await OrganizationModel.deleteMany({ _id: { $in: [org, other] } });
     await mongoose.disconnect();
   });
 });

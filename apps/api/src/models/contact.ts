@@ -1,4 +1,5 @@
-import { Schema, model, models } from 'mongoose';
+import mongoose from 'mongoose';
+const { Schema } = mongoose;
 
 export const contactRoles = ['customer', 'vendor'] as const;
 
@@ -16,4 +17,4 @@ const contactSchema = new Schema({
 
 contactSchema.index({ organizationId: 1, displayName: 1, email: 1 }, { unique: true, partialFilterExpression: { email: { $type: 'string' } } });
 contactSchema.index({ organizationId: 1, displayName: 1, _id: 1 });
-export const ContactModel = models.Contact || model('Contact', contactSchema);
+export const ContactModel = mongoose.models.Contact || mongoose.model('Contact', contactSchema);

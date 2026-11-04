@@ -1,21 +1,23 @@
 # Implementation status
 
-Verified baseline is commit `1f7c76f` on `develop/phase-1-foundation`. Local account slice is uncommitted.
+Status verified on 2026-11-04 from the local checkout `develop/phase-1-foundation`. This is an MVP in active development, not a production-ready release.
 
-| Area | Status | Evidence and gaps |
+| Area | Status | Verified implementation and remaining gaps |
 | --- | --- | --- |
-| Sign-up, sign-in, session, sign-out | Partial | Better Auth HTTP integration tests. Password recovery, verified mail, rate limiting and session expiry UI are absent. |
-| Organization create/list | Partial | Verified session and active memberships. Settings, selection persistence, member invites, roles and audit coverage remain. |
-| Chart of accounts | In progress | Local tenant-scoped CRUD API and MUI screen. Local tests pass. Needs CI, browser test, seeded starter chart, ledger views and released code. |
-| Journal post/reversal | Service level | Integer paise, active account checks, authorization fence, transaction, audit and replica-set coverage. No session-authenticated journal HTTP/UI. |
-| Contacts and services | Missing | No contact or product models/routes. |
-| Invoices and bills | Missing | No document lifecycles, number sequences or source journals. |
-| Receipts and payments | Missing | No allocation model or API. |
-| Financial reports | Missing | No ledger aggregation or report API. |
-| Fiscal periods | Missing | No open/closed period model or posting-time gate. |
-| GST | Missing | No reviewed rate and jurisdiction rules. Do not claim compliance. |
-| AI drafts | Missing | No provider path. Posting must remain human approved. |
-| Browser and mobile | Partial | Responsive authentication/onboarding/account components; no confirmed E2E result; mobile directory has no application package. |
-| Release operations | Missing | No verified staging, monitoring, runtime database roles or restore rehearsal. |
+| Authentication | Partial | Better Auth registration, login, session and logout have HTTP integration coverage. Password recovery, verified email, rate limits and session-expiry UX remain. |
+| Organizations and membership | Partial | Authenticated organization create/list and membership-scoped access. Settings, switching persistence, invitations, role administration and ownership transfer remain. |
+| Chart of accounts | Partial | Tenant-scoped list/create/rename/archive API, responsive UI, membership write fence, audit, first-post serialization and legacy journal reference protection. Starter chart, opening balances and journals UI remain. |
+| Journals | Service level | Integer-paise balanced posting, idempotency, transaction/audit, membership fence and immutable reversal primitives are tested. No authenticated manual journal or ledger HTTP/UI workflow. |
+| Fiscal periods | Foundation implemented | Annual periods default to April–March; dates use Asia/Kolkata; first use creates the open period transactionally; owner/admin close is fenced and audited; both journal posting and reversal reject a closed current period. No period reopening or close checklist. |
+| Contacts | Partial | Tenant-scoped customer/vendor create, list, search and archive with roles, audit and duplicate protection. Edit UI, identifiers, tax/address metadata, opening balances, exports and customer/vendor ledgers remain. |
+| Products and services | Partial | Tenant-scoped catalog API and responsive create/search UI; safe integer paise, unique organization code, audit and archive. Units, tax categories and edit UI remain. |
+| Sales invoices | Missing | No draft/issue lifecycle, numbering, tax line model, receivables journal, print/PDF, credit notes or receipt allocation. |
+| Purchases and expenses | Missing | No bill lifecycle, expense workflow, payable journal, attachments or vendor settlement. |
+| Receipts, payments and banking | Missing | No allocation, transfer, import, duplicate detection or reconciliation workflows. |
+| General ledger and reports | Missing | No journal HTTP read/detail, ledger aggregation, trial balance, P&L, balance sheet or audited exports. |
+| GST | Missing | No reviewed calculation/rate rules. Do not claim GST compliance. |
+| AI assistance | Missing | No draft/explain/review workflow. Any future AI must require explicit human approval before posting. |
+| Browser/mobile | Partial | Responsive web shell and auth/onboarding, account, contact and product screens. Playwright smoke remains unverified; there is no mobile app workspace. |
+| Release operations | Missing | No verified staging, production monitoring, least-privilege runtime database role, backup/restore rehearsal or release checklist. |
 
-System account creation currently exists only through seed or internal access. The chart uses pagination. Archival is serialized against the first post, and legacy journal references are checked before archival. Root lint has no workspace tasks.
+The API server starts under Node after using runtime-safe Mongoose imports. Root lint checks `apps` and `packages`. The master vision file supplied by the user is untracked user content and must be preserved.

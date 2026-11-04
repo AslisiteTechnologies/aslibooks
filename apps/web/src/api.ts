@@ -10,6 +10,7 @@ const accountsPath = (org: string) => `/api/organizations/${org}/accounts`;
 const contactsPath = (org: string) => `/api/organizations/${org}/contacts`;
 export type ContactInput = { displayName: string; roles: Array<'customer' | 'vendor'>; email?: string; phone?: string; gstin?: string; address?: string };
 export type Contact = ContactInput & { _id: string; active: boolean };
+export type Product = { _id: string; code: string; name: string; description?: string; unitPricePaise: number; active: boolean };
 
 async function jsonRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
@@ -33,6 +34,11 @@ export const api = {
     jsonRequest<{ id: string }>(contactsPath(org), { method: 'POST', body: JSON.stringify(input) }),
   updateContact: (org: string, id: string, input: Partial<ContactInput> | { active: false }) =>
     jsonRequest<{ id: string }>(`${contactsPath(org)}/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  products: (org: string, q = '') => jsonRequest<{ products: Product[]; next: string | null }>(
+    `/api/organizations/${org}/products` + (q ? `?q=${encodeURIComponent(q)}` : ''),
+  ),
+  createProduct: (org: string, input: { code: string; name: string; unitPricePaise: number }) =>
+    jsonRequest<{ id: string }>(`/api/organizations/${org}/products`, { method: 'POST', body: JSON.stringify(input) }),
   accounts: (org: string, after = '') => jsonRequest<{ accounts: Account[]; next: string | null }>(
     accountsPath(org) + (after ? `?after=${encodeURIComponent(after)}` : ''),
   ),

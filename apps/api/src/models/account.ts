@@ -1,4 +1,5 @@
-import { Schema, Types, model, models, type ClientSession } from 'mongoose';
+import mongoose, { Types, type ClientSession } from 'mongoose';
+const { Schema } = mongoose;
 
 export const accountTypes = ['asset', 'liability', 'equity', 'income', 'expense'] as const;
 
@@ -13,7 +14,7 @@ const accountSchema = new Schema({
 }, { timestamps: true, strict: 'throw' });
 
 accountSchema.index({ organizationId: 1, code: 1 }, { unique: true });
-export const AccountModel = models.Account || model('Account', accountSchema);
+export const AccountModel = mongoose.models.Account || mongoose.model('Account', accountSchema);
 
 // First use and archive both write the account, so their transactions serialize.
 export async function markPostingAccounts(

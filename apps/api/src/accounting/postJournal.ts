@@ -3,6 +3,7 @@ import { markPostingAccounts } from '../models/account.js';
 import { JournalModel } from '../models/journal.js';
 import { AuditEventModel } from '../models/auditEvent.js';
 import { fenceLedgerPermission } from '../security/authorization.js';
+import { assertPostingPeriodOpen } from './fiscalPeriods.js';
 
 export type PostingLine = { accountId: string; debitPaise: number; creditPaise: number };
 export type PostingCommand = {
@@ -13,7 +14,7 @@ export type PostingCommand = {
   lines: PostingLine[];
 };
 export class PostingError extends Error {
-  constructor(public readonly code: 'INVALID' | 'ACCOUNT' | 'CONFLICT', message: string) { super(message); }
+  constructor(public readonly code: 'INVALID' | 'ACCOUNT' | 'CONFLICT' | 'PERIOD_CLOSED', message: string) { super(message); }
 }
 export function validatePosting(command: PostingCommand): void {
   if (!Types.ObjectId.isValid(command.organizationId)) throw new PostingError('INVALID', 'Invalid organization');
@@ -63,6 +64,7 @@ export async function postJournal(command: PostingCommand, options: { enforceMem
   }
   try {
     return await mongoose.connection.transaction(async (session) => {
+      await assertPostingPeriodOpen(organizationId, session);
       if (!await markPostingAccounts(organizationId, command.lines, session))
         throw new PostingError('ACCOUNT', 'Account missing, inactive, or outside organization');
       const [journal] = await JournalModel.create([{
@@ -128,6 +130,7 @@ async function postJournalFenced(command: PostingCommand): Promise<{ journalId: 
         throw new PostingError('CONFLICT', 'Idempotency key already used with different journal');
       return { journalId: String(existing._id), replayed: true };
     }
+    await assertPostingPeriodOpen(organizationId, session);
     if (!await markPostingAccounts(organizationId, command.lines, session))
       throw new PostingError('ACCOUNT', 'Account missing, inactive, or outside organization');
     const [journal] = await JournalModel.create([{

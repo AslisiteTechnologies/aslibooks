@@ -1,4 +1,5 @@
-import { Schema, model, models } from 'mongoose';
+import mongoose from 'mongoose';
+const { Schema } = mongoose;
 
 export const membershipRoles = ['owner', 'admin', 'accountant', 'viewer'] as const;
 
@@ -12,4 +13,4 @@ const membershipSchema = new Schema({
 
 membershipSchema.index({ organizationId: 1, authUserId: 1 }, { unique: true });
 membershipSchema.index({ authUserId: 1, status: 1 });
-export const MembershipModel = models.Membership || model('Membership', membershipSchema);
+export const MembershipModel = mongoose.models.Membership || mongoose.model('Membership', membershipSchema);

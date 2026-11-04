@@ -1,17 +1,23 @@
 # Next actions
 
-## Active local slice
+## Current checkpoint
 
-Chart of accounts. GitHub development HEAD is `1f7c76f0573918d88a3164c80548440e12cf26c1`. Preserve all uncommitted account work and the untracked master vision file. Do not reset the checkout.
+Branch `develop/phase-1-foundation`. Latest local feature commit before the in-progress fiscal-period work: `dbe282915bc153bf6ce12087cfceee4260aa9408`. The latest known published development branch SHA is `f74dc1051725bd63707a1bcfc1d477a87ca48d50`; check the live remote before publishing. Do not rewrite history or force-update the branch. Preserve the untracked `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md` supplied by the owner.
 
-## Exact verification
+## Verify current changes
 
-Run `pnpm typecheck`, then `$env:MONGODB_TEST_URI='mongodb://127.0.0.1:37491/?replicaSet=aslibooksLocal'; $env:MONGODB_TEST_DB_NAME='aslibooks_test_asli'; pnpm --filter @aslibooks/api test`, then `pnpm test`, `pnpm build`, `pnpm lint`, and `git diff --check`. Use MongoDB 7 replica-set support; isolated database names must start with `aslibooks_test_`. The local listener is loopback port 37491. Verify it before tests.
+1. Finish `pnpm --filter @aslibooks/api test` with `MONGODB_TEST_URI=mongodb://127.0.0.1:37491/?replicaSet=aslibooksLocal` and `MONGODB_TEST_DB_NAME=aslibooks_test_<unique_name>`.
+2. Run `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm test`, and `git diff --check`.
+3. Verify the chart browser smoke flow with the configured local MongoDB replica set and Playwright Chromium.
+4. Commit the product/runtime and fiscal-period work, publish by fast-forward to `develop/phase-1-foundation`, and inspect CI and MongoDB integration checks for the exact resulting SHA.
 
-## Highest-priority next task
+## Next implementation sequence
 
-Fix and verify the signup → company → chart browser smoke test. The previous helper invocation timed out because it launched API through `pnpm.cmd` under PowerShell without receiving the server's environment. Run API and web as separate hidden processes with explicit inherited environment or use the helper from a compatible shell. Verify startup logs and HTTP readiness before Playwright. Browser runner is Python 3.12 at `%USERPROFILE%/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe`, Playwright modules at `%TEMP%/codex-aslibooks-playwright`, and Chromium at `%TEMP%/codex-aslibooks-browsers`.
+1. Authenticated journal list/detail/manual posting/reversal endpoints with role checks, server-derived actors, fiscal period enforcement, idempotency and audit.
+2. General ledger and trial balance read APIs, exact seeded balance assertions and connected screens.
+3. Account starter chart, controlled opening balances and organization fiscal settings.
+4. Contact edit/details, invoice draft and issue lifecycle with transactional source journal and number sequencing.
+5. Bill/expense workflows, receipts/payments and allocations; then reports reconciling to ledger.
+6. Tax-ready data structures with reviewed validation only, security hardening, responsive end-to-end coverage and release operations.
 
-After E2E, commit the verified account slice, push only if credentials allow, and check both workflows on that exact SHA. Then build tenant-scoped contacts and basic products/services, followed by draft and issued sales invoices and source-linked posting. Do not claim invoice workflow until payment allocation, journals and reports complete the accepted end-to-end path.
-
-No production deploy, main merge, live database changes or compliance claims.
+No production deploy, merge to `main`, real customer data use or compliance claim is authorized by the development request.

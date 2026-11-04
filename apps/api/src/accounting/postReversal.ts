@@ -4,6 +4,7 @@ import { markPostingAccounts } from '../models/account.js';
 import { AuditEventModel } from '../models/auditEvent.js';
 import { fenceLedgerPermission } from '../security/authorization.js';
 import { PostingError, validatePosting, type PostingCommand } from './postJournal.js';
+import { assertPostingPeriodOpen } from './fiscalPeriods.js';
 import type { ReversalRequest } from './reversal.js';
 
 export type ReversalResult = { journalId: string; replayed: boolean };
@@ -81,6 +82,7 @@ export async function postReversal(request: ReversalRequest, options: { enforceM
           throw new PostingError('CONFLICT', 'Journal already reversed or idempotency key reused');
         }
       }
+      await assertPostingPeriodOpen(organizationId, session);
       const original = await JournalModel.findOne({
         _id: originalId, organizationId,
       }).session(session).exec();

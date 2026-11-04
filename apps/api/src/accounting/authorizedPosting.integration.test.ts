@@ -4,6 +4,7 @@ import { MembershipModel } from '../models/membership.js';
 import { AccountModel } from '../models/account.js';
 import { JournalModel } from '../models/journal.js';
 import { AuditEventModel } from '../models/auditEvent.js';
+import { OrganizationModel } from '../models/organization.js';
 import { LedgerAccessDenied, postAuthorizedJournal, postAuthorizedReversal } from './authorizedPosting.js';
 import { fenceLedgerPermission } from '../security/authorization.js';
 import { postJournal, PostingError } from './postJournal.js';
@@ -33,7 +34,11 @@ const input = {
 describe.skipIf(!enabled)('authorized ledger posting integration', () => {
   beforeAll(async () => {
     await mongoose.connect(uri!, { dbName: dbName!, serverSelectionTimeoutMS: 10000 });
-    await Promise.all([MembershipModel.init(), AccountModel.init(), JournalModel.init(), AuditEventModel.init()]);
+    await Promise.all([OrganizationModel.init(), MembershipModel.init(), AccountModel.init(), JournalModel.init(), AuditEventModel.init()]);
+    await OrganizationModel.create([
+      { _id: org, name: 'Authorized test', slug: `authorized-${suffix}` },
+      { _id: otherOrg, name: 'Other authorized test', slug: `other-auth-${suffix}` },
+    ]);
     await MembershipModel.create([
       { organizationId: org, authUserId: actor, role: 'owner', status: 'active' },
       { organizationId: org, authUserId: suspended, role: 'owner', status: 'suspended' },

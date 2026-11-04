@@ -3,6 +3,7 @@ import mongoose, { Types } from 'mongoose';
 import { AccountModel } from '../models/account.js';
 import { JournalModel } from '../models/journal.js';
 import { AuditEventModel } from '../models/auditEvent.js';
+import { OrganizationModel } from '../models/organization.js';
 import { postJournal, PostingError, type PostingCommand } from './postJournal.js';
 import { postReversal } from './postReversal.js';
 
@@ -29,7 +30,11 @@ const command: PostingCommand = {
 describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set', () => {
   beforeAll(async () => {
     await mongoose.connect(uri!, { dbName: dbName!, serverSelectionTimeoutMS: 10000 });
-    await Promise.all([AccountModel.init(), JournalModel.init(), AuditEventModel.init()]);
+    await Promise.all([OrganizationModel.init(), AccountModel.init(), JournalModel.init(), AuditEventModel.init()]);
+    await OrganizationModel.create([
+      { _id: orgA, name: 'Ledger test', slug: `ledger-${suffix}` },
+      { _id: orgB, name: 'Foreign ledger', slug: `foreign-${suffix}` },
+    ]);
     await AccountModel.create([
       { _id: accountA, organizationId: orgA, code: `CASH-${suffix}`, name: 'Cash', type: 'asset' },
       { _id: accountB, organizationId: orgA, code: `SALE-${suffix}`, name: 'Sales', type: 'income' },

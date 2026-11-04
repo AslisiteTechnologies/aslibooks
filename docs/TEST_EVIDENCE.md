@@ -1,17 +1,21 @@
 # Test evidence
 
-## Verified remote baseline
+## Previously verified remote history
 
-- SHA `8d7a994e15bd4a4af3244411096113a1f8c1e41b`: CI #181 success and MongoDB #118 success.
-- SHA `1f7c76f0573918d88a3164c80548440e12cf26c1`: CI #183 success and MongoDB #120 success. This commit fixes posted-journal deletion bypasses and cross-operation idempotent reversal replay.
-- Neither remote run verifies local account changes.
+- SHA `8d7a994e15bd4a4af3244411096113a1f8c1e41b`: CI #181 and MongoDB #118 succeeded at the time they were observed.
+- SHA `1f7c76f0573918d88a3164c80548440e12cf26c1`: CI #183 and MongoDB #120 succeeded at the time they were observed.
+- These historical runs do not verify the current local implementation.
 
-## Local account slice
+## Local development verification
 
-- Replica set: MongoDB 7.0.16, loopback port 37491.
-- `pnpm --filter @aslibooks/api test -- src/routes/accounts.integration.test.ts`: 4/4 tests passed after correcting the immutable default field.
-- All API suites against `aslibooks_test_chart_full_1104`: 65/65 tests passed.
-- Workspace typecheck and build passed before the final four-line schema correction. Run again on the resulting tree before commit.
-- Earlier full workspace test skipped 44 MongoDB cases because the MONGODB test environment was not passed to the root process. Do not count this as integration coverage. Dedicated full API suite above ran with test environment configured.
-- Browser Playwright E2E has not passed. Previous server helper timed out before API startup. Diagnosing launcher and env propagation remains the first action.
-- `pnpm lint` reports zero tasks. It does not constitute lint evidence.
+- MongoDB 7.0.16 replica set on loopback port 37491.
+- API suite on `aslibooks_test_final_fence`: 11 files, 70 tests passed after adding the fiscal period posting fence, including auth, accounts, contacts, products, journals/reversals, membership authorization and close controls.
+- Focused fiscal period HTTP integration on `aslibooks_test_periods_fix`: 1/1 passed for India fiscal-year creation, owner/admin-only close, audit and denial of subsequent posting.
+- Workspace `pnpm typecheck`, `pnpm lint`, and `pnpm build` passed after the posting-fence change and ESLint config rename. Lint checks apps and packages; it is no longer a zero-task script.
+- Root `pnpm test`: 21 passed; 49 MongoDB integration tests skipped because no test DB environment was passed to the root process. Use the dedicated API command above for integration coverage.
+- Playwright browser flow passed: signup, company onboarding, account create/rename, reload and 390px mobile navigation/archive. The test selector now handles MUI's required marker in accessible labels.
+- Local API `/health` and Vite root returned HTTP 200 during browser verification.
+
+## Remote CI
+
+The latest known published development SHA is `f74dc1051725bd63707a1bcfc1d477a87ca48d50`. Check the exact new commit's CI and MongoDB workflow runs after publishing; do not infer their state from historical runs.

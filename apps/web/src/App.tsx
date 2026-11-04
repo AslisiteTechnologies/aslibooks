@@ -4,6 +4,7 @@ import { AuthScreen } from './AuthScreen';
 import { OnboardingScreen } from './OnboardingScreen';
 import { AccountsScreen } from './AccountsScreen';
 import { ContactsScreen } from './ContactsScreen';
+import { ProductsScreen } from './ProductsScreen';
 import { AppBar, Box, Button, Chip, Container, Divider, Drawer, List, ListItemButton, ListItemText, Paper, Stack, Toolbar, Typography } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
@@ -80,6 +81,7 @@ export function App() {
           {authError && <Box role="alert">{authError}</Box>}
           {section === 'Accounting' ? <AccountsScreen key={organization.id} organization={organization} /> :
           section === 'Contacts' ? <ContactsScreen key={organization.id} organization={organization} /> :
+          section === 'Sales' ? <ProductsScreen key={organization.id} organization={organization} /> :
           <Paper variant="outlined" sx={{ p: { xs: 3, md: 5 } }}>
             <Stack spacing={2} alignItems="flex-start">
               <Chip label="Not connected" color="warning" size="small" />

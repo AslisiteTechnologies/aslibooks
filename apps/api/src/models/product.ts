@@ -1,4 +1,5 @@
-import { Schema, model, models } from 'mongoose';
+import mongoose from 'mongoose';
+const { Schema } = mongoose;
 
 const productSchema = new Schema({
   organizationId: { type: Schema.Types.ObjectId, required: true, immutable: true },
@@ -10,4 +11,4 @@ const productSchema = new Schema({
 }, { timestamps: true, strict: 'throw' });
 
 productSchema.index({ organizationId: 1, code: 1 }, { unique: true });
-export const ProductModel = models.Product || model('Product', productSchema);
+export const ProductModel = mongoose.models.Product || mongoose.model('Product', productSchema);

@@ -1,4 +1,5 @@
-import { Schema, model, models } from 'mongoose';
+import mongoose from 'mongoose';
+const { Schema } = mongoose;
 
 // Amounts are integer paise. Never use floating-point rupee values for posting.
 const lineSchema = new Schema({
@@ -43,4 +44,4 @@ journalSchema.index(
   { organizationId: 1, reversalOf: 1 },
   { unique: true, partialFilterExpression: { reversalOf: { $type: 'objectId' } } },
 );
-export const JournalModel = models.Journal || model('Journal', journalSchema);
+export const JournalModel = mongoose.models.Journal || mongoose.model('Journal', journalSchema);

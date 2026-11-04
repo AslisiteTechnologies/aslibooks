@@ -1,4 +1,5 @@
-import { Schema, model, models } from 'mongoose';
+import mongoose from 'mongoose';
+const { Schema } = mongoose;
 
 const auditEventSchema = new Schema({
   organizationId: { type: Schema.Types.ObjectId, required: true, immutable: true },
@@ -10,4 +11,4 @@ const auditEventSchema = new Schema({
 }, { strict: 'throw', versionKey: false });
 
 auditEventSchema.index({ organizationId: 1, occurredAt: -1 });
-export const AuditEventModel = models.AuditEvent || model('AuditEvent', auditEventSchema);
+export const AuditEventModel = mongoose.models.AuditEvent || mongoose.model('AuditEvent', auditEventSchema);
