@@ -95,6 +95,15 @@ def test_chart():
             page.get_by_role("button", name="Review and issue").click()
             page.get_by_role("button", name="Confirm and issue").click()
             expect(page.get_by_text("issued and posted to the ledger.", exact=False)).to_be_visible()
+            page.get_by_role("button", name="Print invoice").click()
+            expect(page.get_by_text("Consulting service × 1")).to_be_visible()
+            with page.expect_popup() as print_page_info:
+                page.get_by_role("button", name="Print", exact=True).click()
+            print_page = print_page_info.value
+            expect(print_page.get_by_role("heading", name="Invoice ASL/")).to_be_visible()
+            expect(print_page.get_by_text("Balance due:", exact=False)).to_be_visible()
+            print_page.close()
+            page.get_by_role("button", name="Close", exact=True).click()
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Receipts", exact=True).click()
             amount_field = page.get_by_label("Amount received (₹)", exact=False)

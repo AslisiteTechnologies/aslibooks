@@ -12,6 +12,7 @@ export type ContactInput = { displayName: string; roles: Array<'customer' | 'ven
 export type Contact = ContactInput & { _id: string; active: boolean };
 export type Product = { _id: string; code: string; name: string; description?: string; unitPricePaise: number; active: boolean };
 export type Invoice = { id: string; customerName: string; status: 'draft' | 'issued' | 'partially_paid' | 'paid'; totalPaise: number; amountPaidPaise: number; invoiceNumber?: string; dueDate?: string; overdue?: boolean; issuedAt?: string; createdAt: string };
+export type InvoiceDocument = Invoice & { lines: Array<{ name: string; quantity: number; unitPricePaise: number; lineTotalPaise: number }> };
 export type Receipt = { id: string; customerName: string; amountPaise: number; receivedAt: string; journalId: string; allocations: Array<{ invoiceId: string; invoiceNumber: string; amountPaise: number }> };
 export type Bill = { id: string; vendorName: string; vendorReference: string; expenseAccountName: string; description: string; status: 'draft' | 'posted' | 'partially_paid' | 'paid'; amountPaise: number; amountPaidPaise: number; dueDate?: string; overdue?: boolean; journalId?: string };
 export type VendorPayment = { id: string; vendorName: string; amountPaise: number; paidAt: string; journalId: string; allocations: Array<{ billId: string; vendorReference: string; amountPaise: number }> };
@@ -65,6 +66,7 @@ export const api = {
   createProduct: (org: string, input: { code: string; name: string; unitPricePaise: number }) =>
     jsonRequest<{ id: string }>(`/api/organizations/${org}/products`, { method: 'POST', body: JSON.stringify(input) }),
   invoices: (org: string) => jsonRequest<{ invoices: Invoice[]; next: string | null }>(`/api/organizations/${org}/invoices`),
+  invoice: (org: string, id: string) => jsonRequest<{ invoice: InvoiceDocument }>(`/api/organizations/${org}/invoices/${id}`),
   createInvoiceDraft: (org: string, input: { customerId: string; lines: Array<{ productId: string; quantity: number }>; dueDate?: string }) =>
     jsonRequest<{ id: string; status: 'draft' }>(`/api/organizations/${org}/invoices`, { method: 'POST', body: JSON.stringify(input) }),
   issueInvoice: (org: string, id: string, idempotencyKey: string) =>

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
-import { api, type Contact, type Invoice, type Organization, type Product } from './api';
+import { api, type Contact, type Invoice, type InvoiceDocument, type Organization, type Product } from './api';
 
 const formatMoney = (paise: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(paise / 100);
+const escapeHtml = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!);
 
 export function SalesScreen({ organization }: { organization: Organization }) {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -18,6 +19,8 @@ export function SalesScreen({ organization }: { organization: Organization }) {
   const [saving, setSaving] = useState(false);
   const [revision, setRevision] = useState(0);
   const [toIssue, setToIssue] = useState<Invoice | null>(null);
+  const [printInvoice, setPrintInvoice] = useState<InvoiceDocument | null>(null);
+  const [documentError, setDocumentError] = useState('');
   const canWrite = ['owner', 'admin', 'accountant'].includes(organization.role);
   const customers = useMemo(() => contacts.filter(contact => contact.roles.includes('customer')), [contacts]);
   const selectedProduct = products.find(product => product._id === productId);
@@ -63,6 +66,21 @@ export function SalesScreen({ organization }: { organization: Organization }) {
     finally { setSaving(false); }
   }
 
+  async function loadInvoiceDocument(invoice: Invoice) {
+    setDocumentError('');
+    try { setPrintInvoice((await api.invoice(organization.id, invoice.id)).invoice); }
+    catch (cause) { setDocumentError(cause instanceof Error ? cause.message : 'Invoice details could not be loaded.'); }
+  }
+
+  function printDocument() {
+    if (!printInvoice?.invoiceNumber || printInvoice.status === 'draft') return;
+    const popup = window.open('', '_blank');
+    if (!popup) { setDocumentError('Allow pop-ups to print this invoice.'); return; }
+    const rows = printInvoice.lines.map(line => `<tr><td>${escapeHtml(line.name)}</td><td>${line.quantity}</td><td>${formatMoney(line.unitPricePaise)}</td><td>${formatMoney(line.lineTotalPaise)}</td></tr>`).join('');
+    popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(printInvoice.invoiceNumber)}</title><style>body{font:14px Arial,sans-serif;color:#17202a;margin:40px}h1{margin-bottom:4px}.muted{color:#5d6875}table{width:100%;border-collapse:collapse;margin-top:28px}th,td{padding:10px;border-bottom:1px solid #d7dce1;text-align:left}td:nth-child(n+2),th:nth-child(n+2){text-align:right}.total{text-align:right;margin-top:24px;font-size:18px}.notice{margin-top:36px;color:#5d6875}</style></head><body><h1>Invoice ${escapeHtml(printInvoice.invoiceNumber)}</h1><div class="muted">${escapeHtml(organization.name)}</div><p>Bill to: <strong>${escapeHtml(printInvoice.customerName)}</strong><br>Issued: ${printInvoice.issuedAt ? escapeHtml(new Date(printInvoice.issuedAt).toLocaleDateString('en-IN')) : '—'}<br>Due: ${printInvoice.dueDate ? escapeHtml(printInvoice.dueDate) : '—'}</p><table><thead><tr><th>Service</th><th>Quantity</th><th>Rate</th><th>Amount</th></tr></thead><tbody>${rows}</tbody></table><div class="total">Total: <strong>${formatMoney(printInvoice.totalPaise)}</strong><br>Paid: ${formatMoney(printInvoice.amountPaidPaise)}<br>Balance due: <strong>${formatMoney(printInvoice.totalPaise - printInvoice.amountPaidPaise)}</strong></div><p class="notice">Service invoice. Tax is not included in this document.</p><script>window.onload=()=>window.print()</script></body></html>`);
+    popup.document.close();
+  }
+
   return <Stack spacing={2}>
     <Typography variant="h5">Sales invoices</Typography>
     <Alert severity="info">This first invoice flow is for services without GST or discounts. Tax and inventory accounting are not included; do not issue invoices that require them.</Alert>
@@ -95,6 +113,7 @@ export function SalesScreen({ organization }: { organization: Organization }) {
           <Typography>{invoice.status}{invoice.dueDate ? ` · due ${invoice.dueDate}` : ''}{invoice.overdue ? ' · overdue' : ''} · {formatMoney(invoice.totalPaise)}</Typography>
         </Stack>
         {canWrite && invoice.status === 'draft' && <Button onClick={() => setToIssue(invoice)}>Review and issue</Button>}
+        {invoice.status !== 'draft' && <Button onClick={() => void loadInvoiceDocument(invoice)}>Print invoice</Button>}
       </Stack>
     </Paper>)}
     <Dialog open={!!toIssue} onClose={() => { if (!saving) setToIssue(null); }}>
@@ -107,5 +126,16 @@ export function SalesScreen({ organization }: { organization: Organization }) {
         <Button disabled={saving} variant="contained" onClick={() => { if (toIssue) void issue(toIssue); }}>Confirm and issue</Button>
       </DialogActions>
     </Dialog>
+    <Dialog open={!!printInvoice} onClose={() => setPrintInvoice(null)} fullWidth maxWidth="sm">
+      <DialogTitle>Invoice {printInvoice?.invoiceNumber}</DialogTitle>
+      <DialogContent><Stack spacing={1} sx={{ py: 1 }}>
+        <Typography>{organization.name} · {printInvoice?.customerName}</Typography>
+        <Typography color="text.secondary">{printInvoice?.lines.map(line => `${line.name} × ${line.quantity}`).join(', ')}</Typography>
+        <Typography>Total {formatMoney(printInvoice?.totalPaise ?? 0)} · Paid {formatMoney(printInvoice?.amountPaidPaise ?? 0)} · Due {formatMoney((printInvoice?.totalPaise ?? 0) - (printInvoice?.amountPaidPaise ?? 0))}</Typography>
+        <Typography variant="caption">Tax is not included in this document.</Typography>
+      </Stack></DialogContent>
+      <DialogActions><Button onClick={() => setPrintInvoice(null)}>Close</Button><Button variant="contained" onClick={printDocument}>Print</Button></DialogActions>
+    </Dialog>
+    {documentError && <Alert severity="error" onClose={() => setDocumentError('')}>{documentError}</Alert>}
   </Stack>;
 }
