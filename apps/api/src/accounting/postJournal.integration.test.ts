@@ -123,6 +123,27 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
     }
   });
 
+  it('rejects mutation and deletion of posted journals through the model', async () => {
+    const posted = await JournalModel.findOne({
+      organizationId: orgA, idempotencyKey: command.idempotencyKey,
+    });
+    expect(posted).toBeTruthy();
+    const id = posted!._id;
+    await expect(JournalModel.updateOne({ _id: id }, {
+      $set: { description: 'Tampered' },
+    })).rejects.toThrow('Posted journals are immutable');
+    await expect(JournalModel.findOneAndUpdate({ _id: id }, {
+      $set: { 'lines.0.debitPaise': 1 },
+    })).rejects.toThrow('Posted journals are immutable');
+    await expect(JournalModel.deleteOne({ _id: id }))
+      .rejects.toThrow('Posted journals are immutable');
+    posted!.description = 'Tampered through save';
+    await expect(posted!.save()).rejects.toThrow('Posted journals are immutable');
+    const intact = await JournalModel.findById(id);
+    expect(intact!.description).toBe(command.description);
+    expect(intact!.lines[0].debitPaise).toBe(12500);
+  });
+
   it('database rejects a second reversal of the same original journal', async () => {
     const original = await JournalModel.findOne({
       organizationId: orgA, idempotencyKey: command.idempotencyKey,
