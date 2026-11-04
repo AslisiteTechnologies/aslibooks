@@ -3,6 +3,7 @@ import { Types } from 'mongoose';
 import { z } from 'zod';
 import { AccountModel } from '../models/account.js';
 import { JournalModel } from '../models/journal.js';
+import { OrganizationModel } from '../models/organization.js';
 import { hasPermission } from '../security/authorization.js';
 
 const filters = z.strictObject({
@@ -13,6 +14,11 @@ const filters = z.strictObject({
   limit: z.string().regex(/^\d{1,3}$/).optional(),
 });
 const trialBalanceFilters = z.strictObject({ asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() });
+const profitLossFilters = z.strictObject({
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+const balanceSheetFilters = z.strictObject({ asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() });
 type NormalSide = 'debit' | 'credit';
 
 function validDate(value: string): Date | null {
@@ -34,6 +40,33 @@ function indiaToday(): string {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
   const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
   return `${values.year}-${values.month}-${values.day}`;
+}
+
+function fiscalYearStartDate(date: string, startMonth: number): string {
+  const [year, month] = date.split('-').map(Number);
+  const yearOfStart = month >= startMonth ? year : year - 1;
+  return `${yearOfStart}-${String(startMonth).padStart(2, '0')}-01`;
+}
+
+async function accountBalancesBetween(organizationId: Types.ObjectId, start: Date, endExclusive: Date) {
+  return JournalModel.aggregate<{
+    _id: Types.ObjectId; debit: number; credit: number; code: string; name: string; type: string;
+  }>([
+    { $match: { organizationId, postedAt: { $gte: start, $lt: endExclusive } } },
+    { $unwind: '$lines' },
+    { $group: { _id: '$lines.accountId', debit: { $sum: '$lines.debitPaise' }, credit: { $sum: '$lines.creditPaise' } } },
+    { $lookup: {
+      from: AccountModel.collection.name,
+      let: { accountId: '$_id', organizationId: { $literal: organizationId } },
+      pipeline: [{ $match: { $expr: { $and: [
+        { $eq: ['$_id', '$$accountId'] }, { $eq: ['$organizationId', '$$organizationId'] },
+      ] } } }, { $project: { code: 1, name: 1, type: 1 } }],
+      as: 'account',
+    } },
+    { $unwind: '$account' },
+    { $project: { _id: 1, debit: 1, credit: 1, code: '$account.code', name: '$account.name', type: '$account.type' } },
+    { $sort: { code: 1 } },
+  ]);
 }
 
 export function reportRouter() {
@@ -160,6 +193,77 @@ export function reportRouter() {
       res.status(422).json({ error: 'Trial balance totals exceed the supported integer amount range' }); return;
     }
     res.json({ asOf, accounts, debitTotalPaise: debitTotal, creditTotalPaise: creditTotal, balanced: debitTotal === creditTotal });
+  });
+
+  router.get('/profit-and-loss', async (req, res) => {
+    const { organizationId, authUserId } = res.locals;
+    if (!await hasPermission(authUserId, String(organizationId), 'ledger:read')) {
+      res.status(403).json({ error: 'Report access denied' }); return;
+    }
+    const parsed = profitLossFilters.safeParse(req.query);
+    if (!parsed.success) { res.status(400).json({ error: 'Invalid profit and loss filters' }); return; }
+    const toText = parsed.data.to ?? indiaToday();
+    if (!validDate(toText)) { res.status(400).json({ error: 'Invalid profit and loss date range' }); return; }
+    const organization = await OrganizationModel.findById(organizationId).select('fiscalYearStartMonth')
+      .lean<{ fiscalYearStartMonth: number } | null>();
+    if (!organization) { res.status(404).json({ error: 'Organization not found' }); return; }
+    const fromText = parsed.data.from ?? fiscalYearStartDate(toText, organization.fiscalYearStartMonth);
+    const from = validDate(fromText);
+    const to = validDate(toText);
+    if (!from || !to || from > to) { res.status(400).json({ error: 'Invalid profit and loss date range' }); return; }
+    const rows = await accountBalancesBetween(organizationId, from, nextIndiaDate(toText));
+    if (rows.some(row => !Number.isSafeInteger(row.debit) || !Number.isSafeInteger(row.credit))) {
+      res.status(422).json({ error: 'Profit and loss exceeds the supported integer amount range' }); return;
+    }
+    const accounts = rows.filter(row => row.type === 'income' || row.type === 'expense').map(row => ({
+      accountId: String(row._id), code: row.code, name: row.name, type: row.type,
+      balancePaise: row.type === 'income' ? row.credit - row.debit : row.debit - row.credit,
+    }));
+    const totalIncome = accounts.filter(row => row.type === 'income').reduce((sum, row) => sum + row.balancePaise, 0);
+    const totalExpenses = accounts.filter(row => row.type === 'expense').reduce((sum, row) => sum + row.balancePaise, 0);
+    const netProfit = totalIncome - totalExpenses;
+    if (![totalIncome, totalExpenses, netProfit].every(Number.isSafeInteger)) {
+      res.status(422).json({ error: 'Profit and loss totals exceed the supported integer amount range' }); return;
+    }
+    res.json({ from: fromText, to: toText, accounts, totalIncomePaise: totalIncome, totalExpensesPaise: totalExpenses, netProfitPaise: netProfit });
+  });
+
+  router.get('/balance-sheet', async (req, res) => {
+    const { organizationId, authUserId } = res.locals;
+    if (!await hasPermission(authUserId, String(organizationId), 'ledger:read')) {
+      res.status(403).json({ error: 'Report access denied' }); return;
+    }
+    const parsed = balanceSheetFilters.safeParse(req.query);
+    if (!parsed.success) { res.status(400).json({ error: 'Invalid balance sheet date' }); return; }
+    const asOf = parsed.data.asOf ?? indiaToday();
+    if (!validDate(asOf)) { res.status(400).json({ error: 'Invalid balance sheet date' }); return; }
+    const organization = await OrganizationModel.findById(organizationId).select('fiscalYearStartMonth')
+      .lean<{ fiscalYearStartMonth: number } | null>();
+    if (!organization) { res.status(404).json({ error: 'Organization not found' }); return; }
+    const rows = await accountBalancesBetween(organizationId, new Date(0), nextIndiaDate(asOf));
+    if (rows.some(row => !Number.isSafeInteger(row.debit) || !Number.isSafeInteger(row.credit))) {
+      res.status(422).json({ error: 'Balance sheet exceeds the supported integer amount range' }); return;
+    }
+    const accounts = rows.filter(row => ['asset', 'liability', 'equity'].includes(row.type)).map(row => ({
+      accountId: String(row._id), code: row.code, name: row.name, type: row.type,
+      balancePaise: row.type === 'asset' ? row.debit - row.credit : row.credit - row.debit,
+    }));
+    const yearStart = validDate(fiscalYearStartDate(asOf, organization.fiscalYearStartMonth))!;
+    const earningsRows = await accountBalancesBetween(organizationId, yearStart, nextIndiaDate(asOf));
+    const earnings = earningsRows.filter(row => row.type === 'income' || row.type === 'expense')
+      .reduce((sum, row) => sum + row.credit - row.debit, 0);
+    const assets = accounts.filter(row => row.type === 'asset').reduce((sum, row) => sum + row.balancePaise, 0);
+    const liabilities = accounts.filter(row => row.type === 'liability').reduce((sum, row) => sum + row.balancePaise, 0);
+    const equity = accounts.filter(row => row.type === 'equity').reduce((sum, row) => sum + row.balancePaise, 0);
+    const liabilitiesAndEquity = liabilities + equity + earnings;
+    if (![earnings, assets, liabilities, equity, liabilitiesAndEquity].every(Number.isSafeInteger)) {
+      res.status(422).json({ error: 'Balance sheet totals exceed the supported integer amount range' }); return;
+    }
+    res.json({
+      asOf, accounts, totalAssetsPaise: assets, totalLiabilitiesPaise: liabilities,
+      totalEquityPaise: equity, currentEarningsPaise: earnings,
+      liabilitiesAndEquityPaise: liabilitiesAndEquity, balanced: assets === liabilitiesAndEquity,
+    });
   });
   return router;
 }

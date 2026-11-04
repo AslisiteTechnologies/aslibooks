@@ -79,6 +79,15 @@ describe.skipIf(!enabled)('ledger and trial balance reports', () => {
       expect.objectContaining({ accountId: String(income), debitBalancePaise: 0, creditBalancePaise: 3500 }),
       expect.objectContaining({ accountId: String(expense), debitBalancePaise: 1200, creditBalancePaise: 0 }),
     ]));
+    const profitLoss = await request(app).get(`${path}/profit-and-loss`).set('x-fixture-actor', 'reports-viewer').expect(200);
+    expect(profitLoss.body.totalIncomePaise).toBe(3500);
+    expect(profitLoss.body.totalExpensesPaise).toBe(1200);
+    expect(profitLoss.body.netProfitPaise).toBe(2300);
+    const balanceSheet = await request(app).get(`${path}/balance-sheet`).set('x-fixture-actor', 'reports-viewer').expect(200);
+    expect(balanceSheet.body).toMatchObject({
+      totalAssetsPaise: 12300, totalLiabilitiesPaise: 0, totalEquityPaise: 10000,
+      currentEarningsPaise: 2300, liabilitiesAndEquityPaise: 12300, balanced: true,
+    });
     const query = `accountId=${cash}&limit=1`;
     const first = await request(app).get(`${path}/general-ledger?${query}`).set('x-fixture-actor', 'reports-viewer').expect(200);
     expect(first.body.entries).toHaveLength(1);

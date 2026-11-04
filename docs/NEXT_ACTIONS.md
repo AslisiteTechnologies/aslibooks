@@ -2,7 +2,7 @@
 
 ## Current checkpoint
 
-Branch `develop/phase-1-foundation`. Published journal checkpoint `99666a04eb523438964d76c8b65773004517126c`; CI #190 and MongoDB #127 succeeded. General ledger and trial balance API/UI are the active local slice. Do not rewrite history or force-update the branch. Preserve the untracked `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md` supplied by the owner.
+Branch `develop/phase-1-foundation`. Published report checkpoint `58e6168a49ab8bb55cca9f0314b12b57cc039ab8`; CI #192 and MongoDB #129 succeeded. Profit and loss and balance sheet are the active local slice. Do not rewrite history or force-update the branch. Preserve the untracked `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md` supplied by the owner.
 
 ## Verify current changes
 
@@ -12,8 +12,8 @@ Branch `develop/phase-1-foundation`. Published journal checkpoint `99666a04eb523
 
 ## Next implementation sequence
 
-1. Finish full verification and publish the general ledger and trial balance slice.
-2. Add P&L and balance sheet that reconcile to the trial balance; add starter accounts and controlled opening balances.
+1. Finish full verification and publish P&L and balance sheet with current earnings reconciled to the ledger.
+2. Add starter accounts and controlled opening balances; then account fiscal-year settings and close checks.
 3. Contact edit/details, invoice draft and issue lifecycle with transactional source journal and number sequencing.
 4. Bill/expense workflows, receipts/payments and allocations; then aged receivables/payables and exports.
 5. Tax-ready data structures with reviewed validation only, security hardening, responsive end-to-end coverage and release operations.

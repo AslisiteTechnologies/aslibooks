@@ -21,6 +21,15 @@ export type GeneralLedgerResult = {
   entries: Array<{ journalId: string; description: string; postedAt: string; debitPaise: number; creditPaise: number; runningBalancePaise: number }>;
   next: string | null;
 };
+export type ProfitAndLossResult = {
+  from: string; to: string; accounts: Array<{ accountId: string; code: string; name: string; type: string; balancePaise: number }>;
+  totalIncomePaise: number; totalExpensesPaise: number; netProfitPaise: number;
+};
+export type BalanceSheetResult = {
+  asOf: string; accounts: Array<{ accountId: string; code: string; name: string; type: string; balancePaise: number }>;
+  totalAssetsPaise: number; totalLiabilitiesPaise: number; totalEquityPaise: number;
+  currentEarningsPaise: number; liabilitiesAndEquityPaise: number; balanced: boolean;
+};
 
 async function jsonRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
@@ -71,6 +80,12 @@ export const api = {
   trialBalance: (org: string, asOf: string) => jsonRequest<{
     asOf: string; accounts: TrialBalanceRow[]; debitTotalPaise: number; creditTotalPaise: number; balanced: boolean;
   }>(`/api/organizations/${org}/reports/trial-balance?asOf=${encodeURIComponent(asOf)}`),
+  profitAndLoss: (org: string, to: string) => jsonRequest<ProfitAndLossResult>(
+    `/api/organizations/${org}/reports/profit-and-loss?to=${encodeURIComponent(to)}`,
+  ),
+  balanceSheet: (org: string, asOf: string) => jsonRequest<BalanceSheetResult>(
+    `/api/organizations/${org}/reports/balance-sheet?asOf=${encodeURIComponent(asOf)}`,
+  ),
   generalLedger: (org: string, accountId: string, from: string, to: string, after = '') => {
     const query = new URLSearchParams({ accountId, ...(from ? { from } : {}), ...(to ? { to } : {}), ...(after ? { after } : {}) });
     return jsonRequest<GeneralLedgerResult>(`/api/organizations/${org}/reports/general-ledger?${query}`);

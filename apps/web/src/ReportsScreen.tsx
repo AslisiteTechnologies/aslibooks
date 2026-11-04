@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
-import { api, type Account, type GeneralLedgerResult, type Organization, type TrialBalanceRow } from './api';
+import { api, type Account, type BalanceSheetResult, type GeneralLedgerResult, type Organization, type ProfitAndLossResult, type TrialBalanceRow } from './api';
 
 function todayInIndia() {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
@@ -15,6 +15,8 @@ function money(paise: number) {
 export function ReportsScreen({ organization }: { organization: Organization }) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [trialBalance, setTrialBalance] = useState<TrialBalanceRow[]>([]);
+  const [profitLoss, setProfitLoss] = useState<ProfitAndLossResult | null>(null);
+  const [balanceSheet, setBalanceSheet] = useState<BalanceSheetResult | null>(null);
   const [trialTotals, setTrialTotals] = useState({ debit: 0, credit: 0, balanced: true });
   const [asOf, setAsOf] = useState(todayInIndia());
   const [accountId, setAccountId] = useState('');
@@ -30,7 +32,10 @@ export function ReportsScreen({ organization }: { organization: Organization }) 
     async function load() {
       setLoading(true); setError('');
       try {
-        const [firstPage, trial] = await Promise.all([api.accounts(organization.id), api.trialBalance(organization.id, asOf)]);
+        const [firstPage, trial, pnl, balance] = await Promise.all([
+          api.accounts(organization.id), api.trialBalance(organization.id, asOf),
+          api.profitAndLoss(organization.id, asOf), api.balanceSheet(organization.id, asOf),
+        ]);
         const all = [...firstPage.accounts];
         let cursor = firstPage.next;
         while (cursor) { const page = await api.accounts(organization.id, cursor); all.push(...page.accounts); cursor = page.next; }
@@ -40,6 +45,8 @@ export function ReportsScreen({ organization }: { organization: Organization }) 
           setAccountId(id => all.some(account => account.id === id && account.active) ? id : defaultAccount);
           setTrialBalance(trial.accounts);
           setTrialTotals({ debit: trial.debitTotalPaise, credit: trial.creditTotalPaise, balanced: trial.balanced });
+          setProfitLoss(pnl);
+          setBalanceSheet(balance);
         }
       } catch (cause) { if (current) setError(cause instanceof Error ? cause.message : 'Reports could not be loaded.'); }
       finally { if (current) setLoading(false); }
@@ -79,6 +86,27 @@ export function ReportsScreen({ organization }: { organization: Organization }) 
           </Stack>}
       </Stack>
     </Paper>
+    {profitLoss && <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
+      <Stack spacing={1.5}>
+        <Typography variant="h6">Profit and loss</Typography>
+        <Typography color="text.secondary">{profitLoss.from} through {profitLoss.to} · current fiscal year</Typography>
+        {profitLoss.accounts.map(row => <Stack key={row.accountId} direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between">
+          <Typography>{row.code} · {row.name} · {row.type}</Typography><Typography>{money(row.balancePaise)}</Typography>
+        </Stack>)}
+        <Typography>Total income {money(profitLoss.totalIncomePaise)} · Expenses {money(profitLoss.totalExpensesPaise)} · Net profit {money(profitLoss.netProfitPaise)}</Typography>
+      </Stack>
+    </Paper>}
+    {balanceSheet && <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
+      <Stack spacing={1.5}>
+        <Typography variant="h6">Balance sheet</Typography>
+        <Typography color="text.secondary">As of {balanceSheet.asOf}; current year earnings are included in equity.</Typography>
+        {balanceSheet.accounts.map(row => <Stack key={row.accountId} direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between">
+          <Typography>{row.code} · {row.name} · {row.type}</Typography><Typography>{money(row.balancePaise)}</Typography>
+        </Stack>)}
+        <Typography>Assets {money(balanceSheet.totalAssetsPaise)} · Liabilities {money(balanceSheet.totalLiabilitiesPaise)} · Equity {money(balanceSheet.totalEquityPaise)} · Current earnings {money(balanceSheet.currentEarningsPaise)}</Typography>
+        <Typography color={balanceSheet.balanced ? 'success.main' : 'error.main'}>{balanceSheet.balanced ? 'Balance sheet balances' : 'Balance sheet out of balance'}</Typography>
+      </Stack>
+    </Paper>}
     <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
       <Stack spacing={2}>
         <Typography variant="h6">General ledger</Typography>

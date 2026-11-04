@@ -58,9 +58,11 @@ def test_chart():
             page.get_by_role("button", name="Reports", exact=True).click()
             expect(page.get_by_role("heading", name="Trial balance")).to_be_visible()
             expect(page.get_by_text("Balanced", exact=True)).to_be_visible()
+            expect(page.get_by_text("Net profit ₹0.00", exact=False)).to_be_visible()
+            expect(page.get_by_text("Balance sheet balances", exact=True)).to_be_visible()
             page.get_by_role("button", name="Load ledger").click()
             expect(page.get_by_text("Opening cash entry", exact=False)).to_be_visible()
-            print("Verified signup, account lifecycle, mobile navigation, journal approval, trial balance and general ledger")
+            print("Verified signup, account lifecycle, mobile navigation, journal approval, trial balance, P&L, balance sheet and general ledger")
         finally:
             browser.close()
 
