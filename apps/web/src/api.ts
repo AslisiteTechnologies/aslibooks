@@ -14,6 +14,13 @@ export type Product = { _id: string; code: string; name: string; description?: s
 export type Journal = { id: string; description: string; postedAt: string; reversalOf: string | null; lineCount: number };
 export type JournalDetail = Omit<Journal, 'lineCount'> & { lines: Array<{ accountId: string; debitPaise: number; creditPaise: number }> };
 export type JournalInput = { idempotencyKey: string; description: string; lines: Array<{ accountId: string; debitPaise: number; creditPaise: number }> };
+export type TrialBalanceRow = { accountId: string; code: string; name: string; type: string; debitBalancePaise: number; creditBalancePaise: number };
+export type GeneralLedgerResult = {
+  account: { id: string; code: string; name: string; type: string; normalSide: 'debit' | 'credit' };
+  from: string; to: string; openingBalancePaise: number;
+  entries: Array<{ journalId: string; description: string; postedAt: string; debitPaise: number; creditPaise: number; runningBalancePaise: number }>;
+  next: string | null;
+};
 
 async function jsonRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
@@ -61,6 +68,13 @@ export const api = {
     jsonRequest<{ journalId: string; replayed: boolean }>(`/api/organizations/${org}/journals/${id}/reversals`, {
       method: 'POST', body: JSON.stringify(input),
     }),
+  trialBalance: (org: string, asOf: string) => jsonRequest<{
+    asOf: string; accounts: TrialBalanceRow[]; debitTotalPaise: number; creditTotalPaise: number; balanced: boolean;
+  }>(`/api/organizations/${org}/reports/trial-balance?asOf=${encodeURIComponent(asOf)}`),
+  generalLedger: (org: string, accountId: string, from: string, to: string, after = '') => {
+    const query = new URLSearchParams({ accountId, ...(from ? { from } : {}), ...(to ? { to } : {}), ...(after ? { after } : {}) });
+    return jsonRequest<GeneralLedgerResult>(`/api/organizations/${org}/reports/general-ledger?${query}`);
+  },
   session: () => jsonRequest<SessionResponse>('/api/auth/get-session'),
   signIn: (email: string, password: string) => jsonRequest<unknown>('/api/auth/sign-in/email', {
     method: 'POST', body: JSON.stringify({ email, password }),

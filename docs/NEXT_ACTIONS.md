@@ -2,7 +2,7 @@
 
 ## Current checkpoint
 
-Branch `develop/phase-1-foundation`. Published fiscal-period checkpoint `2f0125ad65944878732ba29b150bd56b72b38c44`; CI #188 and MongoDB #125 succeeded. Manual journal endpoints and MUI workflow are the active local slice. Do not rewrite history or force-update the branch. Preserve the untracked `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md` supplied by the owner.
+Branch `develop/phase-1-foundation`. Published journal checkpoint `99666a04eb523438964d76c8b65773004517126c`; CI #190 and MongoDB #127 succeeded. General ledger and trial balance API/UI are the active local slice. Do not rewrite history or force-update the branch. Preserve the untracked `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md` supplied by the owner.
 
 ## Verify current changes
 
@@ -12,10 +12,10 @@ Branch `develop/phase-1-foundation`. Published fiscal-period checkpoint `2f0125a
 
 ## Next implementation sequence
 
-1. General ledger and trial balance read APIs, exact seeded balance assertions and connected screens.
-2. Account starter chart, controlled opening balances and organization fiscal settings.
+1. Finish full verification and publish the general ledger and trial balance slice.
+2. Add P&L and balance sheet that reconcile to the trial balance; add starter accounts and controlled opening balances.
 3. Contact edit/details, invoice draft and issue lifecycle with transactional source journal and number sequencing.
-4. Bill/expense workflows, receipts/payments and allocations; then reports reconciling to ledger.
+4. Bill/expense workflows, receipts/payments and allocations; then aged receivables/payables and exports.
 5. Tax-ready data structures with reviewed validation only, security hardening, responsive end-to-end coverage and release operations.
 
 No production deploy, merge to `main`, real customer data use or compliance claim is authorized by the development request.

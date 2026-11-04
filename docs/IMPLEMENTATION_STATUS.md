@@ -14,7 +14,7 @@ Status verified on 2026-11-04 from the local checkout `develop/phase-1-foundatio
 | Sales invoices | Missing | No draft/issue lifecycle, numbering, tax line model, receivables journal, print/PDF, credit notes or receipt allocation. |
 | Purchases and expenses | Missing | No bill lifecycle, expense workflow, payable journal, attachments or vendor settlement. |
 | Receipts, payments and banking | Missing | No allocation, transfer, import, duplicate detection or reconciliation workflows. |
-| General ledger and reports | Missing | No journal HTTP read/detail, ledger aggregation, trial balance, P&L, balance sheet or audited exports. |
+| General ledger and reports | Partial | Tenant-scoped general ledger with India-local date filters, account-normal running balance and cursor pagination; trial balance aggregates posted journals and checks debit/credit equality. Connected reports screen. P&L, balance sheet, aged reports and exports remain. |
 | GST | Missing | No reviewed calculation/rate rules. Do not claim GST compliance. |
 | AI assistance | Missing | No draft/explain/review workflow. Any future AI must require explicit human approval before posting. |
 | Browser/mobile | Partial | Responsive web shell and auth/onboarding, account, contact and product screens. Playwright smoke remains unverified; there is no mobile app workspace. |

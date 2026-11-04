@@ -54,7 +54,13 @@ def test_chart():
             expect(page.get_by_text("Journal posted and recorded in the audit trail.")).to_be_visible()
             page.get_by_role("button", name="View details").click()
             expect(page.get_by_text("CASH · Cash on hand — Debit ₹125.00 / Credit ₹0.00")).to_be_visible()
-            print("Verified signup, onboarding, account lifecycle, mobile navigation and human-confirmed journal posting")
+            page.get_by_role("button", name="Open navigation").click()
+            page.get_by_role("button", name="Reports", exact=True).click()
+            expect(page.get_by_role("heading", name="Trial balance")).to_be_visible()
+            expect(page.get_by_text("Balanced", exact=True)).to_be_visible()
+            page.get_by_role("button", name="Load ledger").click()
+            expect(page.get_by_text("Opening cash entry", exact=False)).to_be_visible()
+            print("Verified signup, account lifecycle, mobile navigation, journal approval, trial balance and general ledger")
         finally:
             browser.close()
 
