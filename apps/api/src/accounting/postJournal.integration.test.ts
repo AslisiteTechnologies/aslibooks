@@ -135,6 +135,19 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
     await expect(JournalModel.findOneAndUpdate({ _id: id }, {
       $set: { 'lines.0.debitPaise': 1 },
     })).rejects.toThrow('Posted journals are immutable');
+    await expect(JournalModel.updateMany({ _id: id }, {
+      $set: { description: 'Mass tamper' },
+    })).rejects.toThrow('Posted journals are immutable');
+    await expect(JournalModel.replaceOne({ _id: id }, {
+      organizationId: orgA,
+      idempotencyKey: command.idempotencyKey,
+      currency: 'INR',
+      description: 'Replacement tamper',
+      lines: command.lines,
+      postedAt: new Date(),
+    })).rejects.toThrow('Posted journals are immutable');
+    await expect(JournalModel.findOneAndDelete({ _id: id }))
+      .rejects.toThrow('Posted journals are immutable');
     await expect(JournalModel.deleteOne({ _id: id }))
       .rejects.toThrow('Posted journals are immutable');
     posted!.description = 'Tampered through save';
