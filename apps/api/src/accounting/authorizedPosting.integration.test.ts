@@ -327,6 +327,41 @@ describe.skipIf(!enabled)('authorized ledger posting integration', () => {
     }
   });
 
+  it('keeps concurrent authorized idempotent postings to one journal and audit event', async () => {
+    const key = `authorized-concurrent:${suffix}`;
+    const requests = await Promise.allSettled(Array.from({ length: 4 }, () =>
+      postAuthorizedJournal(actor, { ...input, idempotencyKey: key }),
+    ));
+    const journals = await JournalModel.find({ organizationId: org, idempotencyKey: key });
+    expect(journals).toHaveLength(1);
+    const id = String(journals[0]._id);
+    expect(await AuditEventModel.countDocuments({
+      organizationId: org, resourceId: id, action: 'journal.posted',
+    })).toBe(1);
+    for (const request of requests) {
+      if (request.status === 'fulfilled') expect(request.value.journalId).toBe(id);
+    }
+    // Even if competing transactions return retryable conflicts, a later
+    // authorized replay must return the single committed journal.
+    expect(await postAuthorizedJournal(actor, {
+      ...input, idempotencyKey: key,
+    })).toEqual({ journalId: id, replayed: true });
+  });
+
+  it('rejects an authorized idempotency-key collision without another audit event', async () => {
+    const key = `authorized-collision:${suffix}`;
+    const first = await postAuthorizedJournal(actor, { ...input, idempotencyKey: key });
+    await expect(postAuthorizedJournal(actor, {
+      ...input, idempotencyKey: key, description: 'Different accounting event',
+    })).rejects.toMatchObject({ code: 'CONFLICT' });
+    expect(await JournalModel.countDocuments({
+      organizationId: org, idempotencyKey: key,
+    })).toBe(1);
+    expect(await AuditEventModel.countDocuments({
+      organizationId: org, resourceId: first.journalId, action: 'journal.posted',
+    })).toBe(1);
+  });
+
   it('aborts a stale membership-fenced transaction when suspension wins', async () => {
     // A transaction that started before revocation must not use its stale
     // snapshot to post after revocation has committed.
