@@ -32,6 +32,8 @@ journalSchema.pre('replaceOne', rejectJournalMutation);
 journalSchema.pre('findOneAndReplace', rejectJournalMutation);
 journalSchema.pre('deleteOne', rejectJournalMutation);
 journalSchema.pre('findOneAndDelete', rejectJournalMutation);
+// Bulk writes can bypass query middleware; disallow them on the journal model.
+journalSchema.pre('bulkWrite', rejectJournalMutation);
 journalSchema.index({ organizationId: 1, idempotencyKey: 1 }, { unique: true });
 journalSchema.index({ organizationId: 1, postedAt: -1 });
 // One reversal per original journal, scoped to its organization.
