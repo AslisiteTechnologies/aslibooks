@@ -6,7 +6,7 @@ import { PostingError } from '../accounting/postJournal.js';
 import { AccountModel, markPostingAccounts } from '../models/account.js';
 import { AuditEventModel } from '../models/auditEvent.js';
 import { ContactModel } from '../models/contact.js';
-import { InvoiceModel, InvoiceSequenceModel } from '../models/invoice.js';
+import { CreditNoteModel, InvoiceModel, InvoiceSequenceModel } from '../models/invoice.js';
 import { JournalModel } from '../models/journal.js';
 import { ProductModel } from '../models/product.js';
 import { OrganizationModel } from '../models/organization.js';
@@ -16,6 +16,7 @@ const lineInput = z.strictObject({ productId: z.string().regex(/^[a-f\d]{24}$/i)
 const invoiceInput = z.strictObject({ customerId: z.string().regex(/^[a-f\d]{24}$/i), lines: z.array(lineInput).min(1).max(50), dueDate: z.string().date().optional() });
 const pageQuery = z.strictObject({ after: z.string().regex(/^[a-f\d]{24}$/i).optional(), limit: z.string().regex(/^\d{1,3}$/).optional() });
 const issueInput = z.strictObject({ idempotencyKey: z.string().regex(/^[a-zA-Z0-9:_-]{8,128}$/) });
+const creditNoteInput = z.strictObject({ idempotencyKey: z.string().regex(/^[a-zA-Z0-9:_-]{8,128}$/), amountPaise: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER), reason: z.string().trim().min(3).max(500) });
 
 class InvoiceError extends Error {
   constructor(readonly status: number, message: string) { super(message); }
@@ -51,6 +52,7 @@ export function invoiceRouter() {
   router.get('/:invoiceId', getInvoice);
   router.patch('/:invoiceId', writeDraft);
   router.post('/:invoiceId/issue', issueInvoice);
+  router.post('/:invoiceId/credit-notes', issueCreditNote);
   return router;
 }
 
@@ -61,10 +63,11 @@ const listInvoices: RequestHandler = async (req, res) => {
   if (!parsed.success) { res.status(400).json({ error: 'Invalid invoice cursor' }); return; }
   const limit = Math.min(Number(parsed.data.limit) || 50, 100);
   const rows = await InvoiceModel.find({ organizationId, ...(parsed.data.after ? { _id: { $lt: new Types.ObjectId(parsed.data.after) } } : {}) })
-    .sort({ _id: -1 }).limit(limit + 1).select('customerName status totalPaise amountPaidPaise invoiceNumber dueDate issuedAt createdAt').lean();
+    .sort({ _id: -1 }).limit(limit + 1).select('customerName status totalPaise amountPaidPaise amountCreditedPaise invoiceNumber dueDate issuedAt createdAt').lean();
   const today = indiaDateString(new Date());
   const invoices = rows.slice(0, limit).map(invoice => ({ ...invoice,
-    overdue: (invoice.status === 'issued' || invoice.status === 'partially_paid') && !!invoice.dueDate && invoice.dueDate < today,
+    amountCreditedPaise: invoice.amountCreditedPaise ?? 0,
+    overdue: ['issued', 'partially_paid', 'partially_credited'].includes(invoice.status) && !!invoice.dueDate && invoice.dueDate < today,
     id: String(invoice._id), _id: undefined,
   }));
   res.json({ invoices, next: rows.length > limit ? String(rows[limit - 1]._id) : null });
@@ -189,5 +192,68 @@ const issueInvoice: RequestHandler = async (req, res) => {
     if (error instanceof PostingError) { res.status(error.code === 'PERIOD_CLOSED' ? 409 : 422).json({ error: error.message }); return; }
     if (error instanceof Error && 'code' in error && error.code === 11000) { res.status(409).json({ error: 'Invoice numbering or idempotency conflict; retry with the same issue key' }); return; }
     res.status(500).json({ error: 'Invoice could not be issued' });
+  }
+};
+
+const issueCreditNote: RequestHandler = async (req, res) => {
+  const { organizationId, authUserId } = res.locals;
+  const invoiceId = req.params.invoiceId;
+  if (typeof invoiceId !== 'string' || !Types.ObjectId.isValid(invoiceId)) { res.status(400).json({ error: 'Invalid invoice ID' }); return; }
+  if (!req.is('application/json')) { res.status(415).json({ error: 'Send JSON credit note data' }); return; }
+  const parsed = creditNoteInput.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: 'Provide a valid idempotency key, positive amount and credit reason' }); return; }
+  try {
+    const result = await mongoose.connection.transaction(async session => {
+      if (!await fenceLedgerPermission(authUserId, String(organizationId), session)) throw new InvoiceError(403, 'Credit notes require posting permission');
+      const prior = await CreditNoteModel.findOne({ organizationId, idempotencyKey: parsed.data.idempotencyKey }).session(session);
+      if (prior) {
+        if (String(prior.invoiceId) !== invoiceId.toLowerCase() || prior.amountPaise !== parsed.data.amountPaise || prior.reason !== parsed.data.reason.trim()) {
+          throw new InvoiceError(409, 'Credit note key was already used with different details');
+        }
+        return { id: String(prior._id), journalId: String(prior.journalId), replayed: true as const };
+      }
+      const invoice = await InvoiceModel.findOne({ _id: invoiceId, organizationId }).session(session);
+      if (!invoice) throw new InvoiceError(404, 'Invoice not found');
+      if (!['issued', 'partially_paid', 'partially_credited'].includes(invoice.status)) throw new InvoiceError(409, 'Only issued invoices with an outstanding balance can receive a credit note');
+      const outstanding = invoice.totalPaise - invoice.amountPaidPaise - invoice.amountCreditedPaise;
+      if (parsed.data.amountPaise > outstanding) throw new InvoiceError(409, 'Credit note exceeds the unpaid invoice balance');
+      await assertPostingPeriodOpen(organizationId, session);
+      const [receivable, income] = await Promise.all([
+        AccountModel.findOne({ organizationId, code: '1100', type: 'asset', active: true }).session(session),
+        AccountModel.findOne({ organizationId, code: '4000', type: 'income', active: true }).session(session),
+      ]);
+      if (!receivable || !income) throw new InvoiceError(422, 'Keep receivables 1100 and sales income 4000 active before issuing credit notes');
+      const lines = [
+        { accountId: String(income._id), debitPaise: parsed.data.amountPaise, creditPaise: 0 },
+        { accountId: String(receivable._id), debitPaise: 0, creditPaise: parsed.data.amountPaise },
+      ];
+      if (!await markPostingAccounts(organizationId, lines, session)) throw new InvoiceError(422, 'Credit note control accounts became unavailable');
+      const noteId = new Types.ObjectId();
+      const [journal] = await JournalModel.create([{
+        organizationId, idempotencyKey: `credit-note:${parsed.data.idempotencyKey}`, currency: 'INR',
+        description: `Credit note for ${invoice.invoiceNumber} — ${invoice.customerName}`,
+        lines: lines.map(line => ({ accountId: new Types.ObjectId(line.accountId), debitPaise: line.debitPaise, creditPaise: line.creditPaise })), postedAt: new Date(),
+      }], { session });
+      await CreditNoteModel.create([{
+        _id: noteId, organizationId, invoiceId: invoice._id, invoiceNumber: invoice.invoiceNumber!, customerName: invoice.customerName,
+        amountPaise: parsed.data.amountPaise, reason: parsed.data.reason.trim(), idempotencyKey: parsed.data.idempotencyKey,
+        journalId: journal._id, issuedAt: new Date(),
+      }], { session });
+      invoice.amountCreditedPaise = (invoice.amountCreditedPaise ?? 0) + parsed.data.amountPaise;
+      invoice.status = invoice.amountPaidPaise + invoice.amountCreditedPaise === invoice.totalPaise
+        ? 'credited' : 'partially_credited';
+      await invoice.save({ session });
+      await AuditEventModel.create([
+        { organizationId, actorAuthUserId: authUserId, action: 'journal.posted', resourceType: 'journal', resourceId: String(journal._id) },
+        { organizationId, actorAuthUserId: authUserId, action: 'credit_note.issued', resourceType: 'credit_note', resourceId: String(noteId) },
+      ], { session, ordered: true });
+      return { id: String(noteId), journalId: String(journal._id), replayed: false as const };
+    });
+    res.status(result.replayed ? 200 : 201).json(result);
+  } catch (error) {
+    if (error instanceof InvoiceError) { res.status(error.status).json({ error: error.message }); return; }
+    if (error instanceof PostingError) { res.status(error.code === 'PERIOD_CLOSED' ? 409 : 422).json({ error: error.message }); return; }
+    if (error instanceof Error && 'code' in error && error.code === 11000) { res.status(409).json({ error: 'Credit note idempotency conflict; retry the original request with the same key' }); return; }
+    res.status(500).json({ error: 'Credit note could not be issued' });
   }
 };

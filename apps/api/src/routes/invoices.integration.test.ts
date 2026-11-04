@@ -6,7 +6,7 @@ import { AccountModel } from '../models/account.js';
 import { AuditEventModel } from '../models/auditEvent.js';
 import { ContactModel } from '../models/contact.js';
 import { FiscalPeriodModel } from '../models/fiscalPeriod.js';
-import { InvoiceModel, InvoiceSequenceModel } from '../models/invoice.js';
+import { CreditNoteModel, InvoiceModel, InvoiceSequenceModel } from '../models/invoice.js';
 import { JournalModel } from '../models/journal.js';
 import { MembershipModel } from '../models/membership.js';
 import { OrganizationModel } from '../models/organization.js';
@@ -43,6 +43,7 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
     await Promise.all([
       AccountModel.init(), AuditEventModel.init(), ContactModel.init(), FiscalPeriodModel.init(),
       InvoiceModel.init(), InvoiceSequenceModel.init(), JournalModel.init(), MembershipModel.init(),
+      CreditNoteModel.init(),
       OrganizationModel.init(), ProductModel.init(),
     ]);
     await OrganizationModel.create([
@@ -97,10 +98,23 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
     const replay = await request(app).post(`${path}/${draftId}/issue`).set(owner).send({ idempotencyKey: 'invoice-issue-0001' }).expect(200);
     expect(replay.body).toMatchObject({ replayed: true, journalId: issued.body.journalId, invoiceNumber: issued.body.invoiceNumber });
     await request(app).post(`${path}/${draftId}/issue`).set(owner).send({ idempotencyKey: 'invoice-issue-0002' }).expect(409);
+    const creditPath = `${path}/${draftId}/credit-notes`;
+    const creditBody = { idempotencyKey: 'invoice-credit-0001', amountPaise: 2500, reason: 'Service scope reduced' };
+    await request(app).post(creditPath).set({ 'x-fixture-actor': 'invoice-viewer' }).send(creditBody).expect(403);
+    const credit = await request(app).post(creditPath).set(owner).send(creditBody).expect(201);
+    expect(credit.body).toMatchObject({ replayed: false });
+    const creditJournal = await JournalModel.findById(credit.body.journalId).lean<{ lines: Array<{ accountId: Types.ObjectId; debitPaise: number; creditPaise: number }> } | null>();
+    expect(creditJournal?.lines.map(line => ({ accountId: String(line.accountId), debitPaise: line.debitPaise, creditPaise: line.creditPaise })))
+      .toEqual([{ accountId: String(incomeId), debitPaise: 2500, creditPaise: 0 }, { accountId: String(arId), debitPaise: 0, creditPaise: 2500 }]);
+    expect(await InvoiceModel.findById(draftId)).toMatchObject({ status: 'partially_credited', amountCreditedPaise: 2500 });
+    expect(await AuditEventModel.countDocuments({ organizationId, action: 'credit_note.issued' })).toBe(1);
+    expect(await request(app).post(creditPath).set(owner).send(creditBody).expect(200).then(response => response.body)).toMatchObject({ replayed: true, journalId: credit.body.journalId });
+    await request(app).post(creditPath).set(owner).send({ ...creditBody, amountPaise: 3000 }).expect(409);
+    await request(app).post(creditPath).set(owner).send({ ...creditBody, idempotencyKey: 'invoice-credit-0002', amountPaise: 5001 }).expect(409);
     await request(app).patch(`${path}/${draftId}`).set(owner)
       .send({ customerId: String(customerId), lines: [{ productId: String(serviceId), quantity: 1 }] }).expect(404);
     await request(app).get(`/orgs/${peerId}/invoices/${draftId}`).set({ 'x-fixture-actor': 'invoice-peer' }).expect(404);
-    expect(await JournalModel.countDocuments({ organizationId })).toBe(1);
+    expect(await JournalModel.countDocuments({ organizationId })).toBe(2);
     const postedInvoice = await InvoiceModel.findById(draftId);
     postedInvoice!.totalPaise = 1;
     await expect(postedInvoice!.save()).rejects.toThrow('Issued invoice details are immutable');

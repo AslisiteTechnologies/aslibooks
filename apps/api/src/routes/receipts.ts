@@ -75,8 +75,9 @@ export function receiptRouter() {
         for (const allocation of parsed.data.allocations) {
           const invoice = byId.get(allocation.invoiceId.toLowerCase());
           if (!invoice || String(invoice.customerId) !== firstCustomerId) throw new ReceiptError(422, 'A receipt can only allocate invoices for one customer');
-          if (invoice.status !== 'issued' && invoice.status !== 'partially_paid') throw new ReceiptError(409, 'Only issued invoices with an outstanding balance can receive payment');
-          const outstanding = invoice.totalPaise - invoice.amountPaidPaise;
+          if (!['issued', 'partially_paid', 'partially_credited'].includes(invoice.status)) throw new ReceiptError(409, 'Only issued invoices with an outstanding balance can receive payment');
+          const credited = invoice.amountCreditedPaise ?? 0;
+          const outstanding = invoice.totalPaise - invoice.amountPaidPaise - credited;
           if (allocation.amountPaise > outstanding) throw new ReceiptError(409, 'Receipt allocation exceeds the invoice outstanding balance');
           totalPaid += allocation.amountPaise;
           if (!Number.isSafeInteger(totalPaid)) throw new ReceiptError(400, 'Receipt total exceeds the supported INR range');
@@ -111,7 +112,10 @@ export function receiptRouter() {
         for (const allocation of parsed.data.allocations) {
           const invoice = byId.get(allocation.invoiceId.toLowerCase())!;
           invoice.amountPaidPaise += allocation.amountPaise;
-          invoice.status = invoice.amountPaidPaise === invoice.totalPaise ? 'paid' : 'partially_paid';
+          const totalSettled = invoice.amountPaidPaise + (invoice.amountCreditedPaise ?? 0);
+          invoice.status = totalSettled === invoice.totalPaise
+            ? (invoice.amountCreditedPaise ?? 0) > 0 ? 'credited' : 'paid'
+            : (invoice.amountCreditedPaise ?? 0) > 0 ? 'partially_credited' : 'partially_paid';
           await invoice.save({ session });
         }
         await AuditEventModel.create([

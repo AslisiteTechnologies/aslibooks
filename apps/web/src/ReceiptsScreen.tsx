@@ -26,10 +26,10 @@ export function ReceiptsScreen({ organization }: { organization: Organization })
   const [revision, setRevision] = useState(0);
   const canWrite = ['owner', 'admin', 'accountant'].includes(organization.role);
   const outstandingInvoices = useMemo(() => invoices.filter(invoice =>
-    (invoice.status === 'issued' || invoice.status === 'partially_paid') && invoice.totalPaise > invoice.amountPaidPaise,
+    ['issued', 'partially_paid', 'partially_credited'].includes(invoice.status) && invoice.totalPaise > invoice.amountPaidPaise + (invoice.amountCreditedPaise ?? 0),
   ), [invoices]);
   const selectedInvoice = outstandingInvoices.find(invoice => invoice.id === invoiceId);
-  const outstanding = selectedInvoice ? selectedInvoice.totalPaise - selectedInvoice.amountPaidPaise : 0;
+  const outstanding = selectedInvoice ? selectedInvoice.totalPaise - selectedInvoice.amountPaidPaise - (selectedInvoice.amountCreditedPaise ?? 0) : 0;
   const parsedAmount = parsePaise(amount);
 
   useEffect(() => {
@@ -39,8 +39,8 @@ export function ReceiptsScreen({ organization }: { organization: Organization })
       .then(([invoiceResult, accountResult, receiptResult]) => {
         if (!active) return;
         setInvoices(invoiceResult.invoices); setAccounts(accountResult.accounts); setReceipts(receiptResult.receipts);
-        const open = invoiceResult.invoices.find(invoice => invoice.status === 'issued' || invoice.status === 'partially_paid');
-        if (!invoiceId && open) { setInvoiceId(open.id); setAmount(((open.totalPaise - open.amountPaidPaise) / 100).toFixed(2)); }
+        const open = invoiceResult.invoices.find(invoice => ['issued', 'partially_paid', 'partially_credited'].includes(invoice.status) && invoice.totalPaise > invoice.amountPaidPaise + (invoice.amountCreditedPaise ?? 0));
+        if (!invoiceId && open) { setInvoiceId(open.id); setAmount(((open.totalPaise - open.amountPaidPaise - (open.amountCreditedPaise ?? 0)) / 100).toFixed(2)); }
         const cash = accountResult.accounts.find(account => account.active && ['1000', '1010'].includes(account.code));
         if (!cashAccountId && cash) setCashAccountId(cash.id);
       }).catch(cause => { if (active) setError(cause instanceof Error ? cause.message : 'Unable to load receipts.'); })
@@ -50,7 +50,7 @@ export function ReceiptsScreen({ organization }: { organization: Organization })
 
   function selectInvoice(id: string) {
     const selected = outstandingInvoices.find(invoice => invoice.id === id);
-    setInvoiceId(id); setAmount(selected ? ((selected.totalPaise - selected.amountPaidPaise) / 100).toFixed(2) : '');
+    setInvoiceId(id); setAmount(selected ? ((selected.totalPaise - selected.amountPaidPaise - (selected.amountCreditedPaise ?? 0)) / 100).toFixed(2) : '');
     setIdempotencyKey(''); setError('');
   }
 
@@ -85,7 +85,7 @@ export function ReceiptsScreen({ organization }: { organization: Organization })
         <Typography variant="h6">Record a customer payment</Typography>
         <TextField select required disabled={loading || saving} label="Invoice" value={invoiceId} onChange={event => selectInvoice(event.target.value)}>
           {outstandingInvoices.map(invoice => <MenuItem key={invoice.id} value={invoice.id}>
-            {invoice.invoiceNumber} · {invoice.customerName} · outstanding {formatMoney(invoice.totalPaise - invoice.amountPaidPaise)}
+            {invoice.invoiceNumber} · {invoice.customerName} · outstanding {formatMoney(invoice.totalPaise - invoice.amountPaidPaise - (invoice.amountCreditedPaise ?? 0))}
           </MenuItem>)}
         </TextField>
         <TextField select required disabled={loading || saving} label="Deposit to" value={cashAccountId} onChange={event => { setCashAccountId(event.target.value); setIdempotencyKey(''); }}>

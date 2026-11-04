@@ -19,6 +19,9 @@ export function SalesScreen({ organization }: { organization: Organization }) {
   const [saving, setSaving] = useState(false);
   const [revision, setRevision] = useState(0);
   const [toIssue, setToIssue] = useState<Invoice | null>(null);
+  const [toCredit, setToCredit] = useState<Invoice | null>(null);
+  const [creditAmount, setCreditAmount] = useState('');
+  const [creditReason, setCreditReason] = useState('');
   const [printInvoice, setPrintInvoice] = useState<InvoiceDocument | null>(null);
   const [documentError, setDocumentError] = useState('');
   const canWrite = ['owner', 'admin', 'accountant'].includes(organization.role);
@@ -66,6 +69,20 @@ export function SalesScreen({ organization }: { organization: Organization }) {
     finally { setSaving(false); }
   }
 
+  async function issueCredit(invoice: Invoice) {
+    const match = /^(\d{1,12})(?:\.(\d{1,2}))?$/.exec(creditAmount.trim());
+    const paise = match ? Number(match[1]) * 100 + Number((match[2] || '').padEnd(2, '0')) : NaN;
+    const outstanding = invoice.totalPaise - invoice.amountPaidPaise - (invoice.amountCreditedPaise ?? 0);
+    if (!Number.isSafeInteger(paise) || paise <= 0 || paise > outstanding || creditReason.trim().length < 3) { setError('Enter a positive credit no greater than the unpaid amount and a reason.'); return; }
+    setSaving(true); setError(''); setNotice('');
+    try {
+      await api.issueCreditNote(organization.id, invoice.id, { idempotencyKey: `credit-note:${invoice.id}:${invoice.amountCreditedPaise ?? 0}:${paise}`, amountPaise: paise, reason: creditReason.trim() });
+      setNotice(`Credit note issued for ${formatMoney(paise)}. Accounts receivable and sales income were adjusted.`);
+      setToCredit(null); setCreditAmount(''); setCreditReason(''); setRevision(value => value + 1);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Credit note could not be issued.'); }
+    finally { setSaving(false); }
+  }
+
   async function loadInvoiceDocument(invoice: Invoice) {
     setDocumentError('');
     try { setPrintInvoice((await api.invoice(organization.id, invoice.id)).invoice); }
@@ -77,7 +94,8 @@ export function SalesScreen({ organization }: { organization: Organization }) {
     const popup = window.open('', '_blank');
     if (!popup) { setDocumentError('Allow pop-ups to print this invoice.'); return; }
     const rows = printInvoice.lines.map(line => `<tr><td>${escapeHtml(line.name)}</td><td>${line.quantity}</td><td>${formatMoney(line.unitPricePaise)}</td><td>${formatMoney(line.lineTotalPaise)}</td></tr>`).join('');
-    popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(printInvoice.invoiceNumber)}</title><style>body{font:14px Arial,sans-serif;color:#17202a;margin:40px}h1{margin-bottom:4px}.muted{color:#5d6875}table{width:100%;border-collapse:collapse;margin-top:28px}th,td{padding:10px;border-bottom:1px solid #d7dce1;text-align:left}td:nth-child(n+2),th:nth-child(n+2){text-align:right}.total{text-align:right;margin-top:24px;font-size:18px}.notice{margin-top:36px;color:#5d6875}</style></head><body><h1>Invoice ${escapeHtml(printInvoice.invoiceNumber)}</h1><div class="muted">${escapeHtml(organization.name)}</div><p>Bill to: <strong>${escapeHtml(printInvoice.customerName)}</strong><br>Issued: ${printInvoice.issuedAt ? escapeHtml(new Date(printInvoice.issuedAt).toLocaleDateString('en-IN')) : '—'}<br>Due: ${printInvoice.dueDate ? escapeHtml(printInvoice.dueDate) : '—'}</p><table><thead><tr><th>Service</th><th>Quantity</th><th>Rate</th><th>Amount</th></tr></thead><tbody>${rows}</tbody></table><div class="total">Total: <strong>${formatMoney(printInvoice.totalPaise)}</strong><br>Paid: ${formatMoney(printInvoice.amountPaidPaise)}<br>Balance due: <strong>${formatMoney(printInvoice.totalPaise - printInvoice.amountPaidPaise)}</strong></div><p class="notice">Service invoice. Tax is not included in this document.</p><script>window.onload=()=>window.print()</script></body></html>`);
+    const credited = printInvoice.amountCreditedPaise ?? 0;
+    popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(printInvoice.invoiceNumber)}</title><style>body{font:14px Arial,sans-serif;color:#17202a;margin:40px}h1{margin-bottom:4px}.muted{color:#5d6875}table{width:100%;border-collapse:collapse;margin-top:28px}th,td{padding:10px;border-bottom:1px solid #d7dce1;text-align:left}td:nth-child(n+2),th:nth-child(n+2){text-align:right}.total{text-align:right;margin-top:24px;font-size:18px}.notice{margin-top:36px;color:#5d6875}</style></head><body><h1>Invoice ${escapeHtml(printInvoice.invoiceNumber)}</h1><div class="muted">${escapeHtml(organization.name)}</div><p>Bill to: <strong>${escapeHtml(printInvoice.customerName)}</strong><br>Issued: ${printInvoice.issuedAt ? escapeHtml(new Date(printInvoice.issuedAt).toLocaleDateString('en-IN')) : '—'}<br>Due: ${printInvoice.dueDate ? escapeHtml(printInvoice.dueDate) : '—'}</p><table><thead><tr><th>Service</th><th>Quantity</th><th>Rate</th><th>Amount</th></tr></thead><tbody>${rows}</tbody></table><div class="total">Total: <strong>${formatMoney(printInvoice.totalPaise)}</strong><br>Credits: ${formatMoney(credited)}<br>Paid: ${formatMoney(printInvoice.amountPaidPaise)}<br>Balance due: <strong>${formatMoney(printInvoice.totalPaise - printInvoice.amountPaidPaise - credited)}</strong></div><p class="notice">Service invoice. Tax is not included in this document.</p><script>window.onload=()=>window.print()</script></body></html>`);
     popup.document.close();
   }
 
@@ -110,10 +128,11 @@ export function SalesScreen({ organization }: { organization: Organization }) {
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
         <Stack spacing={0.5}>
           <Typography variant="h6">{invoice.invoiceNumber || 'Draft invoice'} · {invoice.customerName}</Typography>
-          <Typography>{invoice.status}{invoice.dueDate ? ` · due ${invoice.dueDate}` : ''}{invoice.overdue ? ' · overdue' : ''} · {formatMoney(invoice.totalPaise)}</Typography>
+          <Typography>{invoice.status}{invoice.dueDate ? ` · due ${invoice.dueDate}` : ''}{invoice.overdue ? ' · overdue' : ''} · {formatMoney(invoice.totalPaise - (invoice.amountCreditedPaise ?? 0))} balance before receipts</Typography>
         </Stack>
         {canWrite && invoice.status === 'draft' && <Button onClick={() => setToIssue(invoice)}>Review and issue</Button>}
         {invoice.status !== 'draft' && <Button onClick={() => void loadInvoiceDocument(invoice)}>Print invoice</Button>}
+        {canWrite && ['issued', 'partially_paid', 'partially_credited'].includes(invoice.status) && invoice.totalPaise > invoice.amountPaidPaise + (invoice.amountCreditedPaise ?? 0) && <Button onClick={() => { setToCredit(invoice); setCreditAmount(((invoice.totalPaise - invoice.amountPaidPaise - (invoice.amountCreditedPaise ?? 0)) / 100).toFixed(2)); }}>Issue credit note</Button>}
       </Stack>
     </Paper>)}
     <Dialog open={!!toIssue} onClose={() => { if (!saving) setToIssue(null); }}>
@@ -125,6 +144,15 @@ export function SalesScreen({ organization }: { organization: Organization }) {
         <Button disabled={saving} onClick={() => setToIssue(null)}>Keep as draft</Button>
         <Button disabled={saving} variant="contained" onClick={() => { if (toIssue) void issue(toIssue); }}>Confirm and issue</Button>
       </DialogActions>
+    </Dialog>
+    <Dialog open={!!toCredit} onClose={() => { if (!saving) setToCredit(null); }}>
+      <DialogTitle>Review credit note</DialogTitle>
+      <DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
+        <DialogContentText>{toCredit && `${toCredit.invoiceNumber} · ${toCredit.customerName}. This adjusts sales income and accounts receivable. It does not issue a cash refund.`}</DialogContentText>
+        <TextField required label="Credit amount (INR)" type="number" inputProps={{ min: '0.01', step: '0.01' }} value={creditAmount} onChange={event => setCreditAmount(event.target.value)} />
+        <TextField required label="Reason" value={creditReason} inputProps={{ maxLength: 500 }} onChange={event => setCreditReason(event.target.value)} />
+      </Stack></DialogContent>
+      <DialogActions><Button disabled={saving} onClick={() => setToCredit(null)}>Cancel</Button><Button disabled={saving} variant="contained" onClick={() => { if (toCredit) void issueCredit(toCredit); }}>Confirm and issue</Button></DialogActions>
     </Dialog>
     <Dialog open={!!printInvoice} onClose={() => setPrintInvoice(null)} fullWidth maxWidth="sm">
       <DialogTitle>Invoice {printInvoice?.invoiceNumber}</DialogTitle>

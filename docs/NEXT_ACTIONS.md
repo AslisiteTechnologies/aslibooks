@@ -2,11 +2,11 @@
 
 ## Current checkpoint
 
-Branch `develop/phase-1-foundation`. Customer receipt `b0f0f8793d3b4df244deefa3d7f0e939c9c3fb54` passed CI #200/MongoDB #137; vendor bill `1b96e1ccf424d81d5607c5faf095fde974cefd31` passed CI #202/MongoDB #139; vendor payment `ea27dd901c61452632bd647bd17f2709870fb870` passed CI #204/MongoDB #141; opening balances `d2794925635f7dc3aa0867737ed1f9d075ddd5e9` passed CI #206/MongoDB #143; settings `0b37dd02e819e2d5396aa683c6da7834ab53e702` passed CI #208/MongoDB #145; due-date/aging `3458330caa70f9bcf63fa84860452c84992e6f06` passed CI #210/MongoDB #147; printable invoices `e2b787e7aba03ff3e18155c5615137b6b3e70a71` passed CI #212/MongoDB #149. The printable invoice browser flow passed. Control-account reconciliation is implemented and verified by the full 84 API/5 accounting suite, typecheck/lint/build and 390px Playwright; next implement invoice/vendor credit notes with atomic journal, allocation, audit and idempotency behavior. Preserve untracked `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`; never stage it.
+Branch `develop/phase-1-foundation`. Customer receipt `b0f0f8793d3b4df244deefa3d7f0e939c9c3fb54` passed CI #200/MongoDB #137; vendor bill `1b96e1ccf424d81d5607c5faf095fde974cefd31` passed CI #202/MongoDB #139; vendor payment `ea27dd901c61452632bd647bd17f2709870fb870` passed CI #204/MongoDB #141; opening balances `d2794925635f7dc3aa0867737ed1f9d075ddd5e9` passed CI #206/MongoDB #143; settings `0b37dd02e819e2d5396aa683c6da7834ab53e702` passed CI #208/MongoDB #145; due-date/aging `3458330caa70f9bcf63fa84860452c84992e6f06` passed CI #210/MongoDB #147; printable invoices `e2b787e7aba03ff3e18155c5615137b6b3e70a71` passed CI #212/MongoDB #149; AR/AP reconciliation `36e448433555f32aa38019085fd6b2435a712059` passed CI #214/MongoDB #151. Reconciliation passed the full 84 API/5 accounting suite, typecheck/lint/build and 390px Playwright. Invoice credit notes now pass their atomic journal, audit, replay, permission, over-credit and full browser receipt/reconciliation flows. Next: finish vendor credits, then CSV exports and security/release gaps. Preserve untracked `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`; never stage it.
 
 ## Next implementation task after aging summaries
 
-Add and verify control-account reconciliation, then invoice and vendor credit workflows, exports and remaining security/release work. Keep tax-free posting until reviewed GST mechanics exist.
+Add and verify vendor credits, CSV exports and remaining security/release work. Keep tax-free posting until reviewed GST mechanics exist.
 
 ## Local verification commands
 

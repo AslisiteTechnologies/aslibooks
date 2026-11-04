@@ -13,11 +13,12 @@ const invoiceSchema = new Schema({
   organizationId: { type: Schema.Types.ObjectId, required: true, immutable: true },
   customerId: { type: Schema.Types.ObjectId, required: true },
   customerName: { type: String, required: true, maxlength: 160 },
-  status: { type: String, enum: ['draft', 'issued', 'partially_paid', 'paid'], required: true, default: 'draft' },
+  status: { type: String, enum: ['draft', 'issued', 'partially_paid', 'paid', 'partially_credited', 'credited'], required: true, default: 'draft' },
   lines: { type: [invoiceLineSchema], required: true },
   totalPaise: { type: Number, required: true, min: 1, validate: Number.isSafeInteger },
   dueDate: { type: String, match: /^\d{4}-\d{2}-\d{2}$/ },
   amountPaidPaise: { type: Number, required: true, min: 0, default: 0, validate: Number.isSafeInteger },
+  amountCreditedPaise: { type: Number, required: true, min: 0, default: 0, validate: Number.isSafeInteger },
   invoiceNumber: { type: String, maxlength: 40 },
   issueIdempotencyKey: { type: String, maxlength: 128 },
   issuedAt: { type: Date },
@@ -30,10 +31,10 @@ invoiceSchema.index({ organizationId: 1, issueIdempotencyKey: 1 }, { unique: tru
 invoiceSchema.pre('save', async function () {
   if (this.isNew) return;
   const current = await InvoiceModel.findById(this._id).session(this.$session() ?? null).select('status')
-    .lean<{ status: 'draft' | 'issued' | 'partially_paid' | 'paid' } | null>();
+    .lean<{ status: string } | null>();
   if (current && current.status !== 'draft') {
     const changed = this.modifiedPaths().filter(path => path !== 'updatedAt');
-    const settlementOnly = changed.includes('amountPaidPaise') && changed.every(path => path === 'status' || path === 'amountPaidPaise');
+    const settlementOnly = changed.some(path => ['amountPaidPaise', 'amountCreditedPaise'].includes(path)) && changed.every(path => ['status', 'amountPaidPaise', 'amountCreditedPaise'].includes(path));
     if (!settlementOnly) throw new Error('Issued invoice details are immutable');
   }
 });
@@ -57,4 +58,29 @@ invoiceSequenceSchema.index({ organizationId: 1, fiscalYear: 1 }, { unique: true
 
 export const InvoiceModel = mongoose.models.Invoice || mongoose.model('Invoice', invoiceSchema);
 export const InvoiceSequenceModel = mongoose.models.InvoiceSequence || mongoose.model('InvoiceSequence', invoiceSequenceSchema);
+
+const creditNoteSchema = new Schema({
+  organizationId: { type: Schema.Types.ObjectId, required: true, immutable: true },
+  invoiceId: { type: Schema.Types.ObjectId, required: true, immutable: true },
+  invoiceNumber: { type: String, required: true, maxlength: 40, immutable: true },
+  customerName: { type: String, required: true, maxlength: 160, immutable: true },
+  amountPaise: { type: Number, required: true, min: 1, validate: Number.isSafeInteger, immutable: true },
+  reason: { type: String, required: true, maxlength: 500, immutable: true },
+  idempotencyKey: { type: String, required: true, maxlength: 128, immutable: true },
+  journalId: { type: Schema.Types.ObjectId, ref: 'Journal', required: true, immutable: true },
+  issuedAt: { type: Date, required: true, immutable: true },
+}, { timestamps: true, strict: 'throw', versionKey: false });
+creditNoteSchema.index({ organizationId: 1, idempotencyKey: 1 }, { unique: true });
+creditNoteSchema.index({ organizationId: 1, invoiceId: 1, issuedAt: -1 });
+const rejectCreditNoteMutation = () => { throw new Error('Credit notes are immutable after posting'); };
+creditNoteSchema.pre('updateOne', rejectCreditNoteMutation);
+creditNoteSchema.pre('updateMany', rejectCreditNoteMutation);
+creditNoteSchema.pre('findOneAndUpdate', rejectCreditNoteMutation);
+creditNoteSchema.pre('replaceOne', rejectCreditNoteMutation);
+creditNoteSchema.pre('findOneAndReplace', rejectCreditNoteMutation);
+creditNoteSchema.pre('deleteOne', { document: true, query: true }, rejectCreditNoteMutation);
+creditNoteSchema.pre('deleteMany', rejectCreditNoteMutation);
+creditNoteSchema.pre('findOneAndDelete', rejectCreditNoteMutation);
+creditNoteSchema.pre('bulkWrite', rejectCreditNoteMutation);
+export const CreditNoteModel = mongoose.models.CreditNote || mongoose.model('CreditNote', creditNoteSchema);
 export type InvoiceId = Types.ObjectId;
