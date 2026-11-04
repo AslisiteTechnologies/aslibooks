@@ -22,6 +22,11 @@
     "test": {
       "dependsOn": [
         "^build"
+      ],
+      "cache": false,
+      "passThroughEnv": [
+        "MONGODB_TEST_URI",
+        "MONGODB_TEST_DB_NAME"
       ]
     },
     "lint": {}

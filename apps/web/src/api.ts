@@ -11,6 +11,9 @@ const contactsPath = (org: string) => `/api/organizations/${org}/contacts`;
 export type ContactInput = { displayName: string; roles: Array<'customer' | 'vendor'>; email?: string; phone?: string; gstin?: string; address?: string };
 export type Contact = ContactInput & { _id: string; active: boolean };
 export type Product = { _id: string; code: string; name: string; description?: string; unitPricePaise: number; active: boolean };
+export type Journal = { id: string; description: string; postedAt: string; reversalOf: string | null; lineCount: number };
+export type JournalDetail = Omit<Journal, 'lineCount'> & { lines: Array<{ accountId: string; debitPaise: number; creditPaise: number }> };
+export type JournalInput = { idempotencyKey: string; description: string; lines: Array<{ accountId: string; debitPaise: number; creditPaise: number }> };
 
 async function jsonRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
@@ -47,6 +50,17 @@ export const api = {
   }),
   updateAccount: (org: string, id: string, input: { name: string } | { active: false }) =>
     jsonRequest<{ id: string }>(`${accountsPath(org)}/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  journals: (org: string, after = '') => jsonRequest<{ journals: Journal[]; next: string | null }>(
+    `/api/organizations/${org}/journals` + (after ? `?after=${encodeURIComponent(after)}` : ''),
+  ),
+  journal: (org: string, id: string) => jsonRequest<{ journal: JournalDetail }>(`/api/organizations/${org}/journals/${id}`),
+  postJournal: (org: string, input: JournalInput) => jsonRequest<{ journalId: string; replayed: boolean }>(
+    `/api/organizations/${org}/journals`, { method: 'POST', body: JSON.stringify(input) },
+  ),
+  reverseJournal: (org: string, id: string, input: { idempotencyKey: string; reason: string }) =>
+    jsonRequest<{ journalId: string; replayed: boolean }>(`/api/organizations/${org}/journals/${id}/reversals`, {
+      method: 'POST', body: JSON.stringify(input),
+    }),
   session: () => jsonRequest<SessionResponse>('/api/auth/get-session'),
   signIn: (email: string, password: string) => jsonRequest<unknown>('/api/auth/sign-in/email', {
     method: 'POST', body: JSON.stringify({ email, password }),

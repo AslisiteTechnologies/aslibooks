@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { api, type Organization } from './api';
 import { AuthScreen } from './AuthScreen';
 import { OnboardingScreen } from './OnboardingScreen';
-import { AccountsScreen } from './AccountsScreen';
-import { ContactsScreen } from './ContactsScreen';
-import { ProductsScreen } from './ProductsScreen';
 import { AppBar, Box, Button, Chip, Container, Divider, Drawer, List, ListItemButton, ListItemText, Paper, Stack, Toolbar, Typography } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
+
+const AccountingScreen = lazy(() => import('./AccountingScreen').then(module => ({ default: module.AccountingScreen })));
+const ContactsScreen = lazy(() => import('./ContactsScreen').then(module => ({ default: module.ContactsScreen })));
+const ProductsScreen = lazy(() => import('./ProductsScreen').then(module => ({ default: module.ProductsScreen })));
 
 const nav = ['Overview', 'Sales', 'Expenses', 'Contacts', 'Accounting', 'GST', 'Reports', 'Settings'];
 const drawerWidth = 248;
@@ -79,7 +80,8 @@ export function App() {
         <Container maxWidth="lg">
           <Typography variant="h4" fontWeight={800} gutterBottom>{section}</Typography>
           {authError && <Box role="alert">{authError}</Box>}
-          {section === 'Accounting' ? <AccountsScreen key={organization.id} organization={organization} /> :
+          <Suspense fallback={<Box role="status" sx={{ py: 4 }}>Loading {section.toLowerCase()}…</Box>}>
+          {section === 'Accounting' ? <AccountingScreen key={organization.id} organization={organization} /> :
           section === 'Contacts' ? <ContactsScreen key={organization.id} organization={organization} /> :
           section === 'Sales' ? <ProductsScreen key={organization.id} organization={organization} /> :
           <Paper variant="outlined" sx={{ p: { xs: 3, md: 5 } }}>
@@ -89,6 +91,7 @@ export function App() {
               <Typography color="text.secondary">Open Accounting to manage your chart of accounts.</Typography>
             </Stack>
           </Paper>}
+          </Suspense>
         </Container>
       </Box>
     </Box>

@@ -7,6 +7,7 @@ import { accountRouter } from './accounts.js';
 import { contactRouter } from './contacts.js';
 import { productRouter } from './products.js';
 import { fiscalPeriodRouter } from './fiscalPeriods.js';
+import { journalRouter } from './journals.js';
 
 type AuthUser = { id: string };
 export function organizationRouter(resolveUser: (headers: Headers) => Promise<AuthUser | null>): Router {
@@ -69,5 +70,6 @@ export function organizationRouter(resolveUser: (headers: Headers) => Promise<Au
   router.use('/:organizationId/contacts', requireUser, contactRouter());
   router.use('/:organizationId/products', requireUser, productRouter());
   router.use('/:organizationId/fiscal-periods', requireUser, fiscalPeriodRouter());
+  router.use('/:organizationId/journals', requireUser, journalRouter());
   return router;
 }
