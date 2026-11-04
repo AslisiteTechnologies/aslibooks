@@ -37,6 +37,7 @@ export type BalanceSheetResult = {
   currentEarningsPaise: number; liabilitiesAndEquityPaise: number; balanced: boolean;
 };
 export type AgingSummary = { asOf: string; totalOutstandingPaise: number; documentCount: number; buckets: Record<'notDue' | 'current' | 'days1To30' | 'days31To60' | 'days61To90' | 'over90' | 'undated', { amountPaise: number; documentCount: number }> };
+export type ControlReconciliation = { asOf: string; receivables: { accountName: string; ledgerBalancePaise: number; documentBalancePaise: number; differencePaise: number; reconciled: boolean }; payables: { accountName: string; ledgerBalancePaise: number; documentBalancePaise: number; differencePaise: number; reconciled: boolean } };
 
 async function jsonRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
@@ -125,6 +126,7 @@ export const api = {
   ),
   agedReceivables: (org: string, asOf: string) => jsonRequest<AgingSummary>(`/api/organizations/${org}/reports/aged-receivables?asOf=${encodeURIComponent(asOf)}`),
   agedPayables: (org: string, asOf: string) => jsonRequest<AgingSummary>(`/api/organizations/${org}/reports/aged-payables?asOf=${encodeURIComponent(asOf)}`),
+  controlAccountReconciliation: (org: string) => jsonRequest<ControlReconciliation>(`/api/organizations/${org}/reports/control-account-reconciliation`),
   generalLedger: (org: string, accountId: string, from: string, to: string, after = '') => {
     const query = new URLSearchParams({ accountId, ...(from ? { from } : {}), ...(to ? { to } : {}), ...(after ? { after } : {}) });
     return jsonRequest<GeneralLedgerResult>(`/api/organizations/${org}/reports/general-ledger?${query}`);

@@ -115,6 +115,36 @@ export function reportRouter() {
     next();
   });
 
+  router.get('/control-account-reconciliation', async (_req, res) => {
+    const { organizationId, authUserId } = res.locals;
+    if (!await hasPermission(authUserId, String(organizationId), 'ledger:read')) { res.status(403).json({ error: 'Report access denied' }); return; }
+    const [receivablesAccount, payablesAccount] = await Promise.all([
+      AccountModel.findOne({ organizationId, code: '1100', type: 'asset' }).select('_id name').lean<{ _id: Types.ObjectId; name: string } | null>(),
+      AccountModel.findOne({ organizationId, code: '2000', type: 'liability' }).select('_id name').lean<{ _id: Types.ObjectId; name: string } | null>(),
+    ]);
+    if (!receivablesAccount || !payablesAccount) { res.status(422).json({ error: 'Starter receivables and payables control accounts are required' }); return; }
+    const balances = await JournalModel.aggregate<{ _id: Types.ObjectId; debit: number; credit: number }>([
+      { $match: { organizationId } }, { $unwind: '$lines' },
+      { $match: { 'lines.accountId': { $in: [receivablesAccount._id, payablesAccount._id] } } },
+      { $group: { _id: '$lines.accountId', debit: { $sum: '$lines.debitPaise' }, credit: { $sum: '$lines.creditPaise' } } },
+    ]);
+    const byId = new Map(balances.map(row => [String(row._id), row]));
+    const receivableLedger = byId.get(String(receivablesAccount._id));
+    const payableLedger = byId.get(String(payablesAccount._id));
+    const [invoices, bills] = await Promise.all([
+      InvoiceModel.find({ organizationId, status: { $in: ['issued', 'partially_paid'] } }).select('totalPaise amountPaidPaise').lean<Array<{ totalPaise: number; amountPaidPaise: number }>>(),
+      BillModel.find({ organizationId, status: { $in: ['posted', 'partially_paid'] } }).select('amountPaise amountPaidPaise').lean<Array<{ amountPaise: number; amountPaidPaise: number }>>(),
+    ]);
+    const arSubledger = invoices.reduce((sum, invoice) => sum + invoice.totalPaise - invoice.amountPaidPaise, 0);
+    const apSubledger = bills.reduce((sum, bill) => sum + bill.amountPaise - bill.amountPaidPaise, 0);
+    const arLedger = (receivableLedger?.debit ?? 0) - (receivableLedger?.credit ?? 0);
+    const apLedger = (payableLedger?.credit ?? 0) - (payableLedger?.debit ?? 0);
+    const values = [arSubledger, apSubledger, arLedger, apLedger, arLedger - arSubledger, apLedger - apSubledger];
+    if (!values.every(Number.isSafeInteger)) { res.status(422).json({ error: 'Control account totals exceed the supported integer amount range' }); return; }
+    res.json({ asOf: indiaToday(), receivables: { accountName: receivablesAccount.name, ledgerBalancePaise: arLedger, documentBalancePaise: arSubledger, differencePaise: arLedger - arSubledger, reconciled: arLedger === arSubledger },
+      payables: { accountName: payablesAccount.name, ledgerBalancePaise: apLedger, documentBalancePaise: apSubledger, differencePaise: apLedger - apSubledger, reconciled: apLedger === apSubledger } });
+  });
+
   router.get('/general-ledger', async (req, res) => {
     const { organizationId, authUserId } = res.locals;
     if (!await hasPermission(authUserId, String(organizationId), 'ledger:read')) {

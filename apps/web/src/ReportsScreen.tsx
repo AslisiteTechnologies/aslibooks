@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
-import { api, type Account, type AgingSummary, type BalanceSheetResult, type GeneralLedgerResult, type Organization, type ProfitAndLossResult, type TrialBalanceRow } from './api';
+import { api, type Account, type AgingSummary, type BalanceSheetResult, type ControlReconciliation, type GeneralLedgerResult, type Organization, type ProfitAndLossResult, type TrialBalanceRow } from './api';
 
 function todayInIndia() {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
@@ -19,6 +19,7 @@ export function ReportsScreen({ organization }: { organization: Organization }) 
   const [balanceSheet, setBalanceSheet] = useState<BalanceSheetResult | null>(null);
   const [receivables, setReceivables] = useState<AgingSummary | null>(null);
   const [payables, setPayables] = useState<AgingSummary | null>(null);
+  const [reconciliation, setReconciliation] = useState<ControlReconciliation | null>(null);
   const [trialTotals, setTrialTotals] = useState({ debit: 0, credit: 0, balanced: true });
   const [asOf, setAsOf] = useState(todayInIndia());
   const [accountId, setAccountId] = useState('');
@@ -34,10 +35,10 @@ export function ReportsScreen({ organization }: { organization: Organization }) 
     async function load() {
       setLoading(true); setError('');
       try {
-        const [firstPage, trial, pnl, balance, arAging, apAging] = await Promise.all([
+        const [firstPage, trial, pnl, balance, arAging, apAging, controls] = await Promise.all([
           api.accounts(organization.id), api.trialBalance(organization.id, asOf),
           api.profitAndLoss(organization.id, asOf), api.balanceSheet(organization.id, asOf),
-          api.agedReceivables(organization.id, asOf), api.agedPayables(organization.id, asOf),
+          api.agedReceivables(organization.id, asOf), api.agedPayables(organization.id, asOf), api.controlAccountReconciliation(organization.id),
         ]);
         const all = [...firstPage.accounts];
         let cursor = firstPage.next;
@@ -51,6 +52,7 @@ export function ReportsScreen({ organization }: { organization: Organization }) 
           setProfitLoss(pnl);
           setBalanceSheet(balance);
           setReceivables(arAging); setPayables(apAging);
+          setReconciliation(controls);
         }
       } catch (cause) { if (current) setError(cause instanceof Error ? cause.message : 'Reports could not be loaded.'); }
       finally { if (current) setLoading(false); }
@@ -119,6 +121,16 @@ export function ReportsScreen({ organization }: { organization: Organization }) 
           <Typography fontWeight={700}>{label} · {money(summary.totalOutstandingPaise)} ({summary.documentCount} documents)</Typography>
           <Typography>Not due {money(summary.buckets.notDue.amountPaise)} · Due today {money(summary.buckets.current.amountPaise)}</Typography>
           <Typography>1–30 days {money(summary.buckets.days1To30.amountPaise)} · 31–60 days {money(summary.buckets.days31To60.amountPaise)} · 61–90 days {money(summary.buckets.days61To90.amountPaise)} · Over 90 days {money(summary.buckets.over90.amountPaise)} · Undated {money(summary.buckets.undated.amountPaise)}</Typography>
+        </Stack>)}
+      </Stack>
+    </Paper>}
+    {reconciliation && <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
+      <Stack spacing={1}>
+        <Typography variant="h6">Receivable and payable control reconciliation</Typography>
+        <Typography color="text.secondary">Ledger control balances compared with outstanding posted documents as of {reconciliation.asOf}.</Typography>
+        {([['Accounts receivable', reconciliation.receivables], ['Accounts payable', reconciliation.payables]] as const).map(([label, row]) => <Stack key={label} direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
+          <Typography>{label} · {row.accountName}</Typography>
+          <Typography>Ledger {money(row.ledgerBalancePaise)} · Documents {money(row.documentBalancePaise)} · Difference {money(row.differencePaise)} · {row.reconciled ? 'Reconciled' : 'Unreconciled'}</Typography>
         </Stack>)}
       </Stack>
     </Paper>}
