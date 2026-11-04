@@ -15,6 +15,7 @@ export type Invoice = { id: string; customerName: string; status: 'draft' | 'iss
 export type Receipt = { id: string; customerName: string; amountPaise: number; receivedAt: string; journalId: string; allocations: Array<{ invoiceId: string; invoiceNumber: string; amountPaise: number }> };
 export type Bill = { id: string; vendorName: string; vendorReference: string; expenseAccountName: string; description: string; status: 'draft' | 'posted' | 'partially_paid' | 'paid'; amountPaise: number; amountPaidPaise: number; dueDate?: string; journalId?: string };
 export type VendorPayment = { id: string; vendorName: string; amountPaise: number; paidAt: string; journalId: string; allocations: Array<{ billId: string; vendorReference: string; amountPaise: number }> };
+export type OpeningBalance = { id: string; asOf: string; totalPaise: number; journalId: string; lines: Array<{ accountId: string; accountCode: string; accountName: string; side: 'debit' | 'credit'; amountPaise: number }> };
 export type Journal = { id: string; description: string; postedAt: string; reversalOf: string | null; lineCount: number };
 export type JournalDetail = Omit<Journal, 'lineCount'> & { lines: Array<{ accountId: string; debitPaise: number; creditPaise: number }> };
 export type JournalInput = { idempotencyKey: string; description: string; lines: Array<{ accountId: string; debitPaise: number; creditPaise: number }> };
@@ -83,6 +84,9 @@ export const api = {
   vendorPayments: (org: string) => jsonRequest<{ payments: VendorPayment[] }>(`/api/organizations/${org}/vendor-payments`),
   recordVendorPayment: (org: string, input: { idempotencyKey: string; cashAccountId: string; allocations: Array<{ billId: string; amountPaise: number }> }) =>
     jsonRequest<{ id: string; journalId: string; amountPaise: number; replayed: boolean }>(`/api/organizations/${org}/vendor-payments`, { method: 'POST', body: JSON.stringify(input) }),
+  openingBalance: (org: string) => jsonRequest<{ opening: OpeningBalance | null }>(`/api/organizations/${org}/opening-balances`),
+  postOpeningBalance: (org: string, input: { idempotencyKey: string; asOf: string; balances: Array<{ accountId: string; amountPaise: number }> }) =>
+    jsonRequest<{ id: string; journalId: string; totalPaise: number; replayed: boolean }>(`/api/organizations/${org}/opening-balances`, { method: 'POST', body: JSON.stringify(input) }),
   accounts: (org: string, after = '') => jsonRequest<{ accounts: Account[]; next: string | null }>(
     accountsPath(org) + (after ? `?after=${encodeURIComponent(after)}` : ''),
   ),
