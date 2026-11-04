@@ -5,6 +5,7 @@ const organizationSchema = new Schema({
   slug: { type: String, required: true, lowercase: true, trim: true },
   gstin: { type: String, trim: true, uppercase: true },
   baseCurrency: { type: String, required: true, default: 'INR', enum: ['INR'] },
+  fiscalYearStartMonth: { type: Number, required: true, min: 1, max: 12, default: 4 },
 }, { timestamps: true, strict: 'throw' });
 
 organizationSchema.index({ slug: 1 }, { unique: true });

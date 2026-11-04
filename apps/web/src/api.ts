@@ -2,7 +2,14 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 type AuthUser = { id: string; name: string; email: string };
 type SessionResponse = { user: AuthUser } | null;
-export type Organization = { id: string; name: string; slug: string; baseCurrency: string };
+export type Organization = { id: string; name: string; slug: string; baseCurrency: string; role: string };
+export const accountTypes = ['asset', 'liability', 'equity', 'income', 'expense'] as const;
+export type AccountInput = { name: string; code: string; type: typeof accountTypes[number] };
+export type Account = AccountInput & { id: string; active: boolean; system: boolean };
+const accountsPath = (org: string) => `/api/organizations/${org}/accounts`;
+const contactsPath = (org: string) => `/api/organizations/${org}/contacts`;
+export type ContactInput = { displayName: string; roles: Array<'customer' | 'vendor'>; email?: string; phone?: string; gstin?: string; address?: string };
+export type Contact = ContactInput & { _id: string; active: boolean };
 
 async function jsonRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
@@ -19,6 +26,21 @@ async function jsonRequest<T>(path: string, options: RequestInit = {}): Promise<
 }
 
 export const api = {
+  contacts: (org: string, q = '') => jsonRequest<{ contacts: Contact[]; next: string | null }>(
+    contactsPath(org) + (q ? `?q=${encodeURIComponent(q)}` : ''),
+  ),
+  createContact: (org: string, input: ContactInput) =>
+    jsonRequest<{ id: string }>(contactsPath(org), { method: 'POST', body: JSON.stringify(input) }),
+  updateContact: (org: string, id: string, input: Partial<ContactInput> | { active: false }) =>
+    jsonRequest<{ id: string }>(`${contactsPath(org)}/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  accounts: (org: string, after = '') => jsonRequest<{ accounts: Account[]; next: string | null }>(
+    accountsPath(org) + (after ? `?after=${encodeURIComponent(after)}` : ''),
+  ),
+  createAccount: (org: string, input: AccountInput) => jsonRequest<{ id: string }>(accountsPath(org), {
+    method: 'POST', body: JSON.stringify(input),
+  }),
+  updateAccount: (org: string, id: string, input: { name: string } | { active: false }) =>
+    jsonRequest<{ id: string }>(`${accountsPath(org)}/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
   session: () => jsonRequest<SessionResponse>('/api/auth/get-session'),
   signIn: (email: string, password: string) => jsonRequest<unknown>('/api/auth/sign-in/email', {
     method: 'POST', body: JSON.stringify({ email, password }),

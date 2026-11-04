@@ -1,5 +1,5 @@
 import mongoose, { Types } from 'mongoose';
-import { AccountModel } from '../models/account.js';
+import { markPostingAccounts } from '../models/account.js';
 import { JournalModel } from '../models/journal.js';
 import { AuditEventModel } from '../models/auditEvent.js';
 import { fenceLedgerPermission } from '../security/authorization.js';
@@ -41,7 +41,7 @@ function samePayload(existing: { reversalOf?: Types.ObjectId; description: strin
   return !existing.reversalOf && existing.description === command.description &&
     existing.lines.length === command.lines.length &&
     existing.lines.every((line, i) =>
-      String(line.accountId) === command.lines[i].accountId &&
+      String(line.accountId) === command.lines[i].accountId.toLowerCase() &&
       line.debitPaise === command.lines[i].debitPaise &&
       line.creditPaise === command.lines[i].creditPaise);
 }
@@ -63,13 +63,7 @@ export async function postJournal(command: PostingCommand, options: { enforceMem
   }
   try {
     return await mongoose.connection.transaction(async (session) => {
-      const accounts = await AccountModel.find({
-        _id: { $in: command.lines.map(line => new Types.ObjectId(line.accountId)) },
-        organizationId,
-        active: true,
-      }).session(session).select('_id').lean();
-      const available = new Set(accounts.map(account => String(account._id)));
-      if (command.lines.some(line => !available.has(line.accountId)))
+      if (!await markPostingAccounts(organizationId, command.lines, session))
         throw new PostingError('ACCOUNT', 'Account missing, inactive, or outside organization');
       const [journal] = await JournalModel.create([{
         organizationId,
@@ -134,12 +128,7 @@ async function postJournalFenced(command: PostingCommand): Promise<{ journalId: 
         throw new PostingError('CONFLICT', 'Idempotency key already used with different journal');
       return { journalId: String(existing._id), replayed: true };
     }
-    const accounts = await AccountModel.find({
-      _id: { $in: command.lines.map(line => new Types.ObjectId(line.accountId)) },
-      organizationId, active: true,
-    }).session(session).select('_id').lean();
-    const available = new Set(accounts.map(account => String(account._id)));
-    if (command.lines.some(line => !available.has(line.accountId)))
+    if (!await markPostingAccounts(organizationId, command.lines, session))
       throw new PostingError('ACCOUNT', 'Account missing, inactive, or outside organization');
     const [journal] = await JournalModel.create([{
       organizationId, idempotencyKey: command.idempotencyKey, currency: 'INR',

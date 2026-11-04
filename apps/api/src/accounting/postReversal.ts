@@ -1,6 +1,6 @@
 import mongoose, { Types } from 'mongoose';
 import { JournalModel } from '../models/journal.js';
-import { AccountModel } from '../models/account.js';
+import { markPostingAccounts } from '../models/account.js';
 import { AuditEventModel } from '../models/auditEvent.js';
 import { fenceLedgerPermission } from '../security/authorization.js';
 import { PostingError, validatePosting, type PostingCommand } from './postJournal.js';
@@ -101,13 +101,7 @@ export async function postReversal(request: ReversalRequest, options: { enforceM
         lines,
       };
       validatePosting(command);
-      const accounts = await AccountModel.find({
-        organizationId,
-        active: true,
-        _id: { $in: lines.map((line: { accountId: string }) => new Types.ObjectId(line.accountId)) },
-      }).session(session).select('_id').lean();
-      const activeIds = new Set(accounts.map(account => String(account._id)));
-      if (lines.some((line: { accountId: string }) => !activeIds.has(line.accountId))) {
+      if (!await markPostingAccounts(organizationId, lines, session)) {
         throw new PostingError('ACCOUNT', 'Reversal account missing, inactive, or outside organization');
       }
       const [journal] = await JournalModel.create([{

@@ -3,6 +3,8 @@ import mongoose from 'mongoose';
 import { createOrganizationSchema } from './organizationValidation.js';
 import { OrganizationModel } from '../models/organization.js';
 import { MembershipModel } from '../models/membership.js';
+import { accountRouter } from './accounts.js';
+import { contactRouter } from './contacts.js';
 
 type AuthUser = { id: string };
 export function organizationRouter(resolveUser: (headers: Headers) => Promise<AuthUser | null>): Router {
@@ -54,11 +56,14 @@ export function organizationRouter(resolveUser: (headers: Headers) => Promise<Au
       const ids = memberships.map((m: { organizationId: mongoose.Types.ObjectId }) => m.organizationId);
       const organizations = await OrganizationModel.find({ _id: { $in: ids } })
         .select('name slug baseCurrency').lean<Array<{ _id: mongoose.Types.ObjectId; name: string; slug: string; baseCurrency: string }>>();
+      const roles = new Map(memberships.map(m => [String(m.organizationId), m.role]));
       res.json({ organizations: organizations.map((o: { _id: mongoose.Types.ObjectId; name: string; slug: string; baseCurrency: string }) => ({
-        id: o._id.toString(), name: o.name, slug: o.slug, baseCurrency: o.baseCurrency,
+        id: o._id.toString(), name: o.name, slug: o.slug, baseCurrency: o.baseCurrency, role: roles.get(String(o._id)),
       })) });
     } catch (error) { next(error); }
   });
 
+  router.use('/:organizationId/accounts', requireUser, accountRouter());
+  router.use('/:organizationId/contacts', requireUser, contactRouter());
   return router;
 }

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { api, type Organization } from './api';
 import { AuthScreen } from './AuthScreen';
 import { OnboardingScreen } from './OnboardingScreen';
+import { AccountsScreen } from './AccountsScreen';
+import { ContactsScreen } from './ContactsScreen';
 import { AppBar, Box, Button, Chip, Container, Divider, Drawer, List, ListItemButton, ListItemText, Paper, Stack, Toolbar, Typography } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
@@ -14,6 +16,8 @@ export function App() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [authState, setAuthState] = useState<'loading' | 'signed-out' | 'onboarding' | 'ready'>('loading');
   const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [selectedId, setSelectedId] = useState('');
+  const organization = organizations.find(org => org.id === selectedId) ?? organizations[0];
   const [authError, setAuthError] = useState('');
 
   async function refreshSession() {
@@ -57,7 +61,11 @@ export function App() {
       <AppBar position="fixed" color="inherit" elevation={0} sx={{ borderBottom: '1px solid', borderColor: 'divider', ml: { md: `${drawerWidth}px` }, width: { md: `calc(100% - ${drawerWidth}px)` } }}>
         <Toolbar>
           <Button sx={{ display: { md: 'none' }, minWidth: 40, mr: 1 }} aria-label="Open navigation" onClick={() => setMobileOpen(true)}><MenuIcon /></Button>
-          <Typography fontWeight={700} sx={{ flexGrow: 1 }}>{organizations[0]?.name} / {section}</Typography>
+          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+            {organizations.length > 1 ? <select aria-label="Active organization" value={organization.id}
+              onChange={e => setSelectedId(e.target.value)}>{organizations.map(org =>
+                <option key={org.id} value={org.id}>{org.name}</option>)}</select> : <Typography fontWeight={700}>{organization.name}</Typography>}
+          </Box>
           <Button size="small" onClick={() => { void api.signOut().then(refreshSession).catch(() => setAuthError("Sign out failed")); }}>Sign out</Button>
           <Chip label="Development preview" variant="outlined" size="small" />
         </Toolbar>
@@ -69,14 +77,16 @@ export function App() {
       <Box component="main" sx={{ flexGrow: 1, minWidth: 0, pt: 12, pb: 6 }}>
         <Container maxWidth="lg">
           <Typography variant="h4" fontWeight={800} gutterBottom>{section}</Typography>
-          <Typography color="text.secondary" sx={{ mb: 4 }}>Aslibooks workspace foundation</Typography>
+          {authError && <Box role="alert">{authError}</Box>}
+          {section === 'Accounting' ? <AccountsScreen key={organization.id} organization={organization} /> :
+          section === 'Contacts' ? <ContactsScreen key={organization.id} organization={organization} /> :
           <Paper variant="outlined" sx={{ p: { xs: 3, md: 5 } }}>
             <Stack spacing={2} alignItems="flex-start">
               <Chip label="Not connected" color="warning" size="small" />
               <Typography variant="h6">Your accounting workspace is being built.</Typography>
-              <Typography color="text.secondary">This is a navigation and design preview only. Your organization has been created. Financial actions and dashboard data are not available yet. No financial figures are fabricated.</Typography>
+              <Typography color="text.secondary">Open Accounting to manage your chart of accounts.</Typography>
             </Stack>
-          </Paper>
+          </Paper>}
         </Container>
       </Box>
     </Box>
