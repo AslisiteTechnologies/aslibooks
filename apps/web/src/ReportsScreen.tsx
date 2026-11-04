@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
 import { api, type Account, type AgingSummary, type BalanceSheetResult, type ControlReconciliation, type GeneralLedgerResult, type Organization, type ProfitAndLossResult, type TrialBalanceRow } from './api';
+import { downloadCsv } from './csv';
 
 function todayInIndia() {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
@@ -77,6 +78,10 @@ export function ReportsScreen({ organization }: { organization: Organization }) 
     <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
       <Stack spacing={2}>
         <Typography variant="h6">Trial balance</Typography>
+        <Button variant="outlined" disabled={!trialBalance.length} onClick={() => downloadCsv(`trial-balance-${asOf}.csv`, ['Account code', 'Account', 'Type', 'Debit paise', 'Credit paise'], [
+          ...trialBalance.map(row => [row.code, row.name, row.type, row.debitBalancePaise, row.creditBalancePaise]),
+          ['TOTAL', '', '', trialTotals.debit, trialTotals.credit],
+        ])}>Download trial balance CSV</Button>
         <Typography color="text.secondary">Posted journal balances through the selected India-local date.</Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }}>
           <TextField type="date" label="As of" value={asOf} onChange={event => setAsOf(event.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
@@ -95,6 +100,10 @@ export function ReportsScreen({ organization }: { organization: Organization }) 
     {profitLoss && <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
       <Stack spacing={1.5}>
         <Typography variant="h6">Profit and loss</Typography>
+        <Button variant="outlined" onClick={() => downloadCsv(`profit-and-loss-${profitLoss.to}.csv`, ['Account code', 'Account', 'Type', 'Balance paise'], [
+          ...profitLoss.accounts.map(row => [row.code, row.name, row.type, row.balancePaise]),
+          ['TOTAL INCOME', '', '', profitLoss.totalIncomePaise], ['TOTAL EXPENSES', '', '', profitLoss.totalExpensesPaise], ['NET PROFIT', '', '', profitLoss.netProfitPaise],
+        ])}>Download profit and loss CSV</Button>
         <Typography color="text.secondary">{profitLoss.from} through {profitLoss.to} · current fiscal year</Typography>
         {profitLoss.accounts.map(row => <Stack key={row.accountId} direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between">
           <Typography>{row.code} · {row.name} · {row.type}</Typography><Typography>{money(row.balancePaise)}</Typography>
@@ -105,6 +114,10 @@ export function ReportsScreen({ organization }: { organization: Organization }) 
     {balanceSheet && <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
       <Stack spacing={1.5}>
         <Typography variant="h6">Balance sheet</Typography>
+        <Button variant="outlined" onClick={() => downloadCsv(`balance-sheet-${balanceSheet.asOf}.csv`, ['Account code', 'Account', 'Type', 'Balance paise'], [
+          ...balanceSheet.accounts.map(row => [row.code, row.name, row.type, row.balancePaise]),
+          ['TOTAL ASSETS', '', '', balanceSheet.totalAssetsPaise], ['TOTAL LIABILITIES', '', '', balanceSheet.totalLiabilitiesPaise], ['TOTAL EQUITY INCLUDING EARNINGS', '', '', balanceSheet.liabilitiesAndEquityPaise],
+        ])}>Download balance sheet CSV</Button>
         <Typography color="text.secondary">As of {balanceSheet.asOf}; current year earnings are included in equity.</Typography>
         {balanceSheet.accounts.map(row => <Stack key={row.accountId} direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between">
           <Typography>{row.code} · {row.name} · {row.type}</Typography><Typography>{money(row.balancePaise)}</Typography>
@@ -116,6 +129,9 @@ export function ReportsScreen({ organization }: { organization: Organization }) 
     {receivables && payables && <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
       <Stack spacing={2}>
         <Typography variant="h6">Receivables and payables aging</Typography>
+        <Button variant="outlined" onClick={() => downloadCsv(`aging-${asOf}.csv`, ['Report', 'As of', 'Bucket', 'Documents', 'Amount paise'],
+          ( [['Receivables', receivables], ['Payables', payables]] as const).flatMap(([label, summary]) => Object.entries(summary.buckets).map(([bucket, values]) => [label, summary.asOf, bucket, values.documentCount, values.amountPaise])),
+        )}>Download aging CSV</Button>
         <Typography color="text.secondary">Outstanding document balances as of {asOf}; overdue days use India-local calendar dates. Undated documents are shown separately.</Typography>
         {([['Receivables', receivables], ['Payables', payables]] as const).map(([label, summary]) => <Stack key={label} spacing={0.75}>
           <Typography fontWeight={700}>{label} · {money(summary.totalOutstandingPaise)} ({summary.documentCount} documents)</Typography>
@@ -137,6 +153,7 @@ export function ReportsScreen({ organization }: { organization: Organization }) 
     <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
       <Stack spacing={2}>
         <Typography variant="h6">General ledger</Typography>
+        {ledger && <Button variant="outlined" onClick={() => downloadCsv(`general-ledger-${ledger.account.code}-${ledger.from}-${ledger.to}.csv`, ['Journal ID', 'Description', 'Posted at', 'Debit paise', 'Credit paise', 'Running balance paise'], ledger.entries.map(entry => [entry.journalId, entry.description, new Date(entry.postedAt).toISOString(), entry.debitPaise, entry.creditPaise, entry.runningBalancePaise]))}>Download loaded ledger CSV</Button>}
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
           <TextField select label="Account" value={accountId} onChange={event => { setAccountId(event.target.value); setLedger(null); }} sx={{ flex: 2 }}>
             {accounts.map(account => <MenuItem key={account.id} value={account.id}>{account.code} · {account.name}</MenuItem>)}

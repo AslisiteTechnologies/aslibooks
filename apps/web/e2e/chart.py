@@ -1,4 +1,5 @@
 """Run against local, disposable Aslibooks API and web servers. See docs/integration-testing.md."""
+from pathlib import Path
 from uuid import uuid4
 from playwright.sync_api import expect, sync_playwright
 
@@ -193,9 +194,18 @@ def test_chart():
             expect(page.get_by_text("Balanced", exact=True)).to_be_visible()
             expect(page.get_by_text("Net profit ₹34.66", exact=False)).to_be_visible()
             expect(page.get_by_text("Balance sheet balances", exact=True)).to_be_visible()
+            with page.expect_download() as csv_download:
+                page.get_by_role("button", name="Download trial balance CSV").click()
+            report_download = csv_download.value
+            assert report_download.suggested_filename.startswith("trial-balance-")
+            downloaded_bytes = Path(report_download.path()).read_bytes()
+            assert downloaded_bytes.startswith(b"\xef\xbb\xbf")
+            exported = downloaded_bytes.decode("utf-8-sig")
+            assert '"Account code","Account","Type","Debit paise","Credit paise"' in exported
+            assert '"TOTAL"' in exported and '"Cash on hand"' in exported
             page.get_by_role("button", name="Load ledger").click()
             expect(page.get_by_text("Opening cash entry", exact=False)).to_be_visible()
-            print("Verified signup, starter chart/opening balances, customer/vendor/service setup, invoice and vendor credits, printing, receipts, partial/final bill payments, account lifecycle, manual journals, responsive navigation and reconciled reports (INR 34.66 net profit)")
+            print("Verified signup, starter chart/opening balances, customer/vendor/service setup, invoice/vendor credits and print views, receipts, partial/final bill payments, account lifecycle, manual journals, responsive navigation, CSV export and reconciled reports (INR 34.66 net profit)")
         finally:
             browser.close()
 
