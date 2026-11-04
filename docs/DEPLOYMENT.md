@@ -1,0 +1,8 @@
+# Local and staging operations
+
+1. Install Node 22 and pnpm 10.18.0. From the repository root run `pnpm install`, `pnpm typecheck`, `pnpm test` and `pnpm build`. Integration tests skip without a test-only database. Use [integration-testing.md](integration-testing.md) for the separate replica-set suite.
+2. Start a disposable replica set for development. Copy the root `.env.example` to `apps/api/.env`. Set the database URI and name, a unique high-entropy Better Auth secret, API base URL, and exact web origin. Never reuse development credentials in staging. The CI workflow contains a full Docker-based replica-set bootstrap.
+3. Run `pnpm --filter @aslibooks/api dev` and `pnpm --filter @aslibooks/web dev` in separate terminals. Open the Vite URL. Check the API health endpoint, sign up and create a company.
+4. For staging, provision a private replica set and a long-running API runtime with secrets injected at runtime. Build the Vite web app with `VITE_API_URL` pointed to the staging API. Serve its dist directory using HTTPS. Configure the actual API origin in `BETTER_AUTH_URL` and allow the web origin in `WEB_ORIGIN`. Verify cookie round trips from the browser.
+5. Before rollout verify collection grants, required indexes, replica-set primary and API readiness with a disposable tenant. Record artifact SHA, health, transaction failures and auth error rates without logging request bodies. No staging environment has been verified here.
+6. Roll back web and API artifacts to the last verified compatible pair. Rehearse schema/index compatibility in staging first. Use a forward repair or linked reversal for posted data. Follow [SECURITY.md](SECURITY.md) for a separate restore rehearsal and owner approval before any live recovery.

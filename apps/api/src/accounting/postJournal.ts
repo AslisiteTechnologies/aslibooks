@@ -37,8 +37,8 @@ export function validatePosting(command: PostingCommand): void {
   if (debit !== credit) throw new PostingError('INVALID', 'Journal is not balanced');
 }
 
-function samePayload(existing: { description: string; lines: PostingLine[] }, command: PostingCommand) {
-  return existing.description === command.description &&
+function samePayload(existing: { reversalOf?: Types.ObjectId; description: string; lines: PostingLine[] }, command: PostingCommand) {
+  return !existing.reversalOf && existing.description === command.description &&
     existing.lines.length === command.lines.length &&
     existing.lines.every((line, i) =>
       String(line.accountId) === command.lines[i].accountId &&

@@ -1,6 +1,7 @@
 # Authentication integration gate
 
-Better Auth with MongoDB adapter is the selected authentication framework, but it is **not integrated yet**.
+Historical design note. Better Auth with the MongoDB adapter is implemented.
+See the integration suite and [progress tracker](PROGRESS.md) for current evidence.
 
 Before implementing login:
 1. Verify current Better Auth MongoDB adapter setup and Express integration from official documentation.

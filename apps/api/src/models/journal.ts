@@ -30,7 +30,8 @@ journalSchema.pre('updateMany', rejectJournalMutation);
 journalSchema.pre('findOneAndUpdate', rejectJournalMutation);
 journalSchema.pre('replaceOne', rejectJournalMutation);
 journalSchema.pre('findOneAndReplace', rejectJournalMutation);
-journalSchema.pre('deleteOne', rejectJournalMutation);
+journalSchema.pre('deleteOne', { document: true, query: true }, rejectJournalMutation);
+journalSchema.pre('deleteMany', rejectJournalMutation);
 journalSchema.pre('findOneAndDelete', rejectJournalMutation);
 // Bulk writes can bypass query middleware; disallow them on the journal model.
 journalSchema.pre('bulkWrite', rejectJournalMutation);

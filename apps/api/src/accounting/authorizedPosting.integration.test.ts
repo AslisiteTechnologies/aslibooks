@@ -403,9 +403,8 @@ describe.skipIf(!enabled)('authorized ledger posting integration', () => {
 
   afterAll(async () => {
     if (!enabled) return;
-    const journals = await JournalModel.find({ organizationId: org }).select('_id').lean();
     await AuditEventModel.deleteMany({ organizationId: org });
-    await JournalModel.deleteMany({ _id: { $in: journals.map(j => j._id) } });
+    await JournalModel.collection.deleteMany({ organizationId: org });
     await AccountModel.deleteMany({ organizationId: org });
     await MembershipModel.deleteMany({ organizationId: { $in: [org, otherOrg] } });
     await mongoose.disconnect();

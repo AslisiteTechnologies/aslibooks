@@ -1,6 +1,23 @@
 # Aslibooks architecture — Phase 1
 
 ## Stack
+
+```mermaid
+flowchart LR
+    Browser[React web] -->|Session cookie| API[Express]
+    API --> Auth[Better Auth]
+    Auth --> Sessions[(MongoDB auth collections)]
+    API --> Orgs[Organization router]
+    Orgs --> Membership[(Organizations and memberships)]
+    Services[Authorized ledger services] --> Fence[Conditional membership write]
+    Fence --> Ledger[(Journal and audit event)]
+```
+
+Organization creation inserts the company and its owner in one transaction.
+Listing joins active memberships to organizations. The ledger services use a
+separate transaction for the membership fence, journal and audit event.
+At the audited baseline these services have no public HTTP entry point.
+The mobile, tax, design-token and API-client directories are placeholders.
 - Web: React, Vite, TypeScript, MUI
 - Mobile: Expo, React Native, TypeScript
 - API: Express, TypeScript, Mongoose

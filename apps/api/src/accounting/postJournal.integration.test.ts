@@ -153,6 +153,9 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
     }])).rejects.toThrow('Posted journals are immutable');
     await expect(JournalModel.deleteOne({ _id: id }))
       .rejects.toThrow('Posted journals are immutable');
+    await expect(JournalModel.deleteMany({ _id: id }))
+      .rejects.toThrow('Posted journals are immutable');
+    await expect(posted!.deleteOne()).rejects.toThrow('Posted journals are immutable');
     posted!.description = 'Tampered through save';
     await expect(posted!.save()).rejects.toThrow('Posted journals are immutable');
     const intact = await JournalModel.findById(id);
@@ -210,6 +213,12 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
       organizationId: orgA, resourceId: first.journalId, action: 'journal.reversed',
     })).toBe(1);
     expect(await postReversal(request)).toEqual({ journalId: first.journalId, replayed: true });
+    await expect(postJournal({
+      ...command, idempotencyKey: request.idempotencyKey, description: reversal!.description,
+      lines: command.lines.map(line => ({
+        ...line, debitPaise: line.creditPaise, creditPaise: line.debitPaise,
+      })),
+    })).rejects.toMatchObject({ code: 'CONFLICT' });
     await expect(postReversal({ ...request, idempotencyKey: `different-reversal:${suffix}` }))
       .rejects.toMatchObject({ code: 'CONFLICT' } satisfies Partial<PostingError>);
     expect(await JournalModel.countDocuments({
@@ -315,7 +324,7 @@ describe.skipIf(!enabled)('ledger posting against isolated MongoDB replica set',
   afterAll(async () => {
     if (!enabled) return;
     await AuditEventModel.deleteMany({ organizationId: orgA, actorAuthUserId: 'ledger-integration-test' });
-    await JournalModel.deleteMany({ organizationId: orgA, idempotencyKey: { $in: [
+    await JournalModel.collection.deleteMany({ organizationId: orgA, idempotencyKey: { $in: [
       command.idempotencyKey, `foreign:${suffix}`, `inactive:${suffix}`, `rollback:${suffix}`,
       `unbalanced:${suffix}`, `concurrent:${suffix}`,
       `reversal-a:${suffix}`, `reversal-b:${suffix}`,

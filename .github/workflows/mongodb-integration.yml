@@ -37,7 +37,7 @@ jobs:
           done
           echo "MongoDB replica set did not become primary" >&2
           exit 1
-      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm install --frozen-lockfile
       - name: Run MongoDB HTTP integration tests
         run: pnpm --filter @aslibooks/api test
       - name: Stop test database

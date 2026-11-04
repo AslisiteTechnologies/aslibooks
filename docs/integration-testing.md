@@ -9,10 +9,14 @@ Set `MONGODB_TEST_URI` to the test replica-set connection string and `MONGODB_TE
 
 Covered: anonymous denial, atomic owner creation, duplicate slug handling, membership-scoped listing and suspended memberships.
 
-Not covered: real Better Auth signup/login, cookies, CSRF, email verification, session expiry, concurrency, transaction rollback failure injection or full ledger tenant isolation. These remain release blockers.
+Separate suites cover real Better Auth signup/login, session cookies, logout,
+cross-tenant organization reads, ledger membership fencing, concurrent posting,
+reversals and audit rollback. Browser E2E, CSRF, email recovery, session expiry
+and full end-to-end financial journeys still require separate evidence.
 
 ## CI isolation
 
 The `.github/workflows/mongodb-integration.yml` workflow starts MongoDB 7 in a temporary Docker container bound to the runner loopback address. It initializes a single-node replica set so multi-document transactions can execute, runs the API tests against `aslibooks_test_ci`, and removes the container afterward. No production Atlas URI or GitHub secret is needed.
 
-A passing integration workflow demonstrates the tested organization endpoints only. It does **not** prove real Better Auth cookie/session behavior, financial ledger authorization or production readiness.
+A passing integration workflow covers the API replica-set suites enabled for
+that commit. Record its SHA separately from browser and deployment evidence.

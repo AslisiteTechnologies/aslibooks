@@ -1,17 +1,18 @@
 # Ledger authorization and revocation consistency
 
-Status: **design constraint — not yet enforced atomically**.
+Status: **implemented for authorized journal and reversal services**.
 
 ## Current boundary
 
 `postAuthorizedJournal` and `postAuthorizedReversal` derive the actor from a
 trusted caller and check active organization membership with `ledger:post`.
-The posting primitives then execute a separate MongoDB transaction. They are
-internal services and **must not** be exposed directly to HTTP clients.
+The posting primitives then conditionally increment the active, permitted
+membership's fence inside the journal transaction. Only the authorized wrappers
+are suitable entry points for session-authenticated callers.
 
-The current checks reject unauthorized users, suspended users and idempotent
-replays initiated after suspension. They do **not** guarantee that suspension
-committed while a posting operation is in progress will prevent that posting.
+If suspension commits first, the conditional write fails or the transaction
+retries against fresh membership state. If posting obtains the fence first,
+suspension can serialize after its commit. Replays also enter the transaction.
 
 ## Required consistency contract
 
