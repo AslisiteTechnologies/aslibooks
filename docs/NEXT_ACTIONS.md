@@ -2,11 +2,11 @@
 
 ## Current checkpoint
 
-Branch `develop/phase-1-foundation`. Customer receipt `b0f0f8793d3b4df244deefa3d7f0e939c9c3fb54` passed CI #200/MongoDB #137; vendor bill `1b96e1ccf424d81d5607c5faf095fde974cefd31` passed CI #202/MongoDB #139; vendor payment `ea27dd901c61452632bd647bd17f2709870fb870` passed CI #204/MongoDB #141; opening balances `d2794925635f7dc3aa0867737ed1f9d075ddd5e9` passed CI #206/MongoDB #143; settings `0b37dd02e819e2d5396aa683c6da7834ab53e702` passed CI #208/MongoDB #145; due-date/aging `3458330caa70f9bcf63fa84860452c84992e6f06` passed CI #210/MongoDB #147; printable invoices `e2b787e7aba03ff3e18155c5615137b6b3e70a71` passed CI #212/MongoDB #149; AR/AP reconciliation `36e448433555f32aa38019085fd6b2435a712059` passed CI #214/MongoDB #151; invoice credit notes `5e5a84620c87d2dc6fcc5395fb5588239e43e968` passed CI #216/MongoDB #153; vendor credits `5b31dd35229a26f1fdae9c0d217ca51093a6974f` passed CI #218/MongoDB #155. CSV exports now pass serialization tests, typecheck/lint/build, serial 85 API/5 accounting suites and full browser download verification. Publish CSV exports and then implement bank statement import/reconciliation and a date-filtered dashboard. Preserve untracked `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`; never stage it.
+Branch `develop/phase-1-foundation`. CSV export commit `cfd8655ed740250a9edd318faeb8d5ec5ba424b6` passed CI #220 and MongoDB #157. Bank statement import/matching/reconciliation is implemented locally: focused replica-set integration passed, full serial API suite passed 86 tests across 20 files, accounting passed 5 tests, web CSV test passed, typecheck/lint/build passed, and complete 390px E2E passed. Publish the verified banking slice next. Preserve untracked `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`; never stage it.
 
-## Next implementation task after aging summaries
+## Next implementation task after banking workflow
 
-Add and verify vendor credits, CSV exports and remaining security/release work. Keep tax-free posting until reviewed GST mechanics exist.
+Implement the real date-filtered accounting dashboard with ledger-derived revenue, expenses, receivables, payables and cash. Then continue contact edit/details, GST-ready structures without compliance claims, AI draft/review (never autonomous posting), tenant/security review and release hardening. Keep tax-free posting until reviewed GST mechanics exist.
 
 ## Local verification commands
 
@@ -45,11 +45,12 @@ $env:PLAYWRIGHT_BROWSERS_PATH="$env:TEMP\codex-aslibooks-browsers"
 
 ## Remaining MVP work
 
-- Contact edit/details and richer invoice/credit-note print templates.
-- Cash/bank reconciliation and bank statement imports.
 - Real dashboard with date-filtered accounting data.
+- Contact details/edit workflow and richer invoice/credit-note print templates.
 - Reviewed GST structures/calculations only after qualified review.
 - Optional AI drafts/explanations with explicit approval.
 - Tenant/role/security review, full responsive E2E coverage, deployment, backups/restores, monitoring and release readiness.
 
 Do not deploy production, merge to `main`, use live customer data, purchase subscriptions or claim legal/tax compliance.
+
+After browser verification, commit only explicit banking, test, UI and documentation paths, publish using a non-forced expected-head ref update through GitHub, and verify CI/MongoDB on the exact resulting SHA before selecting the dashboard task. Do not include the owner-supplied vision document.

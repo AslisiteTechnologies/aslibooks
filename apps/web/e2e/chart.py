@@ -205,7 +205,43 @@ def test_chart():
             assert '"TOTAL"' in exported and '"Cash on hand"' in exported
             page.get_by_role("button", name="Load ledger").click()
             expect(page.get_by_text("Opening cash entry", exact=False)).to_be_visible()
-            print("Verified signup, starter chart/opening balances, customer/vendor/service setup, invoice/vendor credits and print views, receipts, partial/final bill payments, account lifecycle, manual journals, responsive navigation, CSV export and reconciled reports (INR 34.66 net profit)")
+            page.get_by_role("button", name="Open navigation").click()
+            page.get_by_role("button", name="Accounting", exact=True).click()
+            page.get_by_role("button", name="Journals", exact=True).click()
+            page.get_by_label("Description", exact=False).fill("E2E bank statement deposit")
+            page.get_by_label("Account", exact=False).nth(0).click()
+            page.get_by_role("option", name="1010 · Bank account").click()
+            page.get_by_label("Account", exact=False).nth(1).click()
+            page.get_by_role("option", name="1000 · Cash on hand").click()
+            page.get_by_label("Amount (INR)").nth(0).fill("25.00")
+            page.get_by_label("Amount (INR)").nth(1).fill("25.00")
+            page.get_by_role("button", name="Review journal").click()
+            with page.expect_response(lambda response: response.url.endswith("/journals") and response.request.method == "POST") as bank_journal_response:
+                page.get_by_role("button", name="Confirm and post").click()
+            assert bank_journal_response.value.status == 201, bank_journal_response.value.text()
+            journal_id = bank_journal_response.value.json()["journalId"]
+            page.get_by_role("button", name="Open navigation").click()
+            page.get_by_role("button", name="Banking", exact=True).click()
+            today = page.evaluate("new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date())")
+            csv = f"transactionDate,amountPaise,description\r\n{today},2500,E2E deposit\r\n"
+            with page.expect_response(lambda response: response.url.endswith("/bank-statements/import") and response.request.method == "POST") as bank_import_response:
+                page.locator('input[type="file"]').set_input_files({"name": "statement.csv", "mimeType": "text/csv", "buffer": csv.encode()})
+            assert bank_import_response.value.status == 201, bank_import_response.value.text()
+            assert bank_import_response.value.json() == {"imported": 1, "duplicates": 0}
+            expect(page.get_by_text("E2E deposit", exact=True)).to_be_visible()
+            page.get_by_label("Journal ID for E2E deposit").fill(journal_id)
+            with page.expect_response(lambda response: response.url.endswith("/match") and response.request.method == "POST") as bank_match_response:
+                page.get_by_role("button", name="Match", exact=True).click()
+            assert bank_match_response.value.status == 200, bank_match_response.value.text()
+            page.get_by_label("From").fill(today)
+            page.get_by_label("Through").fill(today)
+            page.get_by_label("Opening balance (₹)").fill("0.00")
+            page.get_by_label("Closing balance (₹)").fill("25.00")
+            with page.expect_response(lambda response: response.url.endswith("/reconcile") and response.request.method == "POST") as bank_reconcile_response:
+                page.get_by_role("button", name="Reconcile statement").click()
+            assert bank_reconcile_response.value.status == 201, bank_reconcile_response.value.text()
+            expect(page.get_by_text("reconciled to ledger", exact=False)).to_be_visible()
+            print("Verified signup, starter chart/opening balances, customer/vendor/service setup, invoice/vendor credits and print views, receipts, partial/final bill payments, account lifecycle, manual journals, bank CSV import/matching/reconciliation, responsive navigation, CSV export and reconciled reports (INR 34.66 net profit)")
         finally:
             browser.close()
 
