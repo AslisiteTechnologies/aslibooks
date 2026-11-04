@@ -11,6 +11,7 @@ const contactsPath = (org: string) => `/api/organizations/${org}/contacts`;
 export type ContactInput = { displayName: string; roles: Array<'customer' | 'vendor'>; email?: string; phone?: string; gstin?: string; address?: string };
 export type Contact = ContactInput & { _id: string; active: boolean };
 export type Product = { _id: string; code: string; name: string; description?: string; unitPricePaise: number; active: boolean };
+export type Invoice = { id: string; customerName: string; status: 'draft' | 'issued'; totalPaise: number; invoiceNumber?: string; issuedAt?: string; createdAt: string };
 export type Journal = { id: string; description: string; postedAt: string; reversalOf: string | null; lineCount: number };
 export type JournalDetail = Omit<Journal, 'lineCount'> & { lines: Array<{ accountId: string; debitPaise: number; creditPaise: number }> };
 export type JournalInput = { idempotencyKey: string; description: string; lines: Array<{ accountId: string; debitPaise: number; creditPaise: number }> };
@@ -58,6 +59,13 @@ export const api = {
   ),
   createProduct: (org: string, input: { code: string; name: string; unitPricePaise: number }) =>
     jsonRequest<{ id: string }>(`/api/organizations/${org}/products`, { method: 'POST', body: JSON.stringify(input) }),
+  invoices: (org: string) => jsonRequest<{ invoices: Invoice[]; next: string | null }>(`/api/organizations/${org}/invoices`),
+  createInvoiceDraft: (org: string, input: { customerId: string; lines: Array<{ productId: string; quantity: number }> }) =>
+    jsonRequest<{ id: string; status: 'draft' }>(`/api/organizations/${org}/invoices`, { method: 'POST', body: JSON.stringify(input) }),
+  issueInvoice: (org: string, id: string, idempotencyKey: string) =>
+    jsonRequest<{ id: string; invoiceNumber: string; journalId: string; replayed: boolean; status: 'issued' }>(
+      `/api/organizations/${org}/invoices/${id}/issue`, { method: 'POST', body: JSON.stringify({ idempotencyKey }) },
+    ),
   accounts: (org: string, after = '') => jsonRequest<{ accounts: Account[]; next: string | null }>(
     accountsPath(org) + (after ? `?after=${encodeURIComponent(after)}` : ''),
   ),

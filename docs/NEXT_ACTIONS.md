@@ -2,15 +2,15 @@
 
 ## Current checkpoint
 
-Branch `develop/phase-1-foundation`. Latest published report checkpoint `86ed40f7869fdd3a88a78b553a103f589a2f3c17`; CI and MongoDB workflow state must be checked for newer commits. The local starter chart slice has passed full workspace tests with all MongoDB integration tests enabled, typecheck, lint, build and desktop/mobile browser smoke. The owner-supplied `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md` remains untracked and must never be staged.
+Branch `develop/phase-1-foundation`. The published starter-chart commit `11cdf6712cb1df0fd5e79038d3f00ff74f9a3b75` has green CI run #196 and MongoDB integration #133. The local invoice slice has passed all 75 API tests (including 2 MongoDB invoice tests), 5 accounting tests, workspace typecheck, lint, build and a Playwright customer-to-invoice-to-reports flow at 390px. Review and publish this slice, then start receipts/allocation. Preserve untracked `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`; never stage it.
 
-## Next implementation task
+## Next implementation task after invoices
 
-Implement controlled opening balances after confirming the existing fiscal-period and journal interfaces. Treat the opening balance as one balanced, audited, idempotent journal in the open fiscal period, require elevated permission and explicit date/account/amount validation, prevent duplicate opening journals, and expose an owner workflow to review before posting. Do not allow a mismatch to be silently plugged; require debits equal credits and explain the opening equity account convention. Add integration coverage for replay, tenant isolation, inactive account, closed period, and transaction rollback.
+Build receipts and allocation as the next phase-2 vertical slice. Define immutable receipt records and an atomic posting/allocation path: debit cash/bank, credit receivables, allocate no more than the invoice's remaining amount, update invoice settlement state transactionally, audit, and support idempotent retries. Include partial/final payment, overpayment, cross-tenant, inactive bank account, closed period and rollback tests. Expose explicit human confirmation in the UI. Do not add GST calculations without verified rules and professional review.
 
-## Verification and publish
+## Local verification commands
 
-For a disposable local replica set:
+For a disposable replica set:
 
 ```powershell
 $env:MONGODB_TEST_URI='mongodb://127.0.0.1:37491/?replicaSet=aslibooksLocal'
@@ -22,18 +22,19 @@ pnpm build
 git diff --check
 ```
 
-The Playwright smoke uses the shared Python runtime with `$env:PYTHONPATH="$env:TEMP\aslibooks-playwright-runtime"` and `$env:PLAYWRIGHT_BROWSERS_PATH="$env:TEMP\codex-aslibooks-browsers"`, then runs `python apps/web/e2e/chart.py`.
+Playwright uses `$env:PYTHONPATH="$env:TEMP\aslibooks-playwright-runtime"` and `$env:PLAYWRIGHT_BROWSERS_PATH="$env:TEMP\codex-aslibooks-browsers"`, then runs `python apps/web/e2e/chart.py`.
 
-Commit verified slices on this branch. Publish without force; inspect the connected repository ref first because direct Git push has timed out in this environment. Check CI and MongoDB workflows on the exact resulting SHA before claiming them green. Never stage the owner-supplied vision document.
+Publish only verified changes to `develop/phase-1-foundation`; use the connected GitHub workflow because direct `git push` timed out previously. Inspect the branch head before each ref update and never force. Check CI and MongoDB results on the exact commit SHA. Never stage the owner-supplied master document.
 
-## Remaining MVP sequence
+## Remaining MVP work
 
-1. Opening balances and fiscal-year settings/period-close safeguards.
-2. Contact edit/details, customer invoice draft and issue lifecycle with safe numbering, tax-free path first, balanced AR/income journals and audit.
-3. Bills and expenses, receipts/payments and explicit allocations.
-4. Receivable/payable aging, reconciliation and exports.
-5. Reviewed GST data structures and deterministic supported calculations only.
-6. Optional AI draft/explanation with explicit human approval.
-7. Tenant/role/security review, full responsive E2E journeys, deployment instructions, backup/restore, monitoring and release readiness.
+- Receipts, payment allocation, invoice settlement and customer balance reconciliation.
+- Vendor bills/expenses and vendor payments.
+- Controlled opening balances and fiscal-year organization settings.
+- Contact edit/details, due dates, invoice print/PDF and credit notes.
+- Receivable/payable aging, cash/bank reconciliation and exports.
+- Reviewed GST structures/calculations only after qualified review.
+- Optional AI drafts/explanations with explicit approval.
+- Tenant/role/security review, full responsive E2E coverage, deployment, backups/restores, monitoring and release readiness.
 
-No production deploy, merge to `main`, live customer data, subscription purchase or legal/compliance claim is authorized.
+Do not deploy production, merge to `main`, use live customer data, purchase subscriptions or claim legal/tax compliance.
