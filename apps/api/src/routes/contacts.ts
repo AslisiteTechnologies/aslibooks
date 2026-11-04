@@ -90,7 +90,8 @@ const write: RequestHandler = async (req, res, next) => {
           existing.active = false;
           action = 'contact.archived';
         } else {
-          existing.set({ ...parsed.data, email: 'email' in parsed.data && !parsed.data.email ? undefined : parsed.data.email });
+          const changes = parsed.data;
+          existing.set({ ...changes, email: 'email' in changes && !changes.email ? undefined : changes.email });
           action = 'contact.updated';
         }
         await existing.save({ session });
