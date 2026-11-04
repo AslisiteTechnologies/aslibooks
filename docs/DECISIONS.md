@@ -9,3 +9,5 @@
 - Default fiscal year should be Apr–Mar, but localizing year selection, date cutoffs and period closure requires a tested fiscal calendar implementation before posting dates ship.
 - Invoice recognition, GST rates and inclusive/exclusive rounding require qualified accounting review. Until then, hold invoices at draft and keep unsupported tax/posting options disabled.
 - Production access, subscription purchase, production deployment and merge to main remain owner-controlled.
+
+- The optional Indian SME starter chart adds only missing organization account codes in one authorized transaction and never replaces custom rows. It omits contra-asset defaults because the current account type model cannot represent normal credit balances within assets safely. GST-named accounts are only labels; no tax behavior or compliance is implied.

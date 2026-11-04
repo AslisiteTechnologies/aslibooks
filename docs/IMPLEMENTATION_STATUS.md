@@ -6,7 +6,7 @@ Status verified on 2026-11-04 from the local checkout `develop/phase-1-foundatio
 | --- | --- | --- |
 | Authentication | Partial | Better Auth registration, login, session and logout have HTTP integration coverage. Password recovery, verified email, rate limits and session-expiry UX remain. |
 | Organizations and membership | Partial | Authenticated organization create/list and membership-scoped access. Settings, switching persistence, invitations, role administration and ownership transfer remain. |
-| Chart of accounts | Partial | Tenant-scoped list/create/rename/archive API, responsive UI, membership write fence, audit, first-post serialization and legacy journal reference protection. Starter chart, opening balances and journals UI remain. |
+| Chart of accounts | Partial | Tenant-scoped list/create/rename/archive API, responsive UI, membership write fence, audit, first-post serialization and legacy journal reference protection. Optional idempotent 23-account INR starter chart, opening balances and journals UI remain. |
 | Journals | Partial | Authenticated tenant-scoped list/detail, manual posting and reversal endpoints; actor from session, role fences, idempotency, audit and fiscal period gate. MUI review-before-post workflow and reversal reason. General ledger aggregation, drafts and accounting exports remain. |
 | Fiscal periods | Foundation implemented | Annual periods default to April–March; dates use Asia/Kolkata; first use creates the open period transactionally; owner/admin close is fenced and audited; both journal posting and reversal reject a closed current period. No period reopening or close checklist. |
 | Contacts | Partial | Tenant-scoped customer/vendor create, list, search and archive with roles, audit and duplicate protection. Edit UI, identifiers, tax/address metadata, opening balances, exports and customer/vendor ledgers remain. |
@@ -17,7 +17,7 @@ Status verified on 2026-11-04 from the local checkout `develop/phase-1-foundatio
 | General ledger and reports | Partial | Tenant-scoped general ledger with India-local date filters, normal-side running balance and cursor pagination; trial balance reconciles debit/credit; fiscal-year P&L and balance sheet include current earnings. Connected reports screen. Aged reports, exports and data-backed dashboard remain. |
 | GST | Missing | No reviewed calculation/rate rules. Do not claim GST compliance. |
 | AI assistance | Missing | No draft/explain/review workflow. Any future AI must require explicit human approval before posting. |
-| Browser/mobile | Partial | Responsive web shell and auth/onboarding, account, contact and product screens. Playwright smoke remains unverified; there is no mobile app workspace. |
+| Browser/mobile | Partial | Responsive web shell and auth/onboarding, account, contact and product screens. Playwright signup-to-reports smoke passes on desktop and 390px navigation; there is no mobile app workspace. |
 | Release operations | Missing | No verified staging, production monitoring, least-privilege runtime database role, backup/restore rehearsal or release checklist. |
 
 The API server starts under Node after using runtime-safe Mongoose imports. Root lint checks `apps` and `packages`. The master vision file supplied by the user is untracked user content and must be preserved.

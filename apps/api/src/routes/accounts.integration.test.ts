@@ -55,6 +55,18 @@ describe.skipIf(!enabled)('chart of accounts HTTP', () => {
     }
     await request(app).get(path + '?after=bad').set(owner).expect(400);
   });
+  it('adds the SME starter chart idempotently without overwriting existing codes', async () => {
+    const customized = await AccountModel.create({ ...input, code: '4000', name: 'Custom sales account', organizationId: org });
+    await request(app).post(path + '/starter-chart').set('x-fixture-actor', 'viewer').send({}).expect(403);
+    await request(app).post(path + '/starter-chart').set(owner).send({ actorAuthUserId: 'forged' }).expect(400);
+    const first = await request(app).post(path + '/starter-chart').set(owner).send({}).expect(201);
+    expect(first.body).toMatchObject({ added: 22, alreadyPresent: 1, total: 23 });
+    expect(await AccountModel.countDocuments({ organizationId: org })).toBe(23);
+    expect(await AccountModel.findById(customized._id)).toMatchObject({ name: 'Custom sales account', type: 'asset' });
+    const repeated = await request(app).post(path + '/starter-chart').set(owner).send({}).expect(201);
+    expect(repeated.body).toMatchObject({ added: 0, alreadyPresent: 23, total: 23 });
+    expect(await AuditEventModel.countDocuments({ organizationId: org, action: 'account.starter_chart_added' })).toBe(2);
+  });
   it('scopes codes, list and updates; audits create, rename and archive', async () => {
     const { body: { id } } = await request(app).post(path).set(owner).send(input).expect(201);
     await request(app).post(path).set(owner).send(input).expect(409);

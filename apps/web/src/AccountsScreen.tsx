@@ -33,6 +33,15 @@ export function AccountsScreen({ organization }: { organization: Organization })
     await change(() => editing ? api.updateAccount(organization.id, editing, { name: draft.name })
       : api.createAccount(organization.id, draft), editing ? 'Account renamed.' : 'Account created.');
   }
+  async function addStarterChart() {
+    setSaving(true); setError(''); setNotice('');
+    try {
+      const result = await api.addStarterChart(organization.id);
+      setNotice(`Added ${result.added} starter accounts; kept ${result.alreadyPresent} existing accounts.`);
+      setRevision(value => value + 1);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Starter chart could not be added.'); }
+    finally { setSaving(false); }
+  }
   async function change(write: () => Promise<unknown>, success: string) {
     setSaving(true); setError(''); setNotice('');
     try {
@@ -56,6 +65,7 @@ export function AccountsScreen({ organization }: { organization: Organization })
         </TextField>
         <Stack direction="row" spacing={1}>
           <Button type="submit" variant="contained" disabled={saving}>{editing ? 'Save name' : 'Create account'}</Button>
+          {!editing && <Button type="button" disabled={saving} onClick={() => void addStarterChart()}>Add starter chart</Button>}
           {editing && <Button disabled={saving} onClick={() => { setDraft(empty); setEditing(''); }}>Cancel</Button>}
         </Stack>
       </Stack>

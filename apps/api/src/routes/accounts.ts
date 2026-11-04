@@ -5,6 +5,7 @@ import { AccountModel, accountTypes } from '../models/account.js';
 import { AuditEventModel } from '../models/auditEvent.js';
 import { JournalModel } from '../models/journal.js';
 import { fenceLedgerPermission, hasPermission } from '../security/authorization.js';
+import { starterChart } from '../accounting/starterChart.js';
 
 const name = z.string().trim().min(1).max(160);
 const create = z.strictObject({
@@ -42,10 +43,39 @@ export function accountRouter() {
     }));
     res.json({ accounts, next: rows.length > 50 ? accounts[49].id : null });
   });
+  router.post('/starter-chart', seedStarterChart);
   router.post('/', writeAccount);
   router.patch('/:id', writeAccount);
   return router;
 }
+
+const seedStarterChart: RequestHandler = async (req, res, next) => {
+  const { organizationId, authUserId } = res.locals;
+  if (!req.is('application/json')) { res.status(415).json({ error: 'Send an empty JSON object' }); return; }
+  if (!z.strictObject({}).safeParse(req.body).success) {
+    res.status(400).json({ error: 'Starter chart request must be an empty JSON object' }); return;
+  }
+  try {
+    const result = await mongoose.connection.transaction(async session => {
+      if (!await fenceLedgerPermission(authUserId, String(organizationId), session))
+        throw new AccountError(403, 'Starter chart requires posting permission');
+      const existing = await AccountModel.find({ organizationId, code: { $in: starterChart.map(account => account.code) } })
+        .select('code').session(session).lean<Array<{ code: string }>>();
+      const existingCodes = new Set(existing.map(account => account.code));
+      const missing = starterChart.filter(account => !existingCodes.has(account.code));
+      if (missing.length) await AccountModel.create(missing.map(account => ({ ...account, organizationId })), { session, ordered: true });
+      await AuditEventModel.create([{
+        organizationId, actorAuthUserId: authUserId, action: 'account.starter_chart_added',
+        resourceType: 'chart', resourceId: String(organizationId),
+      }], { session, ordered: true });
+      return { added: missing.length, alreadyPresent: starterChart.length - missing.length };
+    });
+    res.status(201).json({ ...result, total: starterChart.length });
+  } catch (error) {
+    if (error instanceof AccountError) { res.status(error.status).json({ error: error.message }); return; }
+    next(error);
+  }
+};
 
 const writeAccount: RequestHandler = async (req, res, next) => {
   const { organizationId, authUserId } = res.locals;

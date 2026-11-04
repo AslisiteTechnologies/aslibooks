@@ -64,6 +64,9 @@ export const api = {
   createAccount: (org: string, input: AccountInput) => jsonRequest<{ id: string }>(accountsPath(org), {
     method: 'POST', body: JSON.stringify(input),
   }),
+  addStarterChart: (org: string) => jsonRequest<{ added: number; alreadyPresent: number; total: number }>(
+    `${accountsPath(org)}/starter-chart`, { method: 'POST', body: '{}' },
+  ),
   updateAccount: (org: string, id: string, input: { name: string } | { active: false }) =>
     jsonRequest<{ id: string }>(`${accountsPath(org)}/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
   journals: (org: string, after = '') => jsonRequest<{ journals: Journal[]; next: string | null }>(
