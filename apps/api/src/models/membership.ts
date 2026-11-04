@@ -9,6 +9,7 @@ const membershipSchema = new Schema({
   role: { type: String, required: true, enum: membershipRoles },
   status: { type: String, required: true, enum: ['active', 'invited', 'suspended'], default: 'active' },
   ledgerAuthorizationFence: { type: Number, required: true, default: 0, min: 0 },
+  organizationSettingsFence: { type: Number, required: true, default: 0, min: 0 },
 }, { timestamps: true, strict: 'throw' });
 
 membershipSchema.index({ organizationId: 1, authUserId: 1 }, { unique: true });

@@ -14,6 +14,7 @@ import { receiptRouter } from './receipts.js';
 import { billRouter } from './bills.js';
 import { vendorPaymentRouter } from './vendorPayments.js';
 import { openingBalanceRouter } from './openingBalances.js';
+import { organizationSettingsRouter } from './organizationSettings.js';
 
 type AuthUser = { id: string };
 export function organizationRouter(resolveUser: (headers: Headers) => Promise<AuthUser | null>): Router {
@@ -64,10 +65,10 @@ export function organizationRouter(resolveUser: (headers: Headers) => Promise<Au
         .select('organizationId role').lean<Array<{ organizationId: mongoose.Types.ObjectId; role: string }>>();
       const ids = memberships.map((m: { organizationId: mongoose.Types.ObjectId }) => m.organizationId);
       const organizations = await OrganizationModel.find({ _id: { $in: ids } })
-        .select('name slug baseCurrency').lean<Array<{ _id: mongoose.Types.ObjectId; name: string; slug: string; baseCurrency: string }>>();
+        .select('name slug gstin baseCurrency fiscalYearStartMonth').lean<Array<{ _id: mongoose.Types.ObjectId; name: string; slug: string; gstin?: string; baseCurrency: string; fiscalYearStartMonth: number }>>();
       const roles = new Map(memberships.map(m => [String(m.organizationId), m.role]));
-      res.json({ organizations: organizations.map((o: { _id: mongoose.Types.ObjectId; name: string; slug: string; baseCurrency: string }) => ({
-        id: o._id.toString(), name: o.name, slug: o.slug, baseCurrency: o.baseCurrency, role: roles.get(String(o._id)),
+      res.json({ organizations: organizations.map((o: { _id: mongoose.Types.ObjectId; name: string; slug: string; gstin?: string; baseCurrency: string; fiscalYearStartMonth: number }) => ({
+        id: o._id.toString(), name: o.name, slug: o.slug, gstin: o.gstin || '', fiscalYearStartMonth: o.fiscalYearStartMonth, baseCurrency: o.baseCurrency, role: roles.get(String(o._id)),
       })) });
     } catch (error) { next(error); }
   });
@@ -83,5 +84,6 @@ export function organizationRouter(resolveUser: (headers: Headers) => Promise<Au
   router.use('/:organizationId/bills', requireUser, billRouter());
   router.use('/:organizationId/vendor-payments', requireUser, vendorPaymentRouter());
   router.use('/:organizationId/opening-balances', requireUser, openingBalanceRouter());
+  router.use('/:organizationId/settings', requireUser, organizationSettingsRouter());
   return router;
 }

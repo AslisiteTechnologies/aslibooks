@@ -53,3 +53,16 @@ export async function fenceLedgerPermission(
   );
   return result.matchedCount === 1 && result.modifiedCount === 1;
 }
+
+/** Transactional fence for organization profile and accounting-setting updates. */
+export async function fenceOrganizationManagement(
+  authUserId: string,
+  organizationId: string,
+  session: ClientSession,
+): Promise<boolean> {
+  if (!authUserId || !Types.ObjectId.isValid(organizationId)) return false;
+  const result = await MembershipModel.updateOne({
+    organizationId: new Types.ObjectId(organizationId), authUserId, status: 'active', role: { $in: ['owner', 'admin'] },
+  }, { $inc: { organizationSettingsFence: 1 } }, { session });
+  return result.matchedCount === 1 && result.modifiedCount === 1;
+}

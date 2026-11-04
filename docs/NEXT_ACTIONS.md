@@ -2,11 +2,11 @@
 
 ## Current checkpoint
 
-Branch `develop/phase-1-foundation`. Customer receipt `b0f0f8793d3b4df244deefa3d7f0e939c9c3fb54` passed CI #200/MongoDB #137; vendor bill `1b96e1ccf424d81d5607c5faf095fde974cefd31` passed CI #202/MongoDB #139; vendor payment `ea27dd901c61452632bd647bd17f2709870fb870` passed CI #204/MongoDB #141. Opening balance API/UI passed 81 API/5 accounting tests, typecheck/lint/build, and responsive Playwright. Commit/publish this verified slice, then continue fiscal-year settings, statement reconciliation and release gaps. Preserve untracked `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`; never stage it.
+Branch `develop/phase-1-foundation`. Customer receipt `b0f0f8793d3b4df244deefa3d7f0e939c9c3fb54` passed CI #200/MongoDB #137; vendor bill `1b96e1ccf424d81d5607c5faf095fde974cefd31` passed CI #202/MongoDB #139; vendor payment `ea27dd901c61452632bd647bd17f2709870fb870` passed CI #204/MongoDB #141; opening balances `d2794925635f7dc3aa0867737ed1f9d075ddd5e9` passed CI #206/MongoDB #143. Organization settings passed 82 API/5 accounting tests, typecheck/lint/build, and full Playwright. Commit and publish this slice; then continue due dates/aging, reconciliation and remaining MVP work. Preserve untracked `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`; never stage it.
 
 ## Next implementation task after receipts
 
-Complete and publish the opening-balance workflow. Then complete control-account reconciliation, organization fiscal-year settings, invoice due dates/printing/credits, aged reports/exports and remaining security/release work. Keep tax-free posting until reviewed GST mechanics exist.
+Publish organization fiscal-year settings. Then add invoice due dates and receivable/payable aging, control-account reconciliation, print/credit workflows, exports and remaining security/release work. Keep tax-free posting until reviewed GST mechanics exist.
 
 ## Local verification commands
 

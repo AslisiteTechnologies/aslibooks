@@ -13,6 +13,7 @@ const SalesScreen = lazy(() => import('./SalesScreen').then(module => ({ default
 const ReceiptsScreen = lazy(() => import('./ReceiptsScreen').then(module => ({ default: module.ReceiptsScreen })));
 const ExpensesScreen = lazy(() => import('./ExpensesScreen').then(module => ({ default: module.ExpensesScreen })));
 const ReportsScreen = lazy(() => import('./ReportsScreen').then(module => ({ default: module.ReportsScreen })));
+const SettingsScreen = lazy(() => import('./SettingsScreen').then(module => ({ default: module.SettingsScreen })));
 
 const nav = ['Overview', 'Sales', 'Receipts', 'Products', 'Expenses', 'Contacts', 'Accounting', 'GST', 'Reports', 'Settings'];
 const drawerWidth = 248;
@@ -92,6 +93,7 @@ export function App() {
           section === 'Expenses' ? <ExpensesScreen key={organization.id} organization={organization} /> :
           section === 'Products' ? <ProductsScreen key={organization.id} organization={organization} /> :
           section === 'Reports' ? <ReportsScreen key={organization.id} organization={organization} /> :
+          section === 'Settings' ? <SettingsScreen key={organization.id} organization={organization} onSaved={() => { void refreshSession(); }} /> :
           <Paper variant="outlined" sx={{ p: { xs: 3, md: 5 } }}>
             <Stack spacing={2} alignItems="flex-start">
               <Chip label="Not connected" color="warning" size="small" />

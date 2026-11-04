@@ -2,7 +2,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 type AuthUser = { id: string; name: string; email: string };
 type SessionResponse = { user: AuthUser } | null;
-export type Organization = { id: string; name: string; slug: string; baseCurrency: string; role: string };
+export type Organization = { id: string; name: string; slug: string; gstin: string; fiscalYearStartMonth: number; baseCurrency: string; role: string };
 export const accountTypes = ['asset', 'liability', 'equity', 'income', 'expense'] as const;
 export type AccountInput = { name: string; code: string; type: typeof accountTypes[number] };
 export type Account = AccountInput & { id: string; active: boolean; system: boolean };
@@ -87,6 +87,8 @@ export const api = {
   openingBalance: (org: string) => jsonRequest<{ opening: OpeningBalance | null }>(`/api/organizations/${org}/opening-balances`),
   postOpeningBalance: (org: string, input: { idempotencyKey: string; asOf: string; balances: Array<{ accountId: string; amountPaise: number }> }) =>
     jsonRequest<{ id: string; journalId: string; totalPaise: number; replayed: boolean }>(`/api/organizations/${org}/opening-balances`, { method: 'POST', body: JSON.stringify(input) }),
+  updateOrganizationSettings: (org: string, input: { name?: string; gstin?: string; fiscalYearStartMonth?: number }) =>
+    jsonRequest<{ settings: { id: string; name: string; gstin: string; fiscalYearStartMonth: number; baseCurrency: string } }>(`/api/organizations/${org}/settings`, { method: 'PATCH', body: JSON.stringify(input) }),
   accounts: (org: string, after = '') => jsonRequest<{ accounts: Account[]; next: string | null }>(
     accountsPath(org) + (after ? `?after=${encodeURIComponent(after)}` : ''),
   ),
