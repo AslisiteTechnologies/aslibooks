@@ -2,13 +2,13 @@
 
 ## Current checkpoint
 
-Published head `f89d33feadd1b431c033e284b05c61b91025d1f3` passed CI #324, MongoDB #261, and browser E2E #44. The browser workflow covered product/service creation and edit, unit-aware invoice issue/print, receipts, bills, payments, and banking. This local change adds confirmation-gated product archiving and the browser assertion; publish it and verify all three workflows against its exact commit SHA. Local `pnpm test` passed 32 tests with 72 database-backed tests skipped; typecheck, lint, build, and `git diff --check` passed. Local browser execution needs disposable MongoDB/API/web services and failed at connection because Docker and mongod are unavailable on this host.
+Published head `7b8e8b2cb12cf6004e36b39f36680e83a7c03565` passed CI #326/#325, MongoDB #263/#262, and browser E2E #46/#45. Product/service creation, edit, and confirmed archive are covered by the browser flow. This local change adds confirmation-gated contact archiving and browser assertions after customer/vendor transactions; run checks, publish it, and verify exact-SHA Actions. Local tests skip DB-backed cases and browser execution needs MongoDB/API/web services; Docker and mongod are unavailable on this host.
 
 Preserve the original workspace edits; never stage the owner-supplied vision file. Never merge PR #1 to `main` or deploy production.
 
 ## Current implementation task
 
-Publish the product archive UI/API typing and its E2E coverage to `develop/phase-1-foundation`. Confirm exact-SHA CI, MongoDB, and browser runs; investigate and fix any failures. Then continue with the highest-priority unmet acceptance criteria in `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`, inspecting current route, model, UI, and tests before each change. The MVP is not complete: tax scenarios, customer/vendor subledgers, acceptance/security coverage, release operations, and live provider configuration still need review and implementation where unblocked.
+Publish the contact archive UI and E2E coverage to `develop/phase-1-foundation`. Confirm exact-SHA CI, MongoDB, and browser runs; investigate and fix any failures. Then continue with the highest-priority unmet acceptance criteria in `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`, inspecting current route, model, UI, and tests before each change. The MVP is not complete: tax scenarios, customer/vendor subledgers, acceptance/security coverage, release operations, and live provider configuration still need review and implementation where unblocked.
 
 ## Exact verification commands
 

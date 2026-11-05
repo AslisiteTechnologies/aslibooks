@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Alert, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Paper, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControlLabel, Paper, Stack, TextField, Typography } from '@mui/material';
 import { api, type Contact, type ContactInput, type Organization } from './api';
 
 export function ContactsScreen({ organization }: { organization: Organization }) {
@@ -8,6 +8,8 @@ export function ContactsScreen({ organization }: { organization: Organization })
   const [draft, setDraft] = useState({ displayName: '', email: '', phone: '', customer: false, vendor: false });
   const [details, setDetails] = useState({ gstin: '', address: '' });
   const [editing, setEditing] = useState<Contact | null>(null);
+  const [archiving, setArchiving] = useState<Contact | null>(null);
+  const [saving, setSaving] = useState(false);
   const [editDraft, setEditDraft] = useState<ContactInput>({ displayName: '', roles: [] });
   const [error, setError] = useState('');
   const [revision, setRevision] = useState(0);
@@ -38,8 +40,15 @@ export function ContactsScreen({ organization }: { organization: Organization })
   }
   async function saveEdit() {
     if (!editing) return;
-    try { await api.updateContact(organization.id, editing._id, editDraft); setEditing(null); setRevision(n => n + 1); }
+    try { setSaving(true); await api.updateContact(organization.id, editing._id, editDraft); setEditing(null); setRevision(n => n + 1); }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to update contact.'); }
+    finally { setSaving(false); }
+  }
+  async function archiveContact() {
+    if (!archiving) return;
+    try { setSaving(true); await api.updateContact(organization.id, archiving._id, { active: false }); setArchiving(null); setRevision(n => n + 1); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to archive contact.'); }
+    finally { setSaving(false); }
   }
   return <Stack spacing={2}>
     <Typography variant="h5">Customers and vendors</Typography>
@@ -71,11 +80,10 @@ export function ContactsScreen({ organization }: { organization: Organization })
       {contact.address && <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>Billing address: {contact.address}</Typography>}
       {canWrite && <Stack direction="row" spacing={1}>
         <Button onClick={() => beginEdit(contact)}>Edit details</Button>
-        <Button onClick={() => { void api.updateContact(organization.id, contact._id, { active: false })
-          .then(() => setRevision(n => n + 1)).catch(cause => setError(cause instanceof Error ? cause.message : 'Unable to archive contact.')); }}>Archive</Button>
+        <Button color="error" onClick={() => setArchiving(contact)}>Archive contact</Button>
       </Stack>}
     </Paper>)}
-    <Dialog open={!!editing} onClose={() => setEditing(null)} fullWidth maxWidth="sm">
+    <Dialog open={!!editing} onClose={() => { if (!saving) setEditing(null); }} fullWidth maxWidth="sm">
       <DialogTitle>Edit contact details</DialogTitle>
       <DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
         <TextField required label="Name" value={editDraft.displayName} onChange={event => setEditDraft({ ...editDraft, displayName: event.target.value })} />
@@ -86,7 +94,13 @@ export function ContactsScreen({ organization }: { organization: Organization })
         <Stack direction="row"><FormControlLabel label="Customer" control={<Checkbox checked={editDraft.roles.includes('customer')} onChange={event => setEditDraft({ ...editDraft, roles: event.target.checked ? [...new Set([...editDraft.roles, 'customer' as const])] : editDraft.roles.filter(role => role !== 'customer') })} />} />
           <FormControlLabel label="Vendor" control={<Checkbox checked={editDraft.roles.includes('vendor')} onChange={event => setEditDraft({ ...editDraft, roles: event.target.checked ? [...new Set([...editDraft.roles, 'vendor' as const])] : editDraft.roles.filter(role => role !== 'vendor') })} />} /></Stack>
       </Stack></DialogContent>
-      <DialogActions><Button onClick={() => setEditing(null)}>Cancel</Button><Button variant="contained" onClick={() => void saveEdit()} disabled={!editDraft.displayName.trim() || !editDraft.roles.length}>Save changes</Button></DialogActions>
+      <DialogActions><Button disabled={saving} onClick={() => setEditing(null)}>Cancel</Button><Button variant="contained" onClick={() => void saveEdit()} disabled={saving || !editDraft.displayName.trim() || !editDraft.roles.length}>Save changes</Button></DialogActions>
+    </Dialog>
+    <Dialog open={!!archiving} onClose={() => { if (!saving) setArchiving(null); }}>
+      <DialogTitle>Archive contact?</DialogTitle>
+      <DialogContent><DialogContentText>{archiving?.displayName} will be unavailable for new transactions. Existing invoices, bills, payments and audit history remain available.</DialogContentText></DialogContent>
+      <DialogActions><Button disabled={saving} onClick={() => setArchiving(null)}>Cancel</Button><Button color="error" disabled={saving} onClick={() => void archiveContact()}>Confirm archive</Button></DialogActions>
     </Dialog>
   </Stack>;
 }
+

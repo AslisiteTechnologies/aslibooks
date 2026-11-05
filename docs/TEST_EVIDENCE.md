@@ -138,8 +138,12 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 - Product catalog integration now updates name, unit, and price together and checks persisted values. Browser E2E edits unit from `hour` to `hours` and checks the invoice print.
 - Published head `f89d33feadd1b431c033e284b05c61b91025d1f3` passed CI #324, MongoDB integration #261, and Browser end-to-end #44. Local `pnpm test`: 32 passed, 72 MongoDB-backed tests skipped without a configured replica-set URI. `pnpm typecheck`, `pnpm lint`, `pnpm build`, bundled Python compile, and `git diff --check` passed.
 
-## Product archive UI (local, pending exact-commit workflows)
+## Product archive UI (published and verified)
 - Added a confirmation dialog before archiving a product/service. The copy explains it will leave the active catalog and existing invoice snapshots remain intact. Added the archive API shape and browser assertion after the service is used on an issued invoice.
 - Local `pnpm test`: 32 passed; 72 MongoDB-backed tests skipped because no local replica-set URI is configured. `pnpm typecheck`, meaningful `pnpm lint`, `pnpm build`, and `git diff --check` passed.
-- Local browser attempt failed before app interaction with `ERR_CONNECTION_REFUSED` at `127.0.0.1:5176`; this checkout has neither Docker nor `mongod` available to provision disposable MongoDB/API/web services. This is not a passing browser test. Published prior head `f89d33feadd1b431c033e284b05c61b91025d1f3` remains verified by CI #324, MongoDB #261 and E2E #44; archive change still needs exact-SHA workflow evidence.
+- Local browser attempt failed before app interaction with `ERR_CONNECTION_REFUSED` at `127.0.0.1:5176`; this checkout has neither Docker nor `mongod` available to provision disposable MongoDB/API/web services. This is not a passing browser test. Published head `7b8e8b2cb12cf6004e36b39f36680e83a7c03565` passed CI #326 (push #325), MongoDB #263 (push #262) and browser E2E #46 (push #45).
+
+## Contact archive UI (local, pending exact-commit workflows)
+- Added confirmation before archiving a customer/vendor; the message explains that only new transactions are blocked and prior documents/history remain. Added E2E steps archiving both fixture contacts after financial transactions.
+- Exact-commit CI/MongoDB/browser verification is pending. Local suite is being run; no result is claimed until it completes.
 
