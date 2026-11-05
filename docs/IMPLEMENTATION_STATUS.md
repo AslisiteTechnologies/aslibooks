@@ -1,6 +1,6 @@
 # Implementation status
 
-Status updated 2026-11-05 in the active implementation branch. Published development head: `c16ac0ae5e119caca1eea8577631271ec6b0e5e0`; CI #284 and MongoDB integration #221 passed. Browser end-to-end run #4 reached the UI and failed on a stale test expectation of 23 starter accounts; the app correctly adds 25. The assertion is fixed locally. Local product-unit and invoice-line snapshot work passed `pnpm test` (32 pass/72 MongoDB skips), typecheck, lint, build, Python syntax and diff checks; exact-commit CI/MongoDB/browser verification is pending. This remains an MVP in active development, not a production-ready release.
+Status updated 2026-11-05 in the active implementation branch. Published development head: `6aab30bab8b06e7bda60e8a9ea74b66c87b037c4`. CI #286 and MongoDB integration #223 passed. Browser end-to-end run #6 reached the Contacts workflow and failed because `get_by_label("Name")` matched both the new-contact form and an edit dialog during its close transition. The E2E selectors are being scoped to the form; that browser correction is pending publication and CI. Product units/invoice line snapshots are now on the published branch. This remains an MVP in active development, not a production-ready release.
 
 | Area | Status | Verified implementation and remaining gaps |
 | --- | --- | --- |

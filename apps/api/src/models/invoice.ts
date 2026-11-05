@@ -4,7 +4,6 @@ const { Schema } = mongoose;
 const invoiceLineSchema = new Schema({
   productId: { type: Schema.Types.ObjectId, required: true },
   name: { type: String, required: true, maxlength: 160 },
-  unit: { type: String, required: true, trim: true, minlength: 1, maxlength: 24, default: 'unit' },
   quantity: { type: Number, required: true, min: 1, validate: Number.isSafeInteger },
   unitPricePaise: { type: Number, required: true, min: 0, validate: Number.isSafeInteger },
   lineTotalPaise: { type: Number, required: true, min: 0, validate: Number.isSafeInteger },

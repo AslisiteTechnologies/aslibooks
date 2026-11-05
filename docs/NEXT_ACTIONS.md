@@ -2,11 +2,11 @@
 
 ## Current checkpoint
 
-Published development branch head `c16ac0ae5e119caca1eea8577631271ec6b0e5e0`; CI #284 and MongoDB integration #221 passed. Browser run #4 identified a stale assertion expecting 23 instead of 25 starter accounts. The original workspace and its uncommitted owner work remain untouched; never stage the owner-supplied vision file.
+Published development branch head `6aab30bab8b06e7bda60e8a9ea74b66c87b037c4`; CI #286 and MongoDB integration #223 passed; browser run #6 failed on an ambiguous contact Name selector. The selector fix is staged locally. Original workspace uncommitted owner work remains untouched; never stage the owner-supplied vision file.
 
 ## Current implementation task
 
-Commit and publish the product unit/invoice snapshot work and corrected browser assertion. Local suite/typecheck/lint/build/script syntax passed; now verify CI, MongoDB catalog/invoice tests and the browser workflow on the exact SHA. Previous run #4 established compiled API and direct Vite startup work, then failed at the stale 23-account assertion. Fix subsequent browser failures and continue the next unfinished MVP milestone. Production uploads remain gated on retention, encryption/backup validation and malware-scanning decisions. AI requires optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
+Publish the form-scoped E2E selector fix and rerun CI, MongoDB and browser Actions on its exact commit. The previous E2E passed startup, sign-up, organization creation, starter accounts, opening balances, organization settings and account create/edit/archive before failing at Contacts. Continue fixing E2E failures until the complete workflow passes, then begin the next unfinished MVP milestone. Production uploads remain gated on retention, encryption/backup validation and malware-scanning decisions. AI requires optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
 ## Exact verification commands
 
 ```powershell
