@@ -3,6 +3,7 @@ import mongoose, { Types } from 'mongoose';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AuditEventModel } from '../models/auditEvent.js';
+import { BillModel } from '../models/bill.js';
 import { ContactModel } from '../models/contact.js';
 import { MembershipModel } from '../models/membership.js';
 import { organizationRouter } from './organizations.js';
@@ -70,8 +71,12 @@ describe.skipIf(!enabled)('contacts API', () => {
     await request(app).patch(path + '/' + id).set(owner).send({ displayName: 'Coastal Supply', phone: '+91 9999999999', address: 'New address' }).expect(200);
     const filtered = await request(app).get(path + '?q=Coastal&role=vendor').set(owner).expect(200);
     expect(filtered.body.contacts[0]).toMatchObject({ displayName: 'Coastal Supply', phone: '+91 9999999999', address: 'New address', gstin: '22AAAAA0000A1Z5' });
+    await BillModel.create({ organizationId: org, vendorId: new Types.ObjectId(id), vendorName: 'Coastal Supply', vendorReference: 'BILL-STATEMENT-1',
+      expenseAccountId: new Types.ObjectId(), expenseAccountName: 'Operating expenses', description: 'Statement fixture', status: 'posted', amountPaise: 12500,
+      postedAt: new Date('2026-01-01T00:00:00Z') });
     const ledger = await request(app).get(path + '/' + id + '/ledger').set(owner).expect(200);
-    expect(ledger.body).toMatchObject({ contact: { id, displayName: 'Coastal Supply' }, currency: 'INR', rows: [], balancePaise: 0, payablePaise: 0 });
+    expect(ledger.body).toMatchObject({ contact: { id, displayName: 'Coastal Supply' }, currency: 'INR', balancePaise: 12500, payablePaise: 12500,
+      rows: [{ type: 'bill', reference: 'BILL-STATEMENT-1', debitPaise: 12500, creditPaise: 0, balancePaise: 12500 }] });
     await request(app).get(path + '/' + id + '/ledger?role=invalid').set(owner).expect(400);
     await request(app).get(foreignPath + '/' + id + '/ledger').set(owner).expect(403);
     const defaultPage = await request(app).get(path).set(owner).expect(200);
