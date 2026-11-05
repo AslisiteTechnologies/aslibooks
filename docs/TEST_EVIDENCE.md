@@ -300,3 +300,8 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 ## Receipt cash-account tenant boundary (local verification passed; exact-SHA workflows pending)
 - Receipt integration seeds a real cash account under a peer organization. Posting a receipt in the current organization with a valid current invoice and that foreign cash account returns 422 and creates no receipt record.
 - Focused receipts suite passes 2/2; full workspace tests pass 142/142, typecheck/lint/build/audit/diff pass. Parent `d02af80789419177ec59d265d84d7cc6f55d034d` passed exact-SHA CI #470, MongoDB #407 and Browser #190. Exact-SHA workflows for the new regression remain pending.
+
+## Accounting cross-tenant reference audit follow-up (local verification passed; hosted checks pending)
+- Bill creation rejects a real foreign-organization expense account with 422 and no draft; vendor payment rejects a foreign cash account with 422 and no payment record.
+- A real peer-owned invoice draft ID cannot be used for a current-tenant credit note; request returns 404 and no foreign credit note is stored.
+- Focused bills/invoices suites pass 4/4 and 2/2. Full workspace tests pass 142/142; typecheck, lint, production build, high-severity audit and diff check pass. Parent `a8b4e4aa7a69dc5dcbbc9460bae3629c0860b220` passed CI #472, MongoDB #409 and Browser #192; exact-SHA workflows for these new regressions are pending.

@@ -132,3 +132,22 @@ git diff --check
 ```
 
 External gates: qualified accounting/GST review, staging/production access and explicit deploy authorization, database least privilege/backup restore/monitoring/email, attachment malware and retention review, final accessibility/security review. PR #1 remains Draft; do not merge main or deploy production without authorization.
+
+## Active task: publish accounting object-reference tests, then continue role/export coverage
+1. Publish only `apps/api/src/routes/bills.integration.test.ts`, `apps/api/src/routes/invoices.integration.test.ts`, and the updated status documents on top of remote `a8b4e4aa7a69dc5dcbbc9460bae3629c0860b220`.
+2. Verify exact-SHA CI, MongoDB, and Browser workflows.
+3. Continue auditing each mounted route’s role matrix and tenant-scoped exports/attachments; add real-record denial cases wherever direct evidence is absent. Then rerun the complete suite and security audit.
+
+PowerShell commands from repository root:
+```powershell
+$env:MONGODB_TEST_URI='mongodb://127.0.0.1:37491/?replicaSet=testset'
+$env:MONGODB_TEST_DB_NAME='aslibooks_test_reference_audit_full'
+pnpm test
+pnpm typecheck
+pnpm lint
+pnpm build
+pnpm audit --audit-level=high
+git diff --check
+```
+
+Release gates still open: qualified accounting/GST review, authorized staging/production access and deployment approval, database grants/backup restore/monitoring/email operations, attachment malware/retention review, and final accessibility/security review. PR #1 remains Draft; keep `main` untouched and do not deploy production.

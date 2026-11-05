@@ -157,6 +157,12 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
     await request(app).patch(`${path}/${draftId}`).set(owner)
       .send({ customerId: String(customerId), lines: [{ productId: String(serviceId), quantity: 1 }] }).expect(404);
     await request(app).get(`/orgs/${peerId}/invoices/${draftId}`).set({ 'x-fixture-actor': 'invoice-peer' }).expect(404);
+    const peerPath = `/orgs/${peerId}/invoices`;
+    const peerDraft = await request(app).post(peerPath).set({ 'x-fixture-actor': 'invoice-peer' })
+      .send({ idempotencyKey: 'invoice-peer-credit-draft-01', customerId: String(peerCustomerId), lines: [{ productId: String(peerServiceId), quantity: 1 }] }).expect(201);
+    await request(app).post(`${path}/${peerDraft.body.id}/credit-notes`).set(owner)
+      .send({ idempotencyKey: 'invoice-foreign-credit-01', amountPaise: 1, reason: 'Unauthorized reference' }).expect(404);
+    expect(await CreditNoteModel.countDocuments({ organizationId, invoiceId: new Types.ObjectId(peerDraft.body.id) })).toBe(0);
     expect(await JournalModel.countDocuments({ organizationId })).toBe(2);
     const postedInvoice = await InvoiceModel.findById(draftId);
     postedInvoice!.totalPaise = 1;

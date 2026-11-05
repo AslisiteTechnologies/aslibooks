@@ -21,7 +21,7 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => { res.status(500).json({ error: String(error) }); });
   const organizationId = new Types.ObjectId(); const peerId = new Types.ObjectId();
   const vendorId = new Types.ObjectId(); const peerVendorId = new Types.ObjectId();
-  const expenseId = new Types.ObjectId(); const peerExpenseId = new Types.ObjectId(); const payableId = new Types.ObjectId();
+  const expenseId = new Types.ObjectId(); const peerExpenseId = new Types.ObjectId(); const peerCashId = new Types.ObjectId(); const payableId = new Types.ObjectId();
   const owner = { 'x-fixture-actor': 'bill-owner' }; const path = `/orgs/${organizationId}/bills`;
   let draftId = '';
   beforeAll(async () => {
@@ -32,12 +32,15 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     await ContactModel.create([{ _id: vendorId, organizationId, displayName: 'Vendor One', roles: ['vendor'] }, { _id: peerVendorId, organizationId: peerId, displayName: 'Peer Vendor', roles: ['vendor'] }]);
     await AccountModel.create([{ _id: expenseId, organizationId, code: '5000', name: 'Office supplies', type: 'expense' },
       { _id: payableId, organizationId, code: '2000', name: 'Accounts payable', type: 'liability' },
-      { _id: peerExpenseId, organizationId: peerId, code: '5000', name: 'Peer office supplies', type: 'expense' }]);
+      { _id: peerExpenseId, organizationId: peerId, code: '5000', name: 'Peer office supplies', type: 'expense' },
+      { _id: peerCashId, organizationId: peerId, code: '1000', name: 'Peer cash', type: 'asset' }]);
   });
   it('creates drafts without posting, validates tenant and roles, then posts atomically and idempotently', async () => {
     const payload = { idempotencyKey: 'bill-draft-key-100', vendorId: String(vendorId), vendorReference: 'INV-100', expenseAccountId: String(expenseId), description: 'Paper and stationery', amountPaise: 12345, dueDate: '2026-11-30' };
     await request(app).post(path).set(owner).send({ ...payload, taxRate: 18 }).expect(400);
     await request(app).post(path).set(owner).send({ ...payload, vendorId: String(peerVendorId) }).expect(422);
+    await request(app).post(path).set(owner).send({ ...payload, idempotencyKey: 'bill-foreign-expense-1', expenseAccountId: String(peerExpenseId) }).expect(422);
+    expect(await BillModel.countDocuments({ organizationId, draftIdempotencyKey: 'bill-foreign-expense-1' })).toBe(0);
     await request(app).post(path).set({ 'x-fixture-actor': 'bill-viewer' }).send(payload).expect(403);
     const concurrentCreates = await Promise.all([request(app).post(path).set(owner).send(payload), request(app).post(path).set(owner).send(payload)]);
     expect(concurrentCreates.map(response => response.status).sort()).toEqual([200, 201]);
@@ -84,6 +87,8 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     const draft = await request(app).post(`${paymentPath}/bills`).set(owner).send({ idempotencyKey: 'bill-payment-draft-1', vendorId: String(paymentVendor), vendorReference: 'PAY-1', expenseAccountId: String(paymentExpense), description: 'Office expense', amountPaise: 5000 }).expect(201);
     await request(app).post(`${paymentPath}/bills/${draft.body.id}/post`).set(owner).send({ idempotencyKey: 'bill-payment-post-1' }).expect(201);
     const first = { idempotencyKey: 'vendor-payment-part-1', cashAccountId: String(cashId), allocations: [{ billId: draft.body.id, amountPaise: 2000 }] };
+    await request(app).post(`${paymentPath}/vendor-payments`).set(owner).send({ ...first, idempotencyKey: 'vendor-payment-foreign-cash-1', cashAccountId: String(peerCashId) }).expect(422);
+    expect(await VendorPaymentModel.countDocuments({ organizationId: paymentOrg })).toBe(0);
     const sameKeyPayments = await Promise.all([request(app).post(`${paymentPath}/vendor-payments`).set(owner).send(first), request(app).post(`${paymentPath}/vendor-payments`).set(owner).send(first)]);
     expect(sameKeyPayments.map(response => response.status).sort()).toEqual([200, 201]);
     expect(sameKeyPayments[0].body.id).toBe(sameKeyPayments[1].body.id);
