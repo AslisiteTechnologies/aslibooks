@@ -169,3 +169,5 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 
 - E2E #94/#95 for statement UI commit 230c6e5df3d8365b15a5a45c5c6fc4e9c93472c0 failed: contacts* mock did not cover the nested /contacts/{id}/ledger path, and the UI reached the test API which returned Contact not found. The pattern now covers nested paths. At exact SHA `ec725b6302dba3d6cd0abc2bd7e01aacc7e948de`, push CI #381, MongoDB #318 and E2E #101 passed; PR E2E #103 remains in progress.
 
+- Contact statements are now locally cursor-paginated with bounded result pages, event ID tie-breaking, opening balance carried across pages and an overall outstanding total. Integration test asserts bill/payment/credit across a two-row first page and the remaining row with carried balance; Playwright mock exercises Load more statement entries. Local typecheck/lint/build/web tests/Python compile pass; integration is skipped without local MongoDB and exact-SHA workflows pending.
+
