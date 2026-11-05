@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Button, Checkbox, FormControlLabel, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
 import { api, type Account, type AgingSummary, type BalanceSheetResult, type ControlReconciliation, type GeneralLedgerResult, type Organization, type ProfitAndLossResult, type TrialBalanceRow } from './api';
 import { downloadCsv } from './csv';
 
@@ -31,6 +31,9 @@ export function ReportsScreen({ organization }: { organization: Organization }) 
   const [exportingLedger, setExportingLedger] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [aiConsent, setAiConsent] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiExplanation, setAiExplanation] = useState<Awaited<ReturnType<typeof api.explainFinancialSummary>> | null>(null);
 
   useEffect(() => {
     let current = true;
@@ -93,9 +96,36 @@ export function ReportsScreen({ organization }: { organization: Organization }) 
     finally { setExportingLedger(false); }
   }
 
+  async function requestExplanation() {
+    if (!profitLoss || !balanceSheet || !receivables || !payables || !aiConsent || aiLoading) return;
+    setAiLoading(true); setError(''); setAiExplanation(null);
+    try {
+      setAiExplanation(await api.explainFinancialSummary(organization.id, {
+        period: `${profitLoss.from} through ${profitLoss.to}`, currency: 'INR',
+        revenuePaise: profitLoss.totalIncomePaise, expensesPaise: profitLoss.totalExpensesPaise,
+        netProfitPaise: profitLoss.netProfitPaise, cashPaise: balanceSheet.accounts.filter(row => row.type === 'asset' && ['1000', '1010'].includes(row.code)).reduce((sum, row) => sum + row.balancePaise, 0),
+        receivablesPaise: receivables.totalOutstandingPaise, payablesPaise: payables.totalOutstandingPaise,
+      }));
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'AI explanation could not be generated.'); }
+    finally { setAiLoading(false); }
+  }
+
   return <Stack spacing={2}>
     <Typography variant="h5">Reports</Typography>
     {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
+    <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
+      <Stack spacing={1.5}>
+        <Typography variant="h6">AI report explanation</Typography>
+        <Typography color="text.secondary">Optional. Only aggregated report totals and the period are sent to the configured OpenAI service when you request an explanation. No account names, customer/vendor details, ledger lines, or documents are sent. The result is informational and cannot post transactions.</Typography>
+        <FormControlLabel control={<Checkbox checked={aiConsent} onChange={event => { setAiConsent(event.target.checked); setAiExplanation(null); }} />} label="I agree to send these report totals to OpenAI for this explanation." />
+        <Button variant="outlined" disabled={!aiConsent || !profitLoss || !balanceSheet || !receivables || !payables || aiLoading} onClick={() => void requestExplanation()}>{aiLoading ? 'Preparing explanation…' : 'Explain these report totals'}</Button>
+        {aiExplanation && <Stack role="status" spacing={1}>
+          <Typography>{aiExplanation.summary}</Typography>
+          {aiExplanation.observations.map((item, index) => <Typography key={`observation-${index}`}>• {item}</Typography>)}
+          {aiExplanation.questions.map((item, index) => <Typography key={`question-${index}`} color="text.secondary">Consider: {item}</Typography>)}
+        </Stack>}
+      </Stack>
+    </Paper>
     <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
       <Stack spacing={2}>
         <Typography variant="h6">Trial balance</Typography>

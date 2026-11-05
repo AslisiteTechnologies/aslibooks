@@ -2,11 +2,11 @@
 
 ## Current checkpoint
 
-Development branch head `10c6a1008d745771d475e1cba9c941fd2c7ba57b`. Email commit `67314132cbfa1a533a3912621a4ba1a04ca470fd` passed CI #234/MongoDB #171; fiscal checklist commit `d4ef5f3f9efab2941348852b9aedce218df40c43` passed CI #236, and its confirmation-test correction `aa6631c27ecdf3bff5962ca0e7050e5ff1cbbe56` passed CI #238/MongoDB #175. Optional Resend verification, password recovery and invitation notification are implemented in this worktree. Local checks passed: 28 tests; 67 MongoDB integration tests skipped due to no local replica set; typecheck, lint, build and `git diff --check` passed. The owner-supplied vision document must remain unstaged.
+Development branch head before current uncommitted AI slice: `8e6aec05400d4f726336ac7c5f83fe9fdaefab66`. The full paginated ledger CSV export passed CI #242 and MongoDB #179. Earlier email, fiscal close, GST review commits also passed their exact-commit checks. The optional AI report-explanation implementation is in local verification and must be committed and checked in CI before claiming remote completion. The owner-supplied vision document must remain unstaged.
 
 ## Current implementation task
 
-Email, fiscal close checklist, and GST review slices are verified through `10c6a1008d745771d475e1cba9c941fd2c7ba57b`. A user-facing GST review page and full paginated ledger export are being added; verify both and continue attachment policy, transfers, AI approval, and release hardening. Email provider credentials and sender-domain verification remain deployment prerequisites; no live delivery is claimed. The fiscal-close checklist and blocking/retry integration test are verified remotely. Tax-bearing invoices remain blocked pending expert review.
+AI report explanation: explicit user consent, allowlisted aggregate payload, Responses API structured schema with validation, provider storage disabled, no tools or posting capability. Configure `OPENAI_API_KEY` and optionally `OPENAI_MODEL` to enable; provider calls need live credential verification. Next, complete transfer/refund/advance workflows and secure attachments, then add browser coverage and continue release hardening. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
 ## Exact verification commands
 
 ```powershell

@@ -42,6 +42,7 @@ export type ControlReconciliation = { asOf: string; receivables: { accountName: 
 export type BankTransaction = { id: string; transactionDate: string; amountPaise: number; description: string; status: 'unmatched' | 'matched' | 'reconciled'; journalId: string | null };
 export type BankReconciliation = { id: string; periodStart: string; periodEnd: string; openingBalancePaise: number; closingBalancePaise: number; ledgerBalancePaise: number; transactionCount: number };
 export type DashboardResult = { from: string; to: string; revenuePaise: number; expensesPaise: number; netProfitPaise: number; cashPaise: number; receivablesPaise: number; payablesPaise: number; recentActivity: Array<{ id: string; description: string; postedAt: string; lineCount: number }> };
+export type FinancialExplanation = { summary: string; observations: string[]; questions: string[] };
 export type OrganizationMember = { id: string; name: string; email: string; role: string; status: 'active' | 'invited' | 'suspended'; isSelf: boolean };
 export type OrganizationInvitation = { id: string; organizationId: string; organizationName: string; organizationSlug: string; role: string };
 export type FiscalPeriod = { id: string; startDate: string; endDateExclusive: string; status: 'open' | 'closed'; closedAt?: string };
@@ -148,6 +149,8 @@ export const api = {
   matchBankTransaction: (org: string, transactionId: string, journalId: string) => jsonRequest<{ matched: true }>(`/api/organizations/${org}/bank-statements/${transactionId}/match`, { method: 'POST', body: JSON.stringify({ journalId }) }),
   reconcileBankStatement: (org: string, input: { accountId: string; periodStart: string; periodEnd: string; openingBalancePaise: number; closingBalancePaise: number }) => jsonRequest<{ id: string; replayed: boolean; transactionCount: number }>(`/api/organizations/${org}/bank-statements/reconcile`, { method: 'POST', body: JSON.stringify(input) }),
   dashboard: (org: string, from: string, to: string) => jsonRequest<DashboardResult>(`/api/organizations/${org}/reports/dashboard?${new URLSearchParams({ from, to })}`),
+  explainFinancialSummary: (org: string, input: { period: string; currency: 'INR'; revenuePaise: number; expensesPaise: number; netProfitPaise: number; cashPaise: number; receivablesPaise: number; payablesPaise: number }) =>
+    jsonRequest<FinancialExplanation>(`/api/organizations/${org}/reports/ai-explanation`, { method: 'POST', body: JSON.stringify(input) }),
   members: (org: string) => jsonRequest<{ members: OrganizationMember[] }>(`/api/organizations/${org}/members`),
   inviteMember: (org: string, email: string, role: 'admin' | 'accountant' | 'viewer') => jsonRequest<{ id: string; status: 'invited'; notificationSent: boolean }>(`/api/organizations/${org}/members`, { method: 'POST', body: JSON.stringify({ email, role }) }),
   updateMember: (org: string, memberId: string, input: { role: string } | { status: 'active' | 'suspended' }) => jsonRequest<{ updated: true }>(`/api/organizations/${org}/members/${memberId}`, { method: 'PATCH', body: JSON.stringify(input) }),

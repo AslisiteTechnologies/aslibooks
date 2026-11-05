@@ -7,6 +7,7 @@ import { InvoiceModel } from '../models/invoice.js';
 import { JournalModel } from '../models/journal.js';
 import { OrganizationModel } from '../models/organization.js';
 import { hasPermission } from '../security/authorization.js';
+import { explainFinancialSummary, ExplanationError } from '../ai/explainFinancialSummary.js';
 
 const filters = z.strictObject({
   accountId: z.string().regex(/^[a-f\d]{24}$/i),
@@ -114,6 +115,16 @@ export function reportRouter() {
     }
     res.locals.organizationId = new Types.ObjectId(id);
     next();
+  });
+
+  router.post('/ai-explanation', async (req, res) => {
+    const { organizationId, authUserId } = res.locals;
+    if (!await hasPermission(authUserId, String(organizationId), 'ledger:read')) { res.status(403).json({ error: 'Report access denied' }); return; }
+    try { res.json(await explainFinancialSummary(req.body)); }
+    catch (error) {
+      if (error instanceof ExplanationError) { res.status(error.status).json({ error: error.message }); return; }
+      res.status(502).json({ error: 'AI explanation service is unavailable.' });
+    }
   });
 
   router.get('/dashboard', async (req, res) => {
