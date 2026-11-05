@@ -3,9 +3,10 @@ import mongoose, { Types } from 'mongoose';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AuditEventModel } from '../models/auditEvent.js';
-import { BillModel } from '../models/bill.js';
+import { BillModel, VendorCreditModel } from '../models/bill.js';
 import { ContactModel } from '../models/contact.js';
 import { MembershipModel } from '../models/membership.js';
+import { VendorPaymentModel } from '../models/vendorPayment.js';
 import { organizationRouter } from './organizations.js';
 
 const uri = process.env.MONGODB_TEST_URI;
@@ -71,12 +72,21 @@ describe.skipIf(!enabled)('contacts API', () => {
     await request(app).patch(path + '/' + id).set(owner).send({ displayName: 'Coastal Supply', phone: '+91 9999999999', address: 'New address' }).expect(200);
     const filtered = await request(app).get(path + '?q=Coastal&role=vendor').set(owner).expect(200);
     expect(filtered.body.contacts[0]).toMatchObject({ displayName: 'Coastal Supply', phone: '+91 9999999999', address: 'New address', gstin: '22AAAAA0000A1Z5' });
-    await BillModel.create({ organizationId: org, vendorId: new Types.ObjectId(id), vendorName: 'Coastal Supply', vendorReference: 'BILL-STATEMENT-1',
+    const [bill] = await BillModel.create([{ organizationId: org, vendorId: new Types.ObjectId(id), vendorName: 'Coastal Supply', vendorReference: 'BILL-STATEMENT-1',
       expenseAccountId: new Types.ObjectId(), expenseAccountName: 'Operating expenses', description: 'Statement fixture', status: 'posted', amountPaise: 12500,
-      postedAt: new Date('2026-01-01T00:00:00Z') });
+      postedAt: new Date('2026-01-01T00:00:00Z') }]);
+    await VendorPaymentModel.create([{ organizationId: org, vendorId: new Types.ObjectId(id), vendorName: 'Coastal Supply', idempotencyKey: 'statement-payment-1',
+      cashAccountId: new Types.ObjectId(), amountPaise: 2500, paidAt: new Date('2026-01-02T00:00:00Z'), journalId: new Types.ObjectId(),
+      allocations: [{ billId: bill._id, vendorReference: bill.vendorReference, amountPaise: 2500 }] }]);
+    await VendorCreditModel.create([{ organizationId: org, billId: bill._id, vendorReference: bill.vendorReference, vendorName: bill.vendorName,
+      amountPaise: 3000, reason: 'Supplier allowance', idempotencyKey: 'statement-credit-1', journalId: new Types.ObjectId(), issuedAt: new Date('2026-01-03T00:00:00Z') }]);
     const ledger = await request(app).get(path + '/' + id + '/ledger').set(owner).expect(200);
-    expect(ledger.body).toMatchObject({ contact: { id, displayName: 'Coastal Supply' }, currency: 'INR', balancePaise: 12500, payablePaise: 12500,
-      rows: [{ type: 'bill', reference: 'BILL-STATEMENT-1', debitPaise: 12500, creditPaise: 0, balancePaise: 12500 }] });
+    expect(ledger.body).toMatchObject({ contact: { id, displayName: 'Coastal Supply' }, currency: 'INR', balancePaise: 7000, payablePaise: 7000,
+      rows: [
+        { type: 'bill', reference: 'BILL-STATEMENT-1', debitPaise: 12500, creditPaise: 0, balancePaise: 12500 },
+        { type: 'payment', reference: 'BILL-STATEMENT-1', debitPaise: 0, creditPaise: 2500, balancePaise: 10000 },
+        { type: 'vendor_credit', reference: 'BILL-STATEMENT-1', debitPaise: 0, creditPaise: 3000, balancePaise: 7000 },
+      ] });
     await request(app).get(path + '/' + id + '/ledger?role=invalid').set(owner).expect(400);
     await request(app).get(foreignPath + '/' + id + '/ledger').set(owner).expect(403);
     const defaultPage = await request(app).get(path).set(owner).expect(200);
