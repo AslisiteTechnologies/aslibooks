@@ -355,7 +355,9 @@ def test_chart():
             expect(page.get_by_text("No matching contacts.", exact=True)).to_be_visible()
             contact_list_route = "**/api/organizations/*/contacts*"
             def contact_page(route):
-                if "after=" in route.request.url:
+                if "/ledger?" in route.request.url:
+                    body = '{"contact":{"id":"000000000000000000000003","displayName":"Pagination contact one"},"currency":"INR","rows":[{"id":"invoice-1","date":"2026-01-01T00:00:00.000Z","type":"invoice","reference":"INV-1","description":"Invoice INV-1","debitPaise":12500,"creditPaise":0,"balancePaise":12500}],"balancePaise":12500,"receivablePaise":12500}'
+                elif "after=" in route.request.url:
                     body = '{"contacts":[{"_id":"000000000000000000000004","displayName":"Pagination contact two","roles":["customer"],"active":true}],"next":null}'
                 else:
                     body = '{"contacts":[{"_id":"000000000000000000000003","displayName":"Pagination contact one","roles":["customer"],"active":true}],"next":"000000000000000000000003"}'
@@ -368,6 +370,10 @@ def test_chart():
             expect(page.get_by_text("Pagination contact one", exact=True)).to_be_visible()
             page.get_by_role("button", name="Load more contacts").click()
             expect(page.get_by_text("Pagination contact two", exact=True)).to_be_visible()
+            page.get_by_role("button", name="Customer statement").first.click()
+            expect(page.get_by_text("Outstanding balance: ₹125.00", exact=True)).to_be_visible()
+            expect(page.get_by_text("Invoice INV-1", exact=True)).to_be_visible()
+            page.get_by_role("button", name="Close", exact=True).click()
             page.unroute(contact_list_route)
             page.route("**/api/organizations/**", lambda route: route.fulfill(status=401, content_type="application/json", body='{"error":"Unauthorized"}'), times=1)
             page.get_by_role("button", name="Open navigation").click()
