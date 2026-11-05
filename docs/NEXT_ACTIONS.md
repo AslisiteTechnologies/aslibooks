@@ -2,11 +2,11 @@
 
 ## Current checkpoint
 
-Published development branch head `43c8f4f1f309e6a9369860dcd4c2c5ee81ac8478`. Browser run #27 DOM confirms published ProductsScreen and ProductModel lack the Unit field. The local implementation contains unit snapshots and print output, but earlier tree construction used stale blob IDs. Publish fresh current file blobs for all affected product/invoice code and tests. Preserve the original workspace changes; never stage the owner-supplied vision file.
+Published development head `08285ae067b8d170c26455262807ef27a07f9a68`; CI #310 and MongoDB #247 passed. Remote raw files now confirm unit support. Browser #30 reached receipts after testing invoice unit print; it found two Amount received fields, including one disabled. The locator now selects the active final match. Preserve the original workspace changes; never stage the owner-supplied vision file.
 
 ## Current implementation task
 
-Upload fresh blobs for product/invoice models and routes, API types, Products and Sales screens, product/invoice integration tests, and corrected E2E selectors. Then verify rendered Unit input, saved service unit, invoice snapshot and print preview; run exact-commit CI, MongoDB and browser Actions. Keep iterating on browser failures. Production uploads remain gated on retention, encryption/backup validation and malware-scanning decisions. AI requires optional `OPENAI_API_KEY`; no live-provider test exists. GST tax-bearing posting remains blocked pending qualified review. Do not claim production readiness.
+Run CI, MongoDB and browser workflows for the receipt locator fix; continue through the rest of the E2E flow, fixing failures. The latest run demonstrated unit capture, invoice snapshot and printed quantity/unit. Production uploads remain gated on retention, encryption/backup validation and malware-scanning decisions. AI requires optional `OPENAI_API_KEY`; no live-provider test exists. GST tax-bearing posting remains blocked pending qualified review. Do not claim production readiness.
 
 '## Exact verification commands
 

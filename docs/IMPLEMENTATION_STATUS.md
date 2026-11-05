@@ -1,6 +1,6 @@
 # Implementation status
 
-Status updated 2026-11-05. Development branch head: `43c8f4f1f309e6a9369860dcd4c2c5ee81ac8478`. CI and MongoDB checks had passed on earlier selector commits. Browser run #27 DOM diagnostics confirmed the published product form and product model were stale and lacked the Unit field, despite the current local implementation containing the unit field and invoice snapshot work. Earlier GitHub tree creation used stale file blob IDs. The corrected E2E selector and fresh source blobs for product/invoice models, routes, UI, and integration tests are being published now. Do not claim the unit feature is present remotely until the exact commit and MongoDB/browser workflows verify it. This remains an MVP in active development, not a production-ready release.
+Status updated 2026-11-05. Development branch head: `43c8f4f1f309e6a9369860dcd4c2c5ee81ac8478`. CI and MongoDB checks had passed on earlier selector commits. The fresh product/invoice blob commit is published and the remote raw files contain `unit`. CI and MongoDB integration passed. Browser run #30 verified product creation, invoice line unit snapshot/print and issuance, then failed at Receipts because its amount locator matched a disabled and an active field. The locator now selects the active last match; rerun pending. This remains an MVP in active development, not a production-ready release.
 
 | Area | Status | Verified implementation and remaining gaps |
 | --- | --- | --- |
