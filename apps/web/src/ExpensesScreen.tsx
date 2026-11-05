@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { Alert, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControlLabel, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
 import { api, type Account, type Bill, type Contact, type Organization, type VendorAdvance, type VendorPayment } from './api';
 import { AttachmentsPanel } from './AttachmentsPanel';
 
@@ -13,6 +13,8 @@ export function ExpensesScreen({ organization }: { organization: Organization })
   const [vendorId, setVendorId] = useState(''); const [expenseAccountId, setExpenseAccountId] = useState('');
   const [reference, setReference] = useState(''); const [description, setDescription] = useState('');
   const [amount, setAmount] = useState(''); const [dueDate, setDueDate] = useState('');
+  const [aiSourceText, setAiSourceText] = useState(''); const [aiConsent, setAiConsent] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false); const [aiSuggestion, setAiSuggestion] = useState<Awaited<ReturnType<typeof api.extractBillDraft>> | null>(null);
   const [error, setError] = useState(''); const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false);
   const [revision, setRevision] = useState(0); const [toPost, setToPost] = useState<Bill | null>(null);
@@ -58,6 +60,21 @@ export function ExpensesScreen({ organization }: { organization: Organization })
       setNotice('Bill draft saved. It has not affected the ledger.'); setReference(''); setDescription(''); setAmount(''); setDueDate(''); setRevision(n => n + 1);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Bill draft could not be saved.'); }
     finally { setSaving(false); }
+  }
+  async function requestBillSuggestion() {
+    if (!aiConsent || aiSourceText.trim().length < 20) return;
+    setAiBusy(true); setError(''); setNotice(''); setAiSuggestion(null);
+    try { setAiSuggestion(await api.extractBillDraft(organization.id, aiSourceText)); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'AI bill suggestion could not be retrieved.'); }
+    finally { setAiBusy(false); }
+  }
+  function applyBillSuggestion() {
+    if (!aiSuggestion || aiSuggestion.taxStatus !== 'none_seen' || aiSuggestion.currency !== 'INR') return;
+    if (aiSuggestion.vendorReference) setReference(aiSuggestion.vendorReference);
+    if (aiSuggestion.description) setDescription(aiSuggestion.description);
+    if (aiSuggestion.amountPaise) setAmount((aiSuggestion.amountPaise / 100).toFixed(2));
+    if (aiSuggestion.dueDate) setDueDate(aiSuggestion.dueDate);
+    setNotice('Suggestions copied into editable fields. Review every value and choose the vendor and expense category yourself.');
   }
   async function post(bill: Bill) {
     setSaving(true); setError(''); setNotice('');
@@ -128,6 +145,22 @@ export function ExpensesScreen({ organization }: { organization: Organization })
       <Button type="submit" variant="contained" disabled={saving || !activeVendors.length || !expenses.length}>Save bill draft</Button>
       {!activeVendors.length && <Typography color="text.secondary">Add a vendor in Contacts before entering a bill.</Typography>}
       {!expenses.length && <Typography color="text.secondary">Add an expense account in Accounting first.</Typography>}
+    </Stack></Paper>}
+    {canWrite && <Paper variant="outlined" sx={{ p: 2 }}><Stack spacing={2}>
+      <Typography variant="h6">AI bill draft assistance (optional)</Typography>
+      <Alert severity="info">After you consent, the source text is sent to OpenAI for a suggestion and is not stored by this app. Remove sensitive details first. AI does not create a vendor, save a draft, or post a transaction. Verify all fields against the source. Tax and non-INR bills are not supported by this bill form.</Alert>
+      <TextField multiline minRows={4} maxRows={12} label="Paste bill text" value={aiSourceText} inputProps={{ maxLength: 12_000 }} onChange={event => { setAiSourceText(event.target.value); setAiSuggestion(null); }} />
+      <FormControlLabel control={<Checkbox checked={aiConsent} onChange={event => setAiConsent(event.target.checked)} />} label="I consent to send this text to OpenAI to produce a bill suggestion." />
+      <Button variant="outlined" disabled={!aiConsent || aiSourceText.trim().length < 20 || aiBusy || saving} onClick={() => void requestBillSuggestion()}>{aiBusy ? 'Preparing suggestion…' : 'Suggest bill fields'}</Button>
+      {aiSuggestion && <Stack spacing={1}>
+        <Typography>Suggested vendor: {aiSuggestion.vendorName ?? 'not identified'} · confidence: {aiSuggestion.confidence}</Typography>
+        <Typography>Reference: {aiSuggestion.vendorReference ?? 'not identified'} · amount: {aiSuggestion.amountPaise === null ? 'not identified' : formatMoney(aiSuggestion.amountPaise)} · due: {aiSuggestion.dueDate ?? 'not identified'}</Typography>
+        <Typography>Description: {aiSuggestion.description ?? 'not identified'}</Typography>
+        {aiSuggestion.uncertainties.map((item, index) => <Typography key={`${index}-${item}`} color="warning.main">Check: {item}</Typography>)}
+        {aiSuggestion.taxStatus !== 'none_seen' && <Alert severity="warning">Tax is present or unclear. This bill form does not support tax; do not apply this suggestion.</Alert>}
+        {aiSuggestion.currency !== 'INR' && <Alert severity="warning">Currency is not confirmed as INR. Do not apply this suggestion.</Alert>}
+        <Button disabled={aiSuggestion.taxStatus !== 'none_seen' || aiSuggestion.currency !== 'INR'} onClick={applyBillSuggestion}>Copy eligible suggestions into editable fields</Button>
+      </Stack>}
     </Stack></Paper>}
     {canWrite && <Paper variant="outlined" sx={{ p: 2 }}><Stack spacing={2}>
       <Typography variant="h6">Pay a vendor advance</Typography><Typography color="text.secondary">Prepayments are assets in vendor-advances control account 1400 until applied to a bill.</Typography>

@@ -250,6 +250,31 @@ def test_chart():
             expect(page.get_by_text("Draft invoice · Test Customer")).to_be_visible()
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Expenses", exact=True).click()
+            bill_source = "Test Vendor invoice AI-42. Total INR 12.34 for monthly office supplies. Due date 30 November 2026."
+            page.get_by_label("Paste bill text").fill(bill_source)
+            ai_suggest_button = page.get_by_role("button", name="Suggest bill fields")
+            expect(ai_suggest_button).to_be_disabled()
+            page.get_by_role("checkbox", name="I consent to send this text to OpenAI to produce a bill suggestion.").check()
+            ai_requests = []
+            def suggest_bill_fields(route):
+                ai_requests.append(route.request.post_data_json)
+                tax_status = "present" if len(ai_requests) == 1 else "none_seen"
+                route.fulfill(status=200, content_type="application/json", body=f'{{"vendorName":"Test Vendor","vendorReference":"AI-42","description":"Monthly office supplies","amountPaise":1234,"dueDate":"2026-11-30","currency":"INR","taxStatus":"{tax_status}","confidence":"high","uncertainties":[]}}')
+            page.route("**/api/organizations/*/bills/ai-draft-assistance", suggest_bill_fields)
+            with page.expect_response(lambda response: response.url.endswith("/bills/ai-draft-assistance")) as ai_response:
+                ai_suggest_button.click()
+            assert ai_response.value.status == 200 and ai_requests == [{"sourceText": bill_source}]
+            expect(page.get_by_text("Suggested vendor: Test Vendor · confidence: high")).to_be_visible()
+            expect(page.get_by_role("button", name="Copy eligible suggestions into editable fields")).to_be_disabled()
+            expect(page.get_by_text("Tax is present or unclear", exact=False)).to_be_visible()
+            with page.expect_response(lambda response: response.url.endswith("/bills/ai-draft-assistance")) as second_ai_response:
+                ai_suggest_button.click()
+            assert second_ai_response.value.status == 200 and len(ai_requests) == 2
+            expect(page.get_by_role("button", name="Copy eligible suggestions into editable fields")).to_be_enabled()
+            expect(page.get_by_role("button", name="Save bill draft")).to_have_count(1)
+            page.get_by_role("button", name="Copy eligible suggestions into editable fields").click()
+            expect(page.get_by_text("Suggestions copied into editable fields", exact=False)).to_be_visible()
+            page.unroute("**/api/organizations/*/bills/ai-draft-assistance", suggest_bill_fields)
             page.get_by_role("combobox", name="Vendor", exact=True).first.click()
             page.get_by_role("option", name="Test Vendor").click()
             page.get_by_label("Vendor bill reference").fill(f"V-{run}")

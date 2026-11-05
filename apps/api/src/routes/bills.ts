@@ -10,6 +10,8 @@ import { BillModel, VendorCreditModel } from '../models/bill.js';
 import { ContactModel } from '../models/contact.js';
 import { JournalModel } from '../models/journal.js';
 import { fenceLedgerPermission, hasPermission } from '../security/authorization.js';
+import { MongoAuthRateLimitStore } from '../security/authRateLimit.js';
+import { BillExtractionError, extractBillDraft } from '../ai/extractBillDraft.js';
 
 const draftInput = z.strictObject({
   idempotencyKey: z.string().regex(/^[a-zA-Z0-9:_-]{8,128}$/),
@@ -42,11 +44,44 @@ export function billRouter() {
       id: String(bill._id), _id: undefined,
     })) });
   });
+  const requirePostingPermission: RequestHandler = async (_req, res, next) => {
+    const { organizationId, authUserId } = res.locals;
+    if (!await hasPermission(authUserId, String(organizationId), 'ledger:post')) { res.status(403).json({ error: 'Bill assistance requires posting permission' }); return; }
+    next();
+  };
+  router.post('/ai-draft-assistance', requirePostingPermission, billAiRateLimiter(), async (req, res) => {
+    try { res.json(await extractBillDraft(req.body)); }
+    catch (error) {
+      if (error instanceof BillExtractionError) { res.status(error.status).json({ error: error.message }); return; }
+      res.status(502).json({ error: 'AI bill assistance is unavailable.' });
+    }
+  });
   router.post('/', writeDraft);
   router.patch('/:billId', writeDraft);
   router.post('/:billId/post', postBill);
   router.post('/:billId/credit-notes', issueVendorCredit);
   return router;
+}
+
+let sharedBillAiLimiter: RequestHandler | undefined;
+function billAiRateLimiter(): RequestHandler {
+  return async (req, res, next) => {
+    if (!sharedBillAiLimiter) {
+      const hashSecret = process.env.BETTER_AUTH_SECRET;
+      if (!hashSecret) { res.status(503).json({ error: 'AI bill assistance is not configured.' }); return; }
+      const store = new MongoAuthRateLimitStore({ windowMs: 60 * 60 * 1000, prefix: 'aslibooks:ai-bill:', collectionName: 'aslibooks_ai_rate_limits', hashSecret });
+      const initialize = store.initialize();
+      sharedBillAiLimiter = async (request, response, nextRequest) => {
+        try {
+          await initialize;
+          const hit = await store.increment(request.ip || request.socket.remoteAddress || 'unknown');
+          if (hit.totalHits > 20) { response.setHeader('RateLimit-Limit', '20'); response.setHeader('RateLimit-Remaining', '0'); response.setHeader('RateLimit-Reset', String(Math.ceil((hit.resetTime!.getTime() - Date.now()) / 1000))); response.status(429).json({ error: 'Too many AI bill requests. Try again later.' }); return; }
+          nextRequest();
+        } catch { response.status(503).json({ error: 'AI bill assistance is temporarily unavailable.' }); }
+      };
+    }
+    await sharedBillAiLimiter(req, res, next);
+  };
 }
 
 const writeDraft: RequestHandler = async (req, res, next) => {

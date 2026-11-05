@@ -127,6 +127,7 @@ export const api = {
   bills: (org: string) => jsonRequest<{ bills: Bill[] }>(`/api/organizations/${org}/bills`),
   createBillDraft: (org: string, input: { idempotencyKey: string; vendorId: string; vendorReference: string; expenseAccountId: string; description: string; amountPaise: number; dueDate?: string }) =>
     jsonRequest<{ id: string; status: 'draft' }>(`/api/organizations/${org}/bills`, { method: 'POST', body: JSON.stringify(input) }),
+  extractBillDraft: (org: string, sourceText: string) => jsonRequest<{ vendorName: string | null; vendorReference: string | null; description: string | null; amountPaise: number | null; dueDate: string | null; currency: 'INR' | 'other' | 'unknown'; taxStatus: 'none_seen' | 'present' | 'unclear'; confidence: 'high' | 'medium' | 'low'; uncertainties: string[] }>(`/api/organizations/${org}/bills/ai-draft-assistance`, { method: 'POST', body: JSON.stringify({ sourceText }) }),
   postBill: (org: string, id: string, idempotencyKey: string) => jsonRequest<{ id: string; journalId: string; replayed: boolean }>(
     `/api/organizations/${org}/bills/${id}/post`, { method: 'POST', body: JSON.stringify({ idempotencyKey }) },
   ),

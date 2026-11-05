@@ -66,6 +66,21 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     expect(await AuditEventModel.countDocuments({ organizationId, action: 'bill.posted' })).toBe(1);
     expect(await JournalModel.countDocuments({ organizationId })).toBe(1);
   });
+  it('restricts AI draft assistance to posting members and never persists suggestions', async () => {
+    const priorSecret = process.env.BETTER_AUTH_SECRET; const priorApiKey = process.env.OPENAI_API_KEY;
+    process.env.BETTER_AUTH_SECRET = 'integration-test-shared-secret'; process.env.OPENAI_API_KEY = '';
+    try {
+      const before = { bills: await BillModel.countDocuments({ organizationId }), journals: await JournalModel.countDocuments({ organizationId }), audits: await AuditEventModel.countDocuments({ organizationId }) };
+      await request(app).post(`${path}/ai-draft-assistance`).set({ 'x-fixture-actor': 'bill-viewer' }).send({ sourceText: 'Supplier invoice with enough text to parse safely.' }).expect(403);
+      await request(app).post(`${path}/ai-draft-assistance`).set({ 'x-fixture-actor': 'bill-accountant' }).send({ sourceText: 'Supplier invoice with enough text to parse safely.' }).expect(503);
+      expect(await BillModel.countDocuments({ organizationId })).toBe(before.bills);
+      expect(await JournalModel.countDocuments({ organizationId })).toBe(before.journals);
+      expect(await AuditEventModel.countDocuments({ organizationId })).toBe(before.audits);
+    } finally {
+      if (priorSecret === undefined) delete process.env.BETTER_AUTH_SECRET; else process.env.BETTER_AUTH_SECRET = priorSecret;
+      if (priorApiKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = priorApiKey;
+    }
+  });
   it('rejects a posting when accounts payable control is missing without changing the draft', async () => {
     const secondOrg = new Types.ObjectId(); const secondVendor = new Types.ObjectId(); const secondExpense = new Types.ObjectId();
     await OrganizationModel.create({ _id: secondOrg, name: 'No payable', slug: `bill-nopayable-${secondOrg}` });

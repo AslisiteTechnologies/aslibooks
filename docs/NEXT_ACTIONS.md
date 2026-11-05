@@ -263,3 +263,9 @@ Next after publishing the membership viewer-denial change: reconcile the full mo
 Route audit: review `docs/ROUTE_SECURITY_MATRIX.md` against the actual current source after any route changes. Next test uncovered object-reference/role combinations and record no-side-effect evidence; then continue AI draft-review UX, browser accessibility, and release hardening without overclaiming production readiness.
 
 Proceed with a review-only AI-assisted vendor-bill extraction workflow: explicit consent, tenant authorization, strict schema and input limits, clear uncertainty/provenance, editable fields, normal bill-draft validation, and no posting action. Then add route and UI tests proving AI output cannot post or persist without human submission.
+
+## Active task — verify and publish AI-assisted bill draft review
+1. Rerun full `pnpm test` against the disposable replica set after the Mongo quota warning fix; then run `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm audit --audit-level=high`, and `git diff --check`.
+2. Check the Python browser test syntax with `python -m py_compile apps/web/e2e/chart.py`; hosted Browser workflow must exercise consent, disabled-without-consent, tax gating, and field copy.
+3. Update implementation evidence with exact local results, commit on the existing development branch, publish using the current GitHub head as the guarded expected SHA, and verify exact-SHA CI/MongoDB/Browser workflows.
+4. Next milestone: close remaining direct role/reference coverage gaps from `docs/ROUTE_SECURITY_MATRIX.md`, then revisit acceptance gaps (GST data structures and UX, accessibility, operational hardening). Do not state that the MVP or production readiness is complete until all acceptance evidence and external release gates are satisfied.
