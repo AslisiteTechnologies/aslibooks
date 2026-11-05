@@ -17,5 +17,10 @@
     "turbo": "^2.5.0",
     "typescript": "^5.9.0",
     "typescript-eslint": "^8.72.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "minimatch": "^11.0.4"
+    }
   }
 }

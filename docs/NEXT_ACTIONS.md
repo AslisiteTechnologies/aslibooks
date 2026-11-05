@@ -8,7 +8,7 @@ Preserve the original workspace edits; never stage the owner-supplied vision fil
 
 ## Current implementation task
 
-Vitest/Tinypool remediation `d1001dc7f2742f54ca4777d0eec89581734956b2` passes CI #415/#416, MongoDB #352/#353 and Browser #135/#136 after correcting a truncated lockfile transfer; the earlier failed publication is retained in test evidence. Local tests pass 111/111 once with generated `dist` excluded, audit reports no known production vulnerabilities, and typecheck/lint/build pass. Next verify the new database-aware readiness probe, then continue the master acceptance review with tenant/role negatives, accounting reconciliation, and release-operation blockers.
+Readiness probe commit `d282c5f6f2cd649bcd2eb7e42cd2bfba71d6b76a` passed CI #417/#418, MongoDB #354/#355 and Browser #137/#138. The full audit then found one moderate minimatch issue through ESLint; a tested local override to patched minimatch 11.0.4 clears the complete `pnpm audit`. Readiness local suite passed 113/113, frozen install, typecheck, lint, build, production audit and browser flow passed. Current local docs now accurately describe the financial MVP instead of the obsolete prototype. Next publish the complete audit/readiness/docs slice, verify exact-SHA workflows, then reconcile remaining master acceptance criteria and implement the highest-priority gaps.
 
 ## Exact verification commands
 
@@ -28,7 +28,6 @@ For local integration/browser tests, use a disposable MongoDB replica set and AP
 
 ## Remaining MVP work
 
-- Publish and verify the database-aware readiness probe on its exact SHA.
 - Reconcile every master vision acceptance criterion to implemented code and direct test evidence, especially cross-tenant object access and viewer/accountant permissions.
 - Review invoice lifecycle, sales/purchase tax handling and credit/refund boundaries; keep unsupported GST cases blocked pending qualified review.
 - Verify financial reports, aging, customer/vendor ledgers and source journal reconciliation against realistic transaction fixtures.
