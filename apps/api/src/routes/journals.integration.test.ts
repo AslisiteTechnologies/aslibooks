@@ -131,6 +131,9 @@ describe.skipIf(!enabled)('authenticated manual journal API', () => {
     const replay = await request(app).post(`${path}/drafts`).set(accountant).send(input).expect(200);
     expect(replay.body).toMatchObject({ draftId: created.body.draftId, replayed: true });
     await request(app).post(`${path}/drafts`).set(accountant).send({ ...input, description: 'Changed details' }).expect(409);
+    await MembershipModel.updateOne({ organizationId: org, authUserId: 'journal-accountant' }, { $set: { status: 'suspended' } });
+    await request(app).post(`${path}/drafts`).set(accountant).send(input).expect(403);
+    await MembershipModel.updateOne({ organizationId: org, authUserId: 'journal-accountant' }, { $set: { status: 'active' } });
     const page = await request(app).get(`${path}/drafts`).set({ 'x-fixture-actor': 'journal-viewer' }).expect(200);
     expect(page.body.drafts).toEqual([expect.objectContaining({ id: created.body.draftId, status: 'draft' })]);
     expect(await JournalModel.countDocuments({ organizationId: org })).toBe(beforeJournals);

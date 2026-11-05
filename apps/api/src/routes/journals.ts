@@ -123,8 +123,16 @@ export function journalRouter() {
     } catch (error) {
       if (error instanceof JournalDraftError) { res.status(error.status).json({ error: error.message }); return; }
       if (isDuplicateKey(error)) {
-        const prior = await JournalDraftModel.findOne({ organizationId, createIdempotencyKey: parsed.data.idempotencyKey })
-          .select('+createRequestHash').lean<{ _id: Types.ObjectId; createRequestHash: string } | null>();
+        // A unique-key race aborts the original transaction. Re-establish the
+        // membership fence before reading or returning the winning draft.
+        const recovery = await mongoose.connection.transaction(async session => {
+          if (!await fenceLedgerPermission(authUserId, String(organizationId), session)) return { authorized: false as const, prior: null };
+          const prior = await JournalDraftModel.findOne({ organizationId, createIdempotencyKey: parsed.data.idempotencyKey })
+            .select('+createRequestHash').session(session).lean<{ _id: Types.ObjectId; createRequestHash: string } | null>();
+          return { authorized: true as const, prior };
+        });
+        if (!recovery.authorized) { res.status(403).json({ error: 'Journal drafts require posting permission' }); return; }
+        const { prior } = recovery;
         if (prior?.createRequestHash === requestHash) { res.status(200).json({ draftId: String(prior._id), replayed: true }); return; }
         if (prior) { res.status(409).json({ error: 'Journal draft key was used with different details' }); return; }
       }
