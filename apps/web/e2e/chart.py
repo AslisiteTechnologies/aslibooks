@@ -128,7 +128,26 @@ def test_chart():
             page.unroute("**/api/organizations/*/invoices", lose_invoice_draft_response)
             expect(page.get_by_text("Draft saved. No journal or income has been recorded.")).to_be_visible()
             page.get_by_role("button", name="Review and issue").click()
+            issue_keys = []
+            def lose_invoice_issue_response(route):
+                if route.request.method != "POST":
+                    route.continue_()
+                    return
+                issue_keys.append(route.request.post_data_json["idempotencyKey"])
+                response = route.fetch()
+                if len(issue_keys) == 1:
+                    route.abort()
+                else:
+                    route.fulfill(response=response)
+            page.route("**/api/organizations/*/invoices/*/issue", lose_invoice_issue_response)
             page.get_by_role("button", name="Confirm and issue").click()
+            expect(page.locator('[role="alert"]').filter(has_text="Failed to fetch")).to_be_visible()
+            with page.expect_response(lambda response: response.url.endswith("/issue") and response.request.method == "POST") as issue_retry:
+                page.get_by_role("button", name="Confirm and issue").click()
+            assert issue_retry.value.status == 200, issue_retry.value.text()
+            assert issue_retry.value.json()["replayed"] is True
+            assert len(issue_keys) == 2 and issue_keys[0] == issue_keys[1]
+            page.unroute("**/api/organizations/*/invoices/*/issue", lose_invoice_issue_response)
             expect(page.get_by_text("issued and posted to the ledger.", exact=False)).to_be_visible()
             page.get_by_role("button", name="Attachments", exact=True).first.click()
             expect(page.get_by_text("No attachments yet.", exact=True)).to_be_visible()
@@ -267,9 +286,27 @@ def test_chart():
             page.get_by_role("button", name="Issue vendor credit").click()
             page.get_by_label("Credit amount (INR)").fill("2.00")
             page.get_by_label("Reason").fill("Returned supplies")
+            credit_keys = []
+            def lose_vendor_credit_response(route):
+                if route.request.method != "POST":
+                    route.continue_()
+                    return
+                credit_keys.append(route.request.post_data_json["idempotencyKey"])
+                response = route.fetch()
+                if len(credit_keys) == 1:
+                    route.abort()
+                else:
+                    route.fulfill(response=response)
+            page.route("**/api/organizations/*/bills/*/credit-notes", lose_vendor_credit_response)
+            page.get_by_role("button", name="Confirm and issue").click()
+            expect(page.locator('[role="alert"]').filter(has_text="Failed to fetch")).to_be_visible()
             with page.expect_response(lambda response: response.url.endswith("/bills") and response.request.method == "GET"):
-                with page.expect_response(lambda response: response.url.endswith("/credit-notes") and response.request.method == "POST"):
+                with page.expect_response(lambda response: response.url.endswith("/credit-notes") and response.request.method == "POST") as credit_retry:
                     page.get_by_role("button", name="Confirm and issue").click()
+            assert credit_retry.value.status == 200, credit_retry.value.text()
+            assert credit_retry.value.json()["replayed"] is True
+            assert len(credit_keys) == 2 and credit_keys[0] == credit_keys[1]
+            page.unroute("**/api/organizations/*/bills/*/credit-notes", lose_vendor_credit_response)
             expect(page.get_by_text("Vendor credit of ₹2.00 issued", exact=False)).to_be_visible()
             expect(page.get_by_role("button", name="Record payment")).to_be_visible()
             page.get_by_role("button", name="Record payment").click(force=True)

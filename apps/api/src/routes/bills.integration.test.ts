@@ -114,7 +114,13 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     await request(app).post(`${creditPath}/vendor-payments`).set(owner).send({ idempotencyKey: 'bill-credit-payment-1', cashAccountId: String(creditCash), allocations: [{ billId: draft.body.id, amountPaise: 2000 }] }).expect(201);
     const input = { idempotencyKey: 'vendor-credit-key-1', amountPaise: 3000, reason: 'Returned items' };
     await request(app).post(`${billPath}/credit-notes`).set({ 'x-fixture-actor': 'bill-viewer' }).send(input).expect(403);
-    const credit = await request(app).post(`${billPath}/credit-notes`).set(owner).send(input).expect(201);
+    const creditAttempts = await Promise.all([
+      request(app).post(`${billPath}/credit-notes`).set(owner).send(input),
+      request(app).post(`${billPath}/credit-notes`).set(owner).send(input),
+    ]);
+    expect(creditAttempts.map(response => response.status).sort()).toEqual([200, 201]);
+    expect(creditAttempts[0].body.id).toBe(creditAttempts[1].body.id);
+    const credit = creditAttempts.find(response => response.status === 201)!;
     const journal = await JournalModel.findById(credit.body.journalId).lean<{ lines: Array<{ accountId: Types.ObjectId; debitPaise: number; creditPaise: number }> }>();
     expect(journal!.lines.map(line => [String(line.accountId), line.debitPaise, line.creditPaise])).toEqual([[String(creditPayable), 3000, 0], [String(creditExpense), 0, 3000]]);
     expect(await BillModel.findById(draft.body.id)).toMatchObject({ status: 'partially_credited', amountPaidPaise: 2000, amountCreditedPaise: 3000 });

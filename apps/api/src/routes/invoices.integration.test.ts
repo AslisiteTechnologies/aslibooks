@@ -108,7 +108,14 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
     await request(app).patch(`${path}/${draftId}`).set(owner)
       .send({ customerId: String(customerId), lines: [{ productId: String(serviceId), quantity: 3 }] }).expect(200);
 
-    const issued = await request(app).post(`${path}/${draftId}/issue`).set(owner).send({ idempotencyKey: 'invoice-issue-0001' }).expect(201);
+    const issuePayload = { idempotencyKey: 'invoice-issue-0001' };
+    const issueAttempts = await Promise.all([
+      request(app).post(`${path}/${draftId}/issue`).set(owner).send(issuePayload),
+      request(app).post(`${path}/${draftId}/issue`).set(owner).send(issuePayload),
+    ]);
+    expect(issueAttempts.map(response => response.status).sort()).toEqual([200, 201]);
+    expect(issueAttempts[0].body.id).toBe(issueAttempts[1].body.id);
+    const issued = issueAttempts.find(response => response.status === 201)!;
     expect(issued.body).toMatchObject({ status: 'issued', invoiceNumber: expect.stringMatching(/^ASL\/\d{4}-\d{2}\/00001$/), replayed: false });
     const journal = await JournalModel.findOne({ _id: issued.body.journalId, organizationId })
       .lean<{ lines: Array<{ accountId: Types.ObjectId; debitPaise: number; creditPaise: number }> } | null>();
@@ -125,7 +132,13 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
     const creditPath = `${path}/${draftId}/credit-notes`;
     const creditBody = { idempotencyKey: 'invoice-credit-0001', amountPaise: 2500, reason: 'Service scope reduced' };
     await request(app).post(creditPath).set({ 'x-fixture-actor': 'invoice-viewer' }).send(creditBody).expect(403);
-    const credit = await request(app).post(creditPath).set(owner).send(creditBody).expect(201);
+    const creditAttempts = await Promise.all([
+      request(app).post(creditPath).set(owner).send(creditBody),
+      request(app).post(creditPath).set(owner).send(creditBody),
+    ]);
+    expect(creditAttempts.map(response => response.status).sort()).toEqual([200, 201]);
+    expect(creditAttempts[0].body.id).toBe(creditAttempts[1].body.id);
+    const credit = creditAttempts.find(response => response.status === 201)!;
     expect(credit.body).toMatchObject({ replayed: false });
     const creditJournal = await JournalModel.findById(credit.body.journalId).lean<{ lines: Array<{ accountId: Types.ObjectId; debitPaise: number; creditPaise: number }> } | null>();
     expect(creditJournal?.lines.map(line => ({ accountId: String(line.accountId), debitPaise: line.debitPaise, creditPaise: line.creditPaise })))
