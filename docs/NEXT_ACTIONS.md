@@ -2,11 +2,11 @@
 
 ## Current checkpoint
 
-Development branch head `142277e4ed11d343e6e6f7f71d60aa0ae7d0d894`; CI #270 and MongoDB integration #207 passed, including actual GridFS attachment upload/download integration. The source-document browser test is added, but the full browser flow requires local API/database services that are currently unavailable. Preserve the owner-supplied vision document in the original workspace; it must remain unstaged.
+Published development branch head `ba92c81d6889dd06520533a500beac2c8186ffa0`; CI #270 and MongoDB integration #207 passed, including actual GridFS attachment upload/download integration. The source-document browser test is added, but the full browser flow requires local API/database services that are currently unavailable. Preserve the owner-supplied vision document in the original workspace; it must remain unstaged.
 
 ## Current implementation task
 
-Implement a MongoDB-backed shared store for authentication rate limits and test it across two store instances, so counters remain consistent across API replicas and restarts. Then run full tests/typecheck/lint/build and exact-commit CI. Do not enable production uploads without retention policy approval, MongoDB encryption/backup validation and malware-scanning review. AI needs optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
+Finish the MongoDB-backed shared authentication rate limiter: complete local lint/typecheck/build/test review, publish the two-store integration test and verify exact-commit MongoDB CI. Then continue MVP work in dependency order, starting with missing GST validation and tax-aware purchase/credit workflows while keeping unsupported tax cases blocked. Do not enable production uploads without retention policy approval, MongoDB encryption/backup validation and malware-scanning review. AI needs optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
 ## Exact verification commands
 
 ```powershell

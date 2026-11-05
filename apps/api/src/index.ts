@@ -6,18 +6,20 @@ import { connectDatabase, disconnectDatabase } from './db.js';
 import { createAuth, closeAuthConnection } from './auth.js';
 import { organizationRouter } from './routes/organizations.js';
 import { emailDeliveryEnabled } from './email.js';
-import { createAuthRateLimiter } from './security/authRateLimit.js';
+import { createAuthRateLimiter, createMongoAuthRateLimitStore } from './security/authRateLimit.js';
 
 async function start() {
   const auth = await createAuth();
   await connectDatabase();
+  const authRateLimitStore = createMongoAuthRateLimitStore();
+  await authRateLimitStore.initialize();
 
   const app = express();
   app.disable('x-powered-by');
   const origins = (process.env.WEB_ORIGIN || 'http://localhost:5173').split(',');
   app.use(cors({ origin: origins, credentials: true }));
   app.get('/api/public/config', (_req, res) => res.json({ emailVerificationRequired: emailDeliveryEnabled() }));
-  app.use('/api/auth', createAuthRateLimiter());
+  app.use('/api/auth', createAuthRateLimiter({ store: authRateLimitStore }));
   app.all('/api/auth/*splat', toNodeHandler(auth));
   app.use(express.json({ limit: '100kb' }));
   app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'aslibooks-api' }));
