@@ -80,7 +80,9 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
   it('allocates partial and final vendor payments atomically and idempotently', async () => {
     const paymentOrg = new Types.ObjectId(); const paymentVendor = new Types.ObjectId(); const paymentExpense = new Types.ObjectId(); const cashId = new Types.ObjectId();
     await OrganizationModel.create({ _id: paymentOrg, name: 'Payment fixture', slug: `bill-pay-${paymentOrg}` });
-    await MembershipModel.create({ organizationId: paymentOrg, authUserId: 'bill-owner', role: 'owner' });
+    await MembershipModel.create([{ organizationId: paymentOrg, authUserId: 'bill-owner', role: 'owner' },
+      { organizationId: paymentOrg, authUserId: 'bill-payment-accountant', role: 'accountant' },
+      { organizationId: paymentOrg, authUserId: 'bill-payment-viewer', role: 'viewer' }]);
     await ContactModel.create({ _id: paymentVendor, organizationId: paymentOrg, displayName: 'Payment Vendor', roles: ['vendor'] });
     await AccountModel.create([{ _id: paymentExpense, organizationId: paymentOrg, code: '5000', name: 'Expense', type: 'expense' },
       { _id: cashId, organizationId: paymentOrg, code: '1000', name: 'Cash', type: 'asset' },
@@ -91,20 +93,22 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     const first = { idempotencyKey: 'vendor-payment-part-1', cashAccountId: String(cashId), allocations: [{ billId: draft.body.id, amountPaise: 2000 }] };
     await request(app).post(`${paymentPath}/vendor-payments`).set(owner).send({ ...first, idempotencyKey: 'vendor-payment-foreign-cash-1', cashAccountId: String(peerCashId) }).expect(422);
     expect(await VendorPaymentModel.countDocuments({ organizationId: paymentOrg })).toBe(0);
-    const sameKeyPayments = await Promise.all([request(app).post(`${paymentPath}/vendor-payments`).set(owner).send(first), request(app).post(`${paymentPath}/vendor-payments`).set(owner).send(first)]);
+    await request(app).post(`${paymentPath}/vendor-payments`).set({ 'x-fixture-actor': 'bill-payment-viewer' }).send(first).expect(403);
+    const paymentAccountant = { 'x-fixture-actor': 'bill-payment-accountant' };
+    const sameKeyPayments = await Promise.all([request(app).post(`${paymentPath}/vendor-payments`).set(paymentAccountant).send(first), request(app).post(`${paymentPath}/vendor-payments`).set(paymentAccountant).send(first)]);
     expect(sameKeyPayments.map(response => response.status).sort()).toEqual([200, 201]);
     expect(sameKeyPayments[0].body.id).toBe(sameKeyPayments[1].body.id);
     const partial = sameKeyPayments.find(response => response.status === 201)!;
     expect(await BillModel.findById(draft.body.id)).toMatchObject({ status: 'partially_paid', amountPaidPaise: 2000 });
-    await request(app).post(`${paymentPath}/vendor-payments`).set(owner).send(first).expect(200).expect(response => expect(response.body.replayed).toBe(true));
-    await request(app).post(`${paymentPath}/vendor-payments`).set(owner).send({ ...first, allocations: [{ billId: draft.body.id, amountPaise: 2001 }] }).expect(409);
+    await request(app).post(`${paymentPath}/vendor-payments`).set(paymentAccountant).send(first).expect(200).expect(response => expect(response.body.replayed).toBe(true));
+    await request(app).post(`${paymentPath}/vendor-payments`).set(paymentAccountant).send({ ...first, allocations: [{ billId: draft.body.id, amountPaise: 2001 }] }).expect(409);
     await request(app).post(`${paymentPath}/vendor-payments`).set(owner).send({ ...first, idempotencyKey: 'vendor-payment-foreign-bill', allocations: [{ billId: draftId, amountPaise: 1 }] }).expect(404);
     expect(await VendorPaymentModel.countDocuments({ organizationId: paymentOrg })).toBe(1);
     expect(await BillModel.findById(draftId)).toMatchObject({ amountPaidPaise: 0 });
     await request(app).post(`${paymentPath}/vendor-payments`).set(owner).send({ ...first, idempotencyKey: 'vendor-payment-overpay', allocations: [{ billId: draft.body.id, amountPaise: 3001 }] }).expect(409);
     const competingFinals = await Promise.all([
-      request(app).post(`${paymentPath}/vendor-payments`).set(owner).send({ ...first, idempotencyKey: 'vendor-payment-final-race-a', allocations: [{ billId: draft.body.id, amountPaise: 3000 }] }),
-      request(app).post(`${paymentPath}/vendor-payments`).set(owner).send({ ...first, idempotencyKey: 'vendor-payment-final-race-b', allocations: [{ billId: draft.body.id, amountPaise: 3000 }] }),
+      request(app).post(`${paymentPath}/vendor-payments`).set(paymentAccountant).send({ ...first, idempotencyKey: 'vendor-payment-final-race-a', allocations: [{ billId: draft.body.id, amountPaise: 3000 }] }),
+      request(app).post(`${paymentPath}/vendor-payments`).set(paymentAccountant).send({ ...first, idempotencyKey: 'vendor-payment-final-race-b', allocations: [{ billId: draft.body.id, amountPaise: 3000 }] }),
     ]);
     expect(competingFinals.map(response => response.status).sort()).toEqual([201, 409]);
     const final = competingFinals.find(response => response.status === 201)!;

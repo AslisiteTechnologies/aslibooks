@@ -321,3 +321,7 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 ## Accountant financial posting coverage (local verification passed; hosted checks pending)
 - An accountant issues an invoice and replays it idempotently while a viewer issue attempt returns 403; an accountant posts a vendor bill while a viewer post attempt returns 403; an accountant records/replays a receipt while viewer receipt creation is denied.
 - Focused invoice/bill/receipt suites pass 8/8. Full workspace passes 142/142; typecheck/lint/build/high-severity audit/diff pass. Parent `69b3450af81a3a7535916680b0fea34dd17d2797` passed CI #480, MongoDB #417 and Browser #200.
+
+## Vendor payment accountant/viewer permissions (local verification passed; hosted checks pending)
+- Accountant partial payment and idempotent replay succeed, exactly one accountant final allocation wins a concurrency race, and viewer payment creation returns 403 without a payment record.
+- Focused bills suite passes 4/4. Full workspace tests pass 142/142; typecheck, lint, build, high-severity audit, and diff checks pass. Parent `986e1a3ca851b11eca30b7926a6a3da261216da0` passed CI #482, MongoDB #419 and Browser #201.

@@ -62,3 +62,5 @@ The accounting permission matrix has positive accountant-write evidence and nega
 Additional role assertions now cover source attachment read/write separation, organization settings writes, and fiscal period closing for viewers/accountants. Criterion 2 remains partial until all route permissions and racing role changes are independently covered.
 
 Core invoice issuance, bill posting, and receipt recording now demonstrate accountant allow and viewer deny behavior at route level, alongside idempotent retries. Criterion 2 remains partial for unreviewed routes and role-change races.
+
+Vendor payment now directly demonstrates accountant authorization and viewer denial, including idempotency and competing allocations. Criterion 2 still has partial status pending remaining endpoint and role-race coverage.

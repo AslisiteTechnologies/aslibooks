@@ -227,3 +227,22 @@ git diff --check
 ```
 
 External release gates remain: qualified accounting/GST policy review; authorized staging/production access and deployment approval; DB least-privilege grants, restore/monitoring; email delivery; attachment malware/retention; final accessibility/security review. Keep PR #1 Draft, do not touch `main`, and do not deploy production.
+
+## Active task: publish vendor payment role coverage and continue the permission audit
+1. Publish `apps/api/src/routes/bills.integration.test.ts` and updated status docs on top of remote `986e1a3ca851b11eca30b7926a6a3da261216da0`.
+2. Verify exact-SHA CI, MongoDB, and Browser workflows.
+3. Continue role checks through customer/vendor advances and any remaining write routes; audit export object scoping, then keep the acceptance matrix accurate.
+
+PowerShell verification commands from repository root:
+```powershell
+$env:MONGODB_TEST_URI='mongodb://127.0.0.1:37491/?replicaSet=testset'
+$env:MONGODB_TEST_DB_NAME='aslibooks_test_accountant_payment_full'
+pnpm test
+pnpm typecheck
+pnpm lint
+pnpm build
+pnpm audit --audit-level=high
+git diff --check
+```
+
+Release still requires qualified accounting/GST review and authorized staging/production operations, DB least privilege/backups/monitoring, configured email delivery, attachment malware/retention controls, and final accessibility/security review. The draft PR remains unmerged; no production deployment.
