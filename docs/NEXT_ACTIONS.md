@@ -8,7 +8,7 @@ Preserve the original workspace edits; never stage the owner-supplied vision fil
 
 ## Current implementation task
 
-Statement workflow at `ec725b6302dba3d6cd0abc2bd7e01aacc7e948de` passed push CI #381, MongoDB #318 and E2E #101; PR E2E #103 remains running. Continue by adding stable cursor pagination to customer/vendor statements, then statement export and full transaction-to-subledger reconciliation fixtures.
+Statement workflow `ec725b6302dba3d6cd0abc2bd7e01aacc7e948de` passed CI #381, MongoDB #318 and E2E #101. Targeted index commit `d924c1cd0cf4efd0ed214feaf486063d5c0254d2` passed CI #394/#396, MongoDB #331/#333 and E2E #114/#116. Publish and verify statement cursor pagination with the expanded MongoDB fixture and two-page browser flow; then implement statement CSV export and transaction-to-subledger reconciliation.
 
 ## Exact verification commands
 
