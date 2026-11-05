@@ -29,6 +29,7 @@ describe.skipIf(!enabled)('organization settings API', () => {
     await request(app).patch(foreignPath).set({ 'x-fixture-actor': 'settings-owner' }).send({ name: 'Cross-tenant write' }).expect(403);
     expect(await OrganizationModel.findById(foreignOrganizationId).lean()).toMatchObject({ name: 'Foreign settings fixture' });
     await request(app).get(path).set({ 'x-fixture-actor': 'settings-viewer' }).expect(200).expect(response => expect(response.body.settings.fiscalYearStartMonth).toBe(4));
+    await request(app).patch(path).set({ 'x-fixture-actor': 'settings-viewer' }).send({ name: 'Viewer must not rename' }).expect(403);
     await request(app).patch(path).set({ 'x-fixture-actor': 'settings-accountant' }).send({ name: 'Nope' }).expect(403);
     await request(app).patch(path).set({ 'x-fixture-actor': 'settings-owner' }).send({ gstin: 'not-a-gstin' }).expect(400);
     const updated = await request(app).patch(path).set({ 'x-fixture-actor': 'settings-owner' }).send({ name: 'Updated company', gstin: '22AAAAA0000A1Z5', fiscalYearStartMonth: 1 }).expect(200);

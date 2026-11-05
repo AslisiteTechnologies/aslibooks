@@ -189,3 +189,22 @@ git diff --check
 ```
 
 External gates remain: qualified accounting/GST review, staging/production access and deploy approval, least-privilege database grants, backup/restore/monitoring, email delivery, attachment malware/retention, final accessibility/security review. Draft PR remains unmerged; no production deployment.
+
+## Active task: publish role coverage updates, then continue remaining authorization gaps
+1. Publish `apps/api/src/routes/attachments.integration.test.ts`, `apps/api/src/routes/organizationSettings.integration.test.ts`, `apps/api/src/routes/fiscalPeriods.integration.test.ts`, and progress documents on top of remote `ca8ae17336f5a831d4d12ddaa69f5e20a6d4ad29`.
+2. Verify exact-SHA CI, MongoDB and Browser Actions.
+3. Continue auditing viewer/accountant/admin behavior for all mounted endpoints and exported data, then record the residual role matrix and run full validation.
+
+PowerShell commands from workspace root:
+```powershell
+$env:MONGODB_TEST_URI='mongodb://127.0.0.1:37491/?replicaSet=testset'
+$env:MONGODB_TEST_DB_NAME='aslibooks_test_roles_extended_full'
+pnpm test
+pnpm typecheck
+pnpm lint
+pnpm build
+pnpm audit --audit-level=high
+git diff --check
+```
+
+Release blockers needing external owner/expert work: qualified accounting/GST policy review, staged/production credentials and deployment approval, DB grants/backup restoration/monitoring, email delivery provider, attachment malware and retention decisions, and final accessibility/security review. PR #1 stays Draft and production remains undeployed.

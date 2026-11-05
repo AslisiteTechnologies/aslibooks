@@ -58,3 +58,5 @@ The route/object audit now covers foreign expense accounts in bill drafts, forei
 Viewer denial now has direct route integration evidence for bank statement import/match/reconcile in addition to transfer and opening-balance posting. The role matrix remains partial for routes not yet explicitly exercised and the full role-change race matrix.
 
 The accounting permission matrix has positive accountant-write evidence and negative viewer-write evidence for statement import, matching, and reconciliation. This extends criterion 2 but does not close the full route-by-route role matrix or role-update race scenarios.
+
+Additional role assertions now cover source attachment read/write separation, organization settings writes, and fiscal period closing for viewers/accountants. Criterion 2 remains partial until all route permissions and racing role changes are independently covered.

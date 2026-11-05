@@ -27,6 +27,7 @@ describe.skipIf(!enabled)('private source attachments', () => {
     await OrganizationModel.create([{ _id: org, name: 'Attachment tenant', slug: `attachment-${org}` }, { _id: otherOrg, name: 'Other tenant', slug: `attachment-other-${otherOrg}` }]);
     await MembershipModel.create([
       { organizationId: org, authUserId: 'attachment-owner', role: 'owner' },
+      { organizationId: org, authUserId: 'attachment-accountant', role: 'accountant' },
       { organizationId: org, authUserId: 'attachment-viewer', role: 'viewer' },
       { organizationId: otherOrg, authUserId: 'attachment-other-owner', role: 'owner' },
     ]);
@@ -40,7 +41,7 @@ describe.skipIf(!enabled)('private source attachments', () => {
     await request(app).post(path).set(fileHeaders).send(pdf).expect(401);
     await request(app).post(path).set({ ...fileHeaders, 'x-fixture-actor': 'attachment-viewer' }).send(pdf).expect(403);
     await request(app).post(path).set({ ...fileHeaders, 'x-fixture-actor': 'attachment-owner' }).send(Buffer.from('not a PDF')).expect(415);
-    const uploaded = await request(app).post(path).set({ ...fileHeaders, ...owner }).send(pdf).expect(201);
+    const uploaded = await request(app).post(path).set({ ...fileHeaders, 'x-fixture-actor': 'attachment-accountant' }).send(pdf).expect(201);
     expect(uploaded.body).toMatchObject({ resourceType: 'journal', resourceId: String(journalId), filename: 'invoice.pdf', contentType: 'application/pdf', sizeBytes: pdf.length, replayed: false });
     expect(uploaded.body.sha256).toMatch(/^[a-f\d]{64}$/);
     await request(app).post(path).set({ ...fileHeaders, ...owner }).send(pdf).expect(200, { ...uploaded.body, replayed: true });

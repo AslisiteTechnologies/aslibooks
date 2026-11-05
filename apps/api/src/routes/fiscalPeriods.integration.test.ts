@@ -84,6 +84,7 @@ describe.skipIf(!enabled)('fiscal period close controls', () => {
       expect.objectContaining({ id: 'bank-reconciled', count: 1, blocking: true, passed: false }),
     ]));
     await request(app).post(`${path}/${periodId}/close`).set('x-fixture-actor', 'period-accountant').send({ confirmChecklist: true }).expect(403);
+    await request(app).post(`${path}/${periodId}/close`).set('x-fixture-actor', 'period-viewer').send({ confirmChecklist: true }).expect(403);
     await request(app).post(`${path}/${periodId}/close`).set('x-fixture-actor', 'period-owner').send({}).expect(400);
     const blocked = await request(app).post(`${path}/${periodId}/close`).set('x-fixture-actor', 'period-owner').send({ confirmChecklist: true }).expect(409);
     expect(blocked.body.checklist.canClose).toBe(false);

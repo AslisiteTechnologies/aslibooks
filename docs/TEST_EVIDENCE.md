@@ -313,3 +313,7 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 ## Accountant and viewer bank statement permissions (local verification passed; exact-SHA workflows pending)
 - The bank statement fixture now confirms the accountant role may import statements, match a ledger journal, and reconcile a statement. The viewer role is denied all three operations; denied import leaves no transaction.
 - Focused suite passes 1/1. Full workspace passes 142/142; typecheck/lint/build/audit/diff checks pass. Parent `ac0af67275ac0230d1f1b1d5d5dbe1fd647b0c0c` passed CI #476, MongoDB #413 and Browser #196.
+
+## Role coverage: attachments, settings, fiscal periods (local verification passed; hosted checks pending)
+- Accountant source attachment uploads are allowed; viewer upload remains denied while viewer listing/download is allowed. Viewer organization rename and viewer fiscal-period close are denied; the existing accountant close denial is also asserted.
+- Focused suites pass 3/3. Full workspace passes 142/142; typecheck/lint/build/high-severity audit/diff checks pass. Parent `ca8ae17336f5a831d4d12ddaa69f5e20a6d4ad29` passed CI #478, MongoDB #415 and Browser #198.
