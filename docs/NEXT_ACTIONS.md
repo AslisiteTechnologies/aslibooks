@@ -1,13 +1,14 @@
-# Next actions
+'# Next actions
 
 ## Current checkpoint
 
-Published development branch head `08faceae41493b7bcea52f8724153096bebbb12b`; CI #288 and MongoDB integration #225 passed. Browser runs #7/#8 passed Name after the correction but found an Email selector race. Follow-up form scoping advanced runs #9/#10 through vendor form entry; both found duplicated Vendor checkbox labels. Role selection is now scoped to the form locally. Original workspace uncommitted owner work remains untouched; never stage the owner-supplied vision file.
+Published development branch head `43c8f4f1f309e6a9369860dcd4c2c5ee81ac8478`. Browser run #27 DOM confirms published ProductsScreen and ProductModel lack the Unit field. The local implementation contains unit snapshots and print output, but earlier tree construction used stale blob IDs. Publish fresh current file blobs for all affected product/invoice code and tests. Preserve the original workspace changes; never stage the owner-supplied vision file.
 
 ## Current implementation task
 
-Publish the form-scoped contact and product field selector fix, then rerun CI, MongoDB and browser Actions on its exact commit. Browser workflows pass startup, sign-up, organization creation, starter accounts, opening balances, settings, account create/edit/archive and contact customer creation/edit and reach product creation after vendor role selection. They then found the Code/HSN-SAC substring collision; the product Code field is selected as the first substring match, before HSN/SAC code, without parent form scoping; Unit selects the third required text input, following Code and Name. Continue fixing E2E failures until the full flow passes, then begin the next unfinished MVP milestone. Production uploads remain gated on retention, encryption/backup validation and malware-scanning decisions. AI requires optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
-## Exact verification commands
+Upload fresh blobs for product/invoice models and routes, API types, Products and Sales screens, product/invoice integration tests, and corrected E2E selectors. Then verify rendered Unit input, saved service unit, invoice snapshot and print preview; run exact-commit CI, MongoDB and browser Actions. Keep iterating on browser failures. Production uploads remain gated on retention, encryption/backup validation and malware-scanning decisions. AI requires optional `OPENAI_API_KEY`; no live-provider test exists. GST tax-bearing posting remains blocked pending qualified review. Do not claim production readiness.
+
+'## Exact verification commands
 
 ```powershell
 pnpm --filter @aslibooks/api test -- src/accounting/gst.test.ts

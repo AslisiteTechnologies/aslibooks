@@ -41,14 +41,15 @@ describe.skipIf(!enabled)('product catalog API', () => {
     }
     await request(app).post(path).set(owner).send({ ...item, code: 'GST1', taxCategory: 'taxable' }).expect(400);
     await request(app).post(path).set(owner).send({ ...item, code: 'GST2', taxCategory: 'exempt', gstRateBasisPoints: 1800 }).expect(400);
+    await request(app).post(path).set(owner).send({ ...item, code: 'BAD-UNIT', unit: '   ' }).expect(400);
     for (const code of ['1', '123', '12345', '1234567', '123456789']) {
       await request(app).post(path).set(owner).send({ ...item, code: `HSN${code}`, hsnSacCode: code }).expect(400);
     }
     for (const code of ['12', '1234', '123456', '12345678']) {
       await request(app).post(path).set(owner).send({ ...item, name: `Classification syntax ${code}`, code: `VALID${code}`, hsnSacCode: code }).expect(201);
     }
-    const taxed = await request(app).post(path).set(owner).send({ ...item, code: 'GST3', name: 'Configured taxable item', hsnSacCode: '998314', taxCategory: 'taxable', gstRateBasisPoints: 1800 }).expect(201);
-    expect(await ProductModel.findById(taxed.body.id)).toMatchObject({ hsnSacCode: '998314', taxCategory: 'taxable', gstRateBasisPoints: 1800 });
+    const taxed = await request(app).post(path).set(owner).send({ ...item, code: 'GST3', name: 'Configured taxable item', unit: 'hour', hsnSacCode: '998314', taxCategory: 'taxable', gstRateBasisPoints: 1800 }).expect(201);
+    expect(await ProductModel.findById(taxed.body.id)).toMatchObject({ hsnSacCode: '998314', taxCategory: 'taxable', gstRateBasisPoints: 1800, unit: 'hour' });
     const { body } = await request(app).post(path).set(owner).send(item).expect(201);
     await request(app).post(path).set(owner).send(item).expect(409);
     await request(app).get(otherPath).set(owner).expect(403);
@@ -80,4 +81,5 @@ describe.skipIf(!enabled)('product catalog API', () => {
     await mongoose.disconnect();
   });
 });
+
 

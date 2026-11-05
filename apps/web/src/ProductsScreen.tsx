@@ -6,6 +6,7 @@ export function ProductsScreen({ organization }: { organization: Organization })
   const [products, setProducts] = useState<Product[]>([]);
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
+  const [unit, setUnit] = useState('unit');
   const [price, setPrice] = useState('');
   const [hsnSacCode, setHsnSacCode] = useState('');
   const [taxCategory, setTaxCategory] = useState<'not_configured' | 'taxable' | 'exempt' | 'nil_rated' | 'non_gst'>('not_configured');
@@ -27,9 +28,10 @@ export function ProductsScreen({ organization }: { organization: Organization })
     try {
       const rate = taxCategory === 'taxable' ? /^(?:\d{1,3})(?:\.\d{1,2})?$/.test(gstRate) ? Math.round(Number(gstRate) * 100) : NaN : 0;
       if (!Number.isSafeInteger(rate) || rate < (taxCategory === 'taxable' ? 1 : 0) || rate > 100_000) { setError('Enter a positive tax rate from 0 to 1000 with up to two decimal places.'); return; }
-      await api.createProduct(organization.id, { code, name, unitPricePaise: paise,
+      if (!unit.trim() || unit.trim().length > 24) { setError('Enter a unit between 1 and 24 characters.'); return; }
+      await api.createProduct(organization.id, { code, name, unit: unit.trim(), unitPricePaise: paise,
         ...(hsnSacCode ? { hsnSacCode } : {}), taxCategory, ...(taxCategory === 'taxable' ? { gstRateBasisPoints: rate } : {}) });
-      setCode(''); setName(''); setPrice(''); setHsnSacCode(''); setTaxCategory('not_configured'); setGstRate(''); setVersion(value => value + 1); setError('');
+      setCode(''); setName(''); setUnit('unit'); setPrice(''); setHsnSacCode(''); setTaxCategory('not_configured'); setGstRate(''); setVersion(value => value + 1); setError('');
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to save service.'); }
   }
   return <Stack spacing={2}>
@@ -40,6 +42,7 @@ export function ProductsScreen({ organization }: { organization: Organization })
         <Typography variant="h6">Add service</Typography>
         <TextField required label="Code" value={code} onChange={event => setCode(event.target.value)} />
         <TextField required label="Name" value={name} onChange={event => setName(event.target.value)} />
+        <TextField required label="Unit" inputProps={{ maxLength: 24 }} helperText="Whole-number quantities only. For example: hour, item, or service. Stored on invoice lines." value={unit} onChange={event => setUnit(event.target.value)} />
         <TextField required label="Unit price (₹)" type="number" inputProps={{ min: 0, step: '0.01' }}
           value={price} onChange={event => setPrice(event.target.value)} />
         <TextField label="HSN/SAC code" inputProps={{ maxLength: 8, inputMode: 'numeric' }} helperText="Optional: enter 2, 4, 6, or 8 digits. Format only; verify the code and tax treatment separately."
@@ -57,9 +60,10 @@ export function ProductsScreen({ organization }: { organization: Organization })
     {!error && !products.length && <Typography>No matching products or services.</Typography>}
     {products.map(product => <Paper variant="outlined" sx={{ p: 2 }} key={product._id}>
       <Typography variant="h6">{product.code} · {product.name}</Typography>
-      <Typography>₹{(product.unitPricePaise / 100).toFixed(2)}</Typography>
+      <Typography>₹{(product.unitPricePaise / 100).toFixed(2)} / {product.unit || 'unit'}</Typography>
       <Typography variant="body2" color="text.secondary">{product.hsnSacCode ? `HSN/SAC ${product.hsnSacCode} · ` : ''}{product.taxCategory.replaceAll('_', ' ')}{product.gstRateBasisPoints !== undefined ? ` · ${(product.gstRateBasisPoints / 100).toFixed(2)}% configured` : ''}</Typography>
     </Paper>)}
   </Stack>;
 }
+
 

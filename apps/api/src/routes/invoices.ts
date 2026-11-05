@@ -107,8 +107,8 @@ const writeDraft: RequestHandler = async (req, res, next) => {
       if (!customer) throw new InvoiceError(422, 'Select an active customer in this organization');
       const ids = [...new Set(parsed.data.lines.map(line => line.productId))];
       const products = await ProductModel.find({ _id: { $in: ids }, organizationId, active: true })
-        .select('name unitPricePaise hsnSacCode taxCategory gstRateBasisPoints').session(session).lean<Array<{
-          _id: Types.ObjectId; name: string; unitPricePaise: number; hsnSacCode?: string;
+        .select('name unit unitPricePaise hsnSacCode taxCategory gstRateBasisPoints').session(session).lean<Array<{
+          _id: Types.ObjectId; name: string; unit: string; unitPricePaise: number; hsnSacCode?: string;
           taxCategory: 'not_configured' | 'taxable' | 'exempt' | 'nil_rated' | 'non_gst'; gstRateBasisPoints?: number;
         }>>();
       const byId = new Map(products.map(product => [String(product._id), product]));
@@ -132,7 +132,7 @@ const writeDraft: RequestHandler = async (req, res, next) => {
             : calculateGstAmounts({ amountPaise, totalRateBasisPoints: product.taxCategory === 'taxable' ? product.gstRateBasisPoints ?? 0 : 0,
               priceIncludesTax: taxTreatment.kind === 'inclusive', supplyKind: taxTreatment.supplyKind as GstSupplyKind });
         } catch (error) { throw new InvoiceError(400, error instanceof Error ? error.message : 'Tax calculation input is invalid'); }
-        return { productId: product._id, name: product.name, quantity: line.quantity, unitPricePaise: product.unitPricePaise,
+        return { productId: product._id, name: product.name, unit: product.unit || 'unit', quantity: line.quantity, unitPricePaise: product.unitPricePaise,
           lineTotalPaise: amounts.grossPaise, hsnSacCode: product.hsnSacCode, taxCategory: product.taxCategory,
           gstRateBasisPoints: product.gstRateBasisPoints ?? 0, taxablePaise: amounts.taxablePaise,
           cgstPaise: amounts.cgstPaise, sgstPaise: amounts.sgstPaise, igstPaise: amounts.igstPaise };
@@ -296,4 +296,5 @@ const issueCreditNote: RequestHandler = async (req, res) => {
     res.status(500).json({ error: 'Credit note could not be issued' });
   }
 };
+
 
