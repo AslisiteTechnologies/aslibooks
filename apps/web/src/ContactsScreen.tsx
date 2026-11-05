@@ -14,6 +14,8 @@ export function ContactsScreen({ organization }: { organization: Organization })
   const [statement, setStatement] = useState<ContactLedger | null>(null);
   const [statementOpen, setStatementOpen] = useState(false);
   const [statementLoading, setStatementLoading] = useState(false);
+  const [statementLoadingMore, setStatementLoadingMore] = useState(false);
+  const [statementRole, setStatementRole] = useState<'customer' | 'vendor'>('customer');
   const [saving, setSaving] = useState(false);
   const [editDraft, setEditDraft] = useState<ContactInput>({ displayName: '', roles: [] });
   const [error, setError] = useState('');
@@ -69,10 +71,25 @@ export function ContactsScreen({ organization }: { organization: Organization })
     finally { setSaving(false); }
   }
   async function openStatement(contact: Contact, role: 'customer' | 'vendor') {
-    setStatementOpen(true); setStatementLoading(true); setStatement(null); setError('');
-    try { setStatement(await api.contactLedger(organization.id, contact._id, role)); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to load contact statement.'); }
+    const requestedOrganization = organization.id;
+    setStatementOpen(true); setStatementLoading(true); setStatement(null); setStatementRole(role); setError('');
+    try {
+      const result = await api.contactLedger(requestedOrganization, contact._id, role);
+      if (currentOrganization.current === requestedOrganization) setStatement(result);
+    }
+    catch (cause) { if (currentOrganization.current === requestedOrganization) setError(cause instanceof Error ? cause.message : 'Unable to load contact statement.'); }
     finally { setStatementLoading(false); }
+  }
+  async function loadMoreStatement() {
+    if (!statement?.next || statementLoadingMore) return;
+    const requestedOrganization = organization.id;
+    setStatementLoadingMore(true);
+    try {
+      const page = await api.contactLedger(requestedOrganization, statement.contact.id, statementRole, statement.next);
+      if (currentOrganization.current !== requestedOrganization) return;
+      setStatement(current => current?.contact.id === page.contact.id ? { ...current, rows: [...current.rows, ...page.rows], next: page.next } : current);
+    } catch (cause) { if (currentOrganization.current === requestedOrganization) setError(cause instanceof Error ? cause.message : 'Unable to load more statement entries.'); }
+    finally { setStatementLoadingMore(false); }
   }
   const money = (paise: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(paise / 100);
   return <Stack spacing={2}>
@@ -138,12 +155,13 @@ export function ContactsScreen({ organization }: { organization: Organization })
         {!statementLoading && statement && <Stack spacing={1}>
           <Typography variant="subtitle1">Outstanding balance: {money(statement.balancePaise)}</Typography>
           {statement.rows.length === 0 && <Typography>No posted transactions.</Typography>}
-          {statement.rows.map(row => <Paper variant="outlined" sx={{ p: 1.5 }} key={row.id}>
+          {statement.rows.map(row => <Paper variant="outlined" sx={{ p: 1.5 }} key={row.eventId}>
             <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
               <Stack><Typography fontWeight={600}>{row.description}</Typography><Typography variant="body2">{new Date(row.date).toLocaleDateString('en-IN')} · {row.reference}</Typography></Stack>
               <Stack alignItems={{ xs: 'flex-start', sm: 'flex-end' }}><Typography>Debit {money(row.debitPaise)} · Credit {money(row.creditPaise)}</Typography><Typography variant="body2">Balance {money(row.balancePaise)}</Typography></Stack>
             </Stack>
           </Paper>)}
+          {statement.next && <Button variant="outlined" disabled={statementLoadingMore} onClick={() => void loadMoreStatement()}>{statementLoadingMore ? 'Loading entries…' : 'Load more statement entries'}</Button>}
         </Stack>}
         {!statementLoading && error && <Alert severity="error">{error}</Alert>}
       </DialogContent>
