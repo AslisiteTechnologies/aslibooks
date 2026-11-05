@@ -8,7 +8,7 @@ Preserve the original workspace edits; never stage the owner-supplied vision fil
 
 ## Current implementation task
 
-Publish the expanded vendor statement fixture and corrected browser route glob; rerun CI, MongoDB and browser E2E at exact SHA. The prior E2E #94/#95 failure showed that nested statement requests escaped the mock and hit the real test API. Then complete cursor pagination, statement export and financial reconciliation fixtures.
+Statement workflow at `ec725b6302dba3d6cd0abc2bd7e01aacc7e948de` passed push CI #381, MongoDB #318 and E2E #101; PR E2E #103 remains running. Continue by adding stable cursor pagination to customer/vendor statements, then statement export and full transaction-to-subledger reconciliation fixtures.
 
 ## Exact verification commands
 
