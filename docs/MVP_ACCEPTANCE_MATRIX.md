@@ -26,3 +26,7 @@ This matrix maps the acceptance tests in `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.m
 - Previous readiness SHA `d282c5f6f2cd649bcd2eb7e42cd2bfba71d6b76a` passed CI #417/#418, MongoDB #354/#355 and Browser #137/#138.
 - Latest local tests add receipt allocation concurrency and all-method Origin rejection checks. Focused receipts integration passed 2/2 and Origin tests passed 3/3. Exact-SHA workflows are pending publication.
 - No production deployment, merge to `main`, or live provider configuration has occurred.
+
+## Tenant-isolation audit follow-up
+- Customer and vendor advance test fixtures now seed persisted resources owned by a second organization and assert cross-tenant allocation/refund attempts return 404 and foreign IDs are absent from lists. Focused tests pass locally and the full workspace suite passes 136/136. The exact-SHA workflow for this test commit is pending.
+- Criterion 1 remains partial. Continue reviewing every mounted `/orgs/:organizationId/...` route, object reference, attachment, and export; verify foreign IDs against actual records and assert no response or financial side effect leaks.

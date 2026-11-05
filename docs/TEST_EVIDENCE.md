@@ -252,3 +252,12 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 ## UI idempotency-key follow-up (local verification; exact-SHA workflows pending)
 - Invoice and vendor-bill draft forms retain a request key only for an identical normalized form payload and reuse it after a dropped response. Customer and vendor credit flows now include the reason in retry identity, so an unchanged retry is replayed while a changed request is not accidentally sent under the old payload hash. Vendor payment identity includes its cash account. Customer advance receipt/refund controls reset retry keys when their cash account changes.
 - Verification on the source checkout: `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm audit --audit-level=high`, `pnpm test` with the isolated MongoDB replica set (130 API + 5 accounting + 1 web tests), full Playwright chart flow at 390px, and `git diff --check` passed. Exact-SHA CI/MongoDB/Browser runs are pending for the follow-up commit.
+
+## Cross-tenant customer/vendor advance identifiers (local replica-set verification; exact-SHA workflows pending)
+- Customer advance integration seeds a real advance belonging to a separate organization, confirms the current tenant cannot allocate or refund against its ID (404), and confirms it is absent from the current tenant list.
+- Vendor advance integration seeds a real advance belonging to another organization, confirms allocation via the current tenant path returns 404, and confirms the foreign ID is absent from the list.
+- Both focused integration suites pass locally (2/2 tests); typecheck passed. Full suite and exact-SHA CI/MongoDB/Browser checks are pending for this change.
+
+## Customer/vendor advance tenant isolation regression (local verification, exact-SHA workflows pending)
+- Added foreign-organization customer and vendor advance records to replica-set integration fixtures. Current-tenant requests to allocate/refund these resources return 404, and list responses omit the foreign IDs. Focused suites passed 2/2.
+- Full workspace `pnpm test` passed 136/136 (130 API tests in 32 files, five accounting, one web). `pnpm typecheck`, `pnpm lint`, `pnpm audit --audit-level=high`, and `git diff --check` passed. Exact-SHA workflows for this test-only follow-up are pending publication.

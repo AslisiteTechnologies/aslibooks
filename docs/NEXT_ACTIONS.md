@@ -55,3 +55,7 @@ Get-Content docs/NEXT_ACTIONS.md
 3. Inventory mounted API routes and compare each organization-scoped read, write, attachment, statement and export endpoint with `apps/api/src/security/authorization.ts` plus the acceptance matrix. Add tests for uncovered foreign-tenant and viewer-write cases.
 
 Local evidence: full replica-set workspace suite (130 API, five accounting, one web), `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm audit --audit-level=high`, and `apps/web/e2e/chart.py` passed on the source checkout. Exact-SHA workflows for the new commit are pending.
+
+Security audit progress: focused foreign-tenant advance tests pass locally. The next specific task is to continue route-by-route review of read/write endpoints and object references, recording uncovered cases in `docs/MVP_ACCEPTANCE_MATRIX.md`; exact-SHA workflows for the new regression coverage remain pending.
+
+Current security-test checkpoint: foreign-tenant customer/vendor advance ID cases pass focused tests (2/2), and the complete workspace suite passes 136/136. Last exact-SHA UI commit `8c6d55cf013a56d2dc2e6540b3000ad56f5e85ad` passed CI #448, MongoDB #385 and Browser #168. Publish the current tenant-isolation regression test commit and verify its Actions runs. Then continue auditing mounted routes and foreign references not yet directly covered; do not mark acceptance criterion 1 complete from these two route families alone.
