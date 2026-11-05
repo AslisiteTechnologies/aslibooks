@@ -124,4 +124,5 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 - Product unit selector follow-up: runs #17/#18 passed product Code, then selected numeric Unit price for the Unit substring locator. The unit input now selects the textbox role, separating it from the number spinbutton. Rerun pending.
 - Product Unit follow-up: run #19/#20 passed Code but the textbox role locator timed out on Unit. The product input has a unique `maxlength=24`, now used as the selector. Rerun pending.
 - Product Unit selector follow-up: runs #21/#22 found no rendered `maxlength=24` input. Prior accessible-label matching showed Unit price precedes Unit, so E2E now selects the last broad Unit label match. Exact run pending.
+- Product Unit selector follow-up: run #23/#24 resolved the last broad Unit match to Unit price as well. The product form renders required text inputs in Code, Name, Unit order; E2E selects index 2. Rerun pending.
 
