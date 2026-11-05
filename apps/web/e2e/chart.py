@@ -289,8 +289,8 @@ def test_chart():
             with page.expect_response(lambda response: response.url.endswith("/match") and response.request.method == "POST") as bank_match_response:
                 page.get_by_role("button", name="Match", exact=True).click()
             assert bank_match_response.value.status == 200, bank_match_response.value.text()
-            page.get_by_label("From").fill(today)
-            page.get_by_label("Through").fill(today)
+            page.locator("input[type=\"date\"]:visible").nth(0).fill(today)
+            page.locator("input[type=\"date\"]:visible").nth(1).fill(today)
             page.get_by_label("Opening balance (₹)").fill("0.00")
             page.get_by_label("Closing balance (₹)").fill("25.00")
             with page.expect_response(lambda response: response.url.endswith("/reconcile") and response.request.method == "POST") as bank_reconcile_response:
@@ -299,8 +299,8 @@ def test_chart():
             expect(page.get_by_text("reconciled to ledger", exact=False)).to_be_visible()
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Overview", exact=True).click()
-            page.get_by_label("From").fill(today)
-            page.get_by_label("Through").fill(today)
+            page.locator("input[type=\"date\"]:visible").nth(0).fill(today)
+            page.locator("input[type=\"date\"]:visible").nth(1).fill(today)
             expect(page.get_by_text("Ledger-derived values", exact=False)).to_be_visible()
             expect(page.get_by_text("Net profit", exact=True)).to_be_visible()
             expect(page.get_by_text("₹34.66", exact=True)).to_be_visible()
