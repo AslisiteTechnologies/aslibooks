@@ -42,6 +42,7 @@ describe.skipIf(!enabled)('authenticated manual journal API', () => {
     ],
   };
   const owner = { 'x-fixture-actor': 'journal-owner' };
+  const accountant = { 'x-fixture-actor': 'journal-accountant' };
 
   beforeAll(async () => {
     await mongoose.connect(uri!, { dbName: dbName!, serverSelectionTimeoutMS: 10000 });
@@ -55,6 +56,7 @@ describe.skipIf(!enabled)('authenticated manual journal API', () => {
     ]);
     await MembershipModel.create([
       { organizationId: org, authUserId: 'journal-owner', role: 'owner' },
+      { organizationId: org, authUserId: 'journal-accountant', role: 'accountant' },
       { organizationId: org, authUserId: 'journal-viewer', role: 'viewer' },
       { organizationId: foreignOrg, authUserId: 'journal-foreign', role: 'owner' },
     ]);
@@ -79,9 +81,10 @@ describe.skipIf(!enabled)('authenticated manual journal API', () => {
     await request(app).post(path).set(owner).send({ ...valid, lines: [
       { ...valid.lines[0], creditPaise: 1 }, valid.lines[1],
     ] }).expect(400);
-    const posted = await request(app).post(path).set(owner).send(valid).expect(201);
+    await request(app).post(path).set({ 'x-fixture-actor': 'journal-viewer' }).send(valid).expect(403);
+    const posted = await request(app).post(path).set(accountant).send(valid).expect(201);
     expect(posted.body.replayed).toBe(false);
-    const replay = await request(app).post(path).set(owner).send(valid).expect(200);
+    const replay = await request(app).post(path).set(accountant).send(valid).expect(200);
     expect(replay.body).toMatchObject({ journalId: posted.body.journalId, replayed: true });
     const detail = await request(app).get(`${path}/${posted.body.journalId}`).set('x-fixture-actor', 'journal-viewer').expect(200);
     expect(detail.body.journal.lines).toHaveLength(2);
@@ -91,12 +94,14 @@ describe.skipIf(!enabled)('authenticated manual journal API', () => {
       .set('x-fixture-actor', 'journal-foreign').expect(404);
     await request(app).post(`${path}/${posted.body.journalId}/reversals`).set({ 'x-fixture-actor': 'journal-viewer' })
       .send({ idempotencyKey: `reverse:${suffix}`, reason: 'Wrong opening amount' }).expect(403);
+    await request(app).post(`${path}/${posted.body.journalId}/reversals`).set(accountant)
+      .send({ idempotencyKey: `reverse:${suffix}`, reason: 'Wrong opening amount' }).expect(201);
     await request(app).post(`${path}/${foreignJournalId}/reversals`).set(owner)
       .send({ idempotencyKey: `foreign-reversal-${suffix}`, reason: 'Must stay in its tenant' }).expect(400, { error: 'Original journal not found' });
-    expect(await JournalModel.countDocuments({ organizationId: org })).toBe(1);
+    expect(await JournalModel.countDocuments({ organizationId: org })).toBe(2);
     expect(await JournalModel.findById(foreignJournalId)).toMatchObject({ organizationId: foreignOrg, reversalOf: undefined });
-    const reversed = await request(app).post(`${path}/${posted.body.journalId}/reversals`).set(owner)
-      .send({ idempotencyKey: `reverse:${suffix}`, reason: 'Wrong opening amount' }).expect(201);
+    const reversed = { body: await request(app).post(`${path}/${posted.body.journalId}/reversals`).set(accountant)
+      .send({ idempotencyKey: `reverse:${suffix}`, reason: 'Wrong opening amount' }).expect(200).then(response => response.body) };
     const reversalDetail = await request(app).get(`${path}/${reversed.body.journalId}`).set(owner).expect(200);
     expect(reversalDetail.body.journal.reversalOf).toBe(posted.body.journalId);
     expect(reversalDetail.body.journal.lines).toEqual([
@@ -104,7 +109,7 @@ describe.skipIf(!enabled)('authenticated manual journal API', () => {
       { accountId: String(credit), debitPaise: 12345, creditPaise: 0 },
     ]);
     expect(await JournalModel.countDocuments({ organizationId: org })).toBe(2);
-    expect(await AuditEventModel.countDocuments({ organizationId: org, actorAuthUserId: 'journal-owner' })).toBe(2);
+    expect(await AuditEventModel.countDocuments({ organizationId: org, actorAuthUserId: 'journal-accountant' })).toBe(2);
   });
 
   afterAll(async () => {
