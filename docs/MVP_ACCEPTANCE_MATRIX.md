@@ -70,3 +70,5 @@ Role permissions extension: customer and vendor advance route tests now cover ac
 Additional route evidence: accountant role now issues/replays both customer and vendor credit notes; viewer denial remains asserted. This extends, but does not complete, criterion 2 because manual journal, reversal and other remaining endpoint role cases still require review.
 
 Direct role-route evidence now covers accountant manual journal posting and reversal plus viewer denials, in addition to customer/vendor advances and sales/vendor credits. Role criterion remains Partial until the full mounted-route permission and membership-race matrix is independently mapped.
+
+Master-data endpoint role evidence now includes accountant allowed/viewer denied for account, contact and product create/update operations. Criterion 2 remains Partial because the full route-by-route role matrix and all membership change races have not been closed.

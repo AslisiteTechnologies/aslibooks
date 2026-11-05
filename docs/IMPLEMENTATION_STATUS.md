@@ -104,3 +104,5 @@ Customer and vendor advance integration tests now exercise accountant permission
 Credit-note role coverage now demonstrates accountant issuance and idempotent replay for sales and vendor credits while denying viewers. Local focused and full tests, typecheck, lint, build, dependency audit and diff check pass; exact-SHA hosted workflows for this follow-up are pending publication.
 
 Manual journals and reversals now have direct accountant-allowed and viewer-denied route evidence, with no mutation on viewer requests. Full local suite (142/142), typecheck, lint, build, audit and diff validation pass; hosted checks for the pending local commit have not run yet. The previous credit-role parent passed CI #488 and MongoDB #425; Browser #208 remains in progress.
+
+Chart of accounts, contact and product APIs now have positive accountant-write and negative viewer-write integration evidence. The focused groups pass 10/10 and the full local workspace passes 142/142 with typecheck/lint/build/audit/diff checks. Hosted workflows for this change are pending publication.

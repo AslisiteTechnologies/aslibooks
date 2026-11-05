@@ -253,3 +253,5 @@ Publish accountant/viewer coverage for customer advance receipt/allocation/refun
 After the current role coverage commit, continue the endpoint matrix on manual journals and reversals: verify accountant posting/reversal is allowed, viewer posting/reversal is denied without side effects, then identify any remaining uncovered financial writes. Keep production gates and tax review explicit.
 
 Next: publish manual journal/reversal role evidence and check all three hosted workflows. Then continue the matrix audit over every financial route, especially account/catalog/contact writes, fiscal-period close roles, and organization membership management; add real route cases for any permission gap. Keep all acceptance statuses partial until the entire surface and operation races are reconciled.
+
+Next route audit slice: publish the verified accountant/viewer create/update coverage for accounts, contacts and products, then inspect organization settings, fiscal periods and membership routes for remaining untested role operations. Continue to distinguish the full route matrix from any narrow regression tests.

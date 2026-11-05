@@ -30,6 +30,7 @@ describe.skipIf(!enabled)('chart of accounts HTTP', () => {
   const foreign = '/orgs/' + other + '/accounts';
   const input = { code: 'BANK', name: 'Bank', type: 'asset' };
   const owner = { 'x-fixture-actor': 'owner' };
+  const accountant = { 'x-fixture-actor': 'catalog-accountant' };
   beforeAll(async () => {
     await mongoose.connect(uri!, { dbName });
     await Promise.all([OrganizationModel.init(), AccountModel.init(), MembershipModel.init(), JournalModel.init(), AuditEventModel.init()]);
@@ -40,6 +41,7 @@ describe.skipIf(!enabled)('chart of accounts HTTP', () => {
     await MembershipModel.create([
       { organizationId: org, authUserId: 'owner', role: 'owner' },
       { organizationId: org, authUserId: 'viewer', role: 'viewer' },
+      { organizationId: org, authUserId: 'catalog-accountant', role: 'accountant' },
       { organizationId: org, authUserId: 'suspended', role: 'owner', status: 'suspended' },
       { organizationId: other, authUserId: 'other', role: 'accountant' },
     ]);
@@ -68,7 +70,7 @@ describe.skipIf(!enabled)('chart of accounts HTTP', () => {
     expect(await AuditEventModel.countDocuments({ organizationId: org, action: 'account.starter_chart_added' })).toBe(2);
   });
   it('scopes codes, list and updates; audits create, rename and archive', async () => {
-    const { body: { id } } = await request(app).post(path).set(owner).send(input).expect(201);
+    const { body: { id } } = await request(app).post(path).set(accountant).send(input).expect(201);
     await request(app).post(path).set(owner).send(input).expect(409);
     const peer = { 'x-fixture-actor': 'other' };
     const { body: { id: otherId } } = await request(app).post(foreign).set(peer).send(input).expect(201);
@@ -76,11 +78,12 @@ describe.skipIf(!enabled)('chart of accounts HTTP', () => {
     const list = await request(app).get(path).set('x-fixture-actor', 'viewer').expect(200);
     expect(list.body.accounts.map((a: { id: string }) => a.id)).toContain(id);
     expect(list.body.accounts.map((a: { id: string }) => a.id)).not.toContain(otherId);
-    await request(app).patch(path + '/' + id).set(owner).send({ type: 'expense' }).expect(400);
-    await request(app).patch(path + '/' + id).set(owner).send({ name: 'Petty cash' }).expect(200);
-    await request(app).patch(path + '/' + id).set(owner).send({ active: false }).expect(200);
+    await request(app).patch(path + '/' + id).set('x-fixture-actor', 'viewer').send({ name: 'Unauthorized rename' }).expect(403);
+    await request(app).patch(path + '/' + id).set(accountant).send({ type: 'expense' }).expect(400);
+    await request(app).patch(path + '/' + id).set(accountant).send({ name: 'Petty cash' }).expect(200);
+    await request(app).patch(path + '/' + id).set(accountant).send({ active: false }).expect(200);
     expect(await AccountModel.findById(id)).toMatchObject({ active: false, name: 'Petty cash' });
-    expect(await AuditEventModel.distinct('action', { organizationId: org, resourceId: id, actorAuthUserId: 'owner' }))
+    expect(await AuditEventModel.distinct('action', { organizationId: org, resourceId: id, actorAuthUserId: 'catalog-accountant' }))
       .toEqual(['account.archived', 'account.created', 'account.renamed']);
   });
   it('protects system accounts and accounts referenced before the usage flag existed', async () => {

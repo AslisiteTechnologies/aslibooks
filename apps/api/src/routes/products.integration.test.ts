@@ -23,11 +23,13 @@ describe.skipIf(!enabled)('product catalog API', () => {
   const path = '/orgs/' + org + '/products';
   const otherPath = '/orgs/' + foreign + '/products';
   const owner = { 'x-fixture-actor': 'catalog-owner' };
+  const accountant = { 'x-fixture-actor': 'catalog-accountant' };
   beforeAll(async () => {
     await mongoose.connect(uri!, { dbName });
     await Promise.all([ProductModel.init(), MembershipModel.init(), AuditEventModel.init()]);
     await MembershipModel.create([
       { organizationId: org, authUserId: 'catalog-owner', role: 'owner' },
+      { organizationId: org, authUserId: 'catalog-accountant', role: 'accountant' },
       { organizationId: org, authUserId: 'catalog-reader', role: 'viewer' },
       { organizationId: foreign, authUserId: 'catalog-other', role: 'accountant' },
     ]);
@@ -60,11 +62,12 @@ describe.skipIf(!enabled)('product catalog API', () => {
     expect(listing.body.products[0]).toMatchObject({ _id: body.id, unitPricePaise: 12550 });
   });
   it('updates and archives with tenant audit events', async () => {
-    const created = await request(app).post(path).set(owner).send({
+    const created = await request(app).post(path).set(accountant).send({
       code: 'DESIGN', name: 'Design', unitPricePaise: 24000,
     }).expect(201);
     const id = created.body.id as string;
-    await request(app).patch(path + '/' + id).set(owner)
+    await request(app).patch(path + '/' + id).set('x-fixture-actor', 'catalog-reader').send({ name: 'Unauthorized edit' }).expect(403);
+    await request(app).patch(path + '/' + id).set(accountant)
       .send({ name: 'Design service', unit: 'hour', unitPricePaise: 30000 }).expect(200);
     expect(await ProductModel.findById(id)).toMatchObject({ name: 'Design service', unit: 'hour', unitPricePaise: 30000 });
     await request(app).patch(path + '/' + id).set(owner).send({ taxCategory: 'taxable' }).expect(422);

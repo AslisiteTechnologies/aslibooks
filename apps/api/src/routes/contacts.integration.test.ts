@@ -31,11 +31,13 @@ describe.skipIf(!enabled)('contacts API', () => {
   const path = '/orgs/' + org + '/contacts';
   const foreignPath = '/orgs/' + foreign + '/contacts';
   const owner = { 'x-fixture-actor': 'contact-owner' };
+  const accountant = { 'x-fixture-actor': 'contact-accountant' };
   beforeAll(async () => {
     await mongoose.connect(uri!, { dbName });
     await Promise.all([ContactModel.init(), MembershipModel.init(), AuditEventModel.init()]);
     await MembershipModel.create([
       { organizationId: org, authUserId: 'contact-owner', role: 'owner' },
+      { organizationId: org, authUserId: 'contact-accountant', role: 'accountant' },
       { organizationId: org, authUserId: 'contact-reader', role: 'viewer' },
       { organizationId: org, authUserId: 'contact-paused', role: 'accountant', status: 'suspended' },
       { organizationId: foreign, authUserId: 'contact-foreign', role: 'accountant' },
@@ -62,11 +64,11 @@ describe.skipIf(!enabled)('contacts API', () => {
     await request(app).get(path + '?after=nope').set(owner).expect(400);
   });
   it('edits, searches, filters, and audits contacts', async () => {
-    const result = await request(app).post(path).set(owner).send({
+    const result = await request(app).post(path).set(accountant).send({
       displayName: 'Coastal Supplier', roles: ['vendor'], email: 'Accounts@Coastal.example', phone: '+91 9876543210', gstin: '22AAAAA0000A1Z5', address: 'Harbor Road',
     }).expect(201);
     const id = result.body.id as string;
-    const second = await request(app).post(path).set(owner).send({ displayName: 'Coastal Warehouse', roles: ['vendor'], email: 'warehouse@coastal.example' }).expect(201);
+    const second = await request(app).post(path).set(accountant).send({ displayName: 'Coastal Warehouse', roles: ['vendor'], email: 'warehouse@coastal.example' }).expect(201);
     const detail = await request(app).get(path + '/' + id).set('x-fixture-actor', 'contact-reader').expect(200);
     expect(detail.body.contact).toMatchObject({ displayName: 'Coastal Supplier', phone: '+91 9876543210', gstin: '22AAAAA0000A1Z5', address: 'Harbor Road' });
     await request(app).get(foreignPath + '/' + id).set('x-fixture-actor', 'contact-foreign').expect(404);
@@ -78,7 +80,8 @@ describe.skipIf(!enabled)('contacts API', () => {
     const pageTwo = await request(app).get(path + `?q=Coastal&role=vendor&limit=1&after=${page.body.next}`).set('x-fixture-actor', 'contact-reader').expect(200);
     expect(pageTwo.body.contacts.map((c: { _id: string }) => c._id)).toContain(second.body.id);
     expect(pageTwo.body.next).toBeNull();
-    await request(app).patch(path + '/' + id).set(owner).send({ displayName: 'Coastal Supply', phone: '+91 9999999999', address: 'New address' }).expect(200);
+    await request(app).patch(path + '/' + id).set('x-fixture-actor', 'contact-reader').send({ displayName: 'Unauthorized edit' }).expect(403);
+    await request(app).patch(path + '/' + id).set(accountant).send({ displayName: 'Coastal Supply', phone: '+91 9999999999', address: 'New address' }).expect(200);
     const filtered = await request(app).get(path + '?q=Coastal&role=vendor').set(owner).expect(200);
     expect(filtered.body.contacts[0]).toMatchObject({ displayName: 'Coastal Supply', phone: '+91 9999999999', address: 'New address', gstin: '22AAAAA0000A1Z5' });
     const [bill] = await BillModel.create([{ organizationId: org, vendorId: new Types.ObjectId(id), vendorName: 'Coastal Supply', vendorReference: 'BILL-STATEMENT-1',
