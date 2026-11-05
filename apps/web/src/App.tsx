@@ -14,6 +14,7 @@ const ReceiptsScreen = lazy(() => import('./ReceiptsScreen').then(module => ({ d
 const ExpensesScreen = lazy(() => import('./ExpensesScreen').then(module => ({ default: module.ExpensesScreen })));
 const ReportsScreen = lazy(() => import('./ReportsScreen').then(module => ({ default: module.ReportsScreen })));
 const BankingScreen = lazy(() => import('./BankingScreen').then(module => ({ default: module.BankingScreen })));
+const DashboardScreen = lazy(() => import('./DashboardScreen').then(module => ({ default: module.DashboardScreen })));
 const SettingsScreen = lazy(() => import('./SettingsScreen').then(module => ({ default: module.SettingsScreen })));
 
 const nav = ['Overview', 'Sales', 'Receipts', 'Products', 'Expenses', 'Banking', 'Contacts', 'Accounting', 'GST', 'Reports', 'Settings'];
@@ -87,7 +88,8 @@ export function App() {
           <Typography variant="h4" fontWeight={800} gutterBottom>{section}</Typography>
           {authError && <Box role="alert">{authError}</Box>}
           <Suspense fallback={<Box role="status" sx={{ py: 4 }}>Loading {section.toLowerCase()}…</Box>}>
-          {section === 'Accounting' ? <AccountingScreen key={organization.id} organization={organization} /> :
+          {section === 'Overview' ? <DashboardScreen key={organization.id} organization={organization} /> :
+          section === 'Accounting' ? <AccountingScreen key={organization.id} organization={organization} /> :
           section === 'Contacts' ? <ContactsScreen key={organization.id} organization={organization} /> :
           section === 'Sales' ? <SalesScreen key={organization.id} organization={organization} /> :
           section === 'Receipts' ? <ReceiptsScreen key={organization.id} organization={organization} /> :

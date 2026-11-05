@@ -22,6 +22,7 @@ const profitLossFilters = z.strictObject({
 });
 const balanceSheetFilters = z.strictObject({ asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() });
 const agingFilters = z.strictObject({ asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() });
+const dashboardFilters = z.strictObject({ from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) });
 type NormalSide = 'debit' | 'credit';
 type AgingSource = { dueDate?: string; amountPaise: number; amountPaidPaise: number };
 
@@ -113,6 +114,34 @@ export function reportRouter() {
     }
     res.locals.organizationId = new Types.ObjectId(id);
     next();
+  });
+
+  router.get('/dashboard', async (req, res) => {
+    const { organizationId, authUserId } = res.locals;
+    if (!await hasPermission(authUserId, String(organizationId), 'ledger:read')) { res.status(403).json({ error: 'Dashboard access denied' }); return; }
+    const parsed = dashboardFilters.safeParse(req.query);
+    if (!parsed.success) { res.status(400).json({ error: 'Dashboard requires from and to dates' }); return; }
+    const { from: fromText, to: toText } = parsed.data; const from = validDate(fromText); const to = validDate(toText);
+    if (!from || !to || from > to) { res.status(400).json({ error: 'Dashboard date range is invalid' }); return; }
+    const [activity, balances, journals] = await Promise.all([
+      accountBalancesBetween(organizationId, from, nextIndiaDate(toText)),
+      accountBalancesBetween(organizationId, new Date(0), nextIndiaDate(toText)),
+      JournalModel.find({ organizationId, postedAt: { $gte: from, $lt: nextIndiaDate(toText) } }).sort({ postedAt: -1, _id: -1 }).limit(5)
+        .select('description postedAt lines').lean<Array<{ _id: Types.ObjectId; description: string; postedAt: Date; lines: unknown[] }>>(),
+    ]);
+    const allAmounts = [...activity, ...balances].flatMap(row => [row.debit, row.credit]);
+    if (!allAmounts.every(Number.isSafeInteger)) { res.status(422).json({ error: 'Dashboard totals exceed the supported integer amount range' }); return; }
+    const sum = (rows: typeof activity, pick: (row: typeof activity[number]) => number) => rows.reduce((total, row) => total + pick(row), 0);
+    const revenuePaise = sum(activity.filter(row => row.type === 'income'), row => row.credit - row.debit);
+    const expensesPaise = sum(activity.filter(row => row.type === 'expense'), row => row.debit - row.credit);
+    const cashPaise = sum(balances.filter(row => row.type === 'asset' && ['1000', '1010'].includes(row.code)), row => row.debit - row.credit);
+    const receivablesPaise = sum(balances.filter(row => row.code === '1100' && row.type === 'asset'), row => row.debit - row.credit);
+    const payablesPaise = sum(balances.filter(row => row.code === '2000' && row.type === 'liability'), row => row.credit - row.debit);
+    const values = [revenuePaise, expensesPaise, revenuePaise - expensesPaise, cashPaise, receivablesPaise, payablesPaise];
+    if (!values.every(Number.isSafeInteger)) { res.status(422).json({ error: 'Dashboard totals exceed the supported integer amount range' }); return; }
+    res.json({ from: fromText, to: toText, revenuePaise, expensesPaise, netProfitPaise: revenuePaise - expensesPaise,
+      cashPaise, receivablesPaise, payablesPaise,
+      recentActivity: journals.map(journal => ({ id: String(journal._id), description: journal.description, postedAt: journal.postedAt, lineCount: journal.lines.length })) });
   });
 
   router.get('/control-account-reconciliation', async (_req, res) => {

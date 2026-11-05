@@ -40,6 +40,7 @@ export type AgingSummary = { asOf: string; totalOutstandingPaise: number; docume
 export type ControlReconciliation = { asOf: string; receivables: { accountName: string; ledgerBalancePaise: number; documentBalancePaise: number; differencePaise: number; reconciled: boolean }; payables: { accountName: string; ledgerBalancePaise: number; documentBalancePaise: number; differencePaise: number; reconciled: boolean } };
 export type BankTransaction = { id: string; transactionDate: string; amountPaise: number; description: string; status: 'unmatched' | 'matched' | 'reconciled'; journalId: string | null };
 export type BankReconciliation = { id: string; periodStart: string; periodEnd: string; openingBalancePaise: number; closingBalancePaise: number; ledgerBalancePaise: number; transactionCount: number };
+export type DashboardResult = { from: string; to: string; revenuePaise: number; expensesPaise: number; netProfitPaise: number; cashPaise: number; receivablesPaise: number; payablesPaise: number; recentActivity: Array<{ id: string; description: string; postedAt: string; lineCount: number }> };
 
 async function jsonRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
@@ -141,6 +142,7 @@ export const api = {
   importBankStatement: (org: string, accountId: string, transactions: Array<{ transactionDate: string; amountPaise: number; description: string }>) => jsonRequest<{ imported: number; duplicates: number }>(`/api/organizations/${org}/bank-statements/import`, { method: 'POST', body: JSON.stringify({ accountId, transactions }) }),
   matchBankTransaction: (org: string, transactionId: string, journalId: string) => jsonRequest<{ matched: true }>(`/api/organizations/${org}/bank-statements/${transactionId}/match`, { method: 'POST', body: JSON.stringify({ journalId }) }),
   reconcileBankStatement: (org: string, input: { accountId: string; periodStart: string; periodEnd: string; openingBalancePaise: number; closingBalancePaise: number }) => jsonRequest<{ id: string; replayed: boolean; transactionCount: number }>(`/api/organizations/${org}/bank-statements/reconcile`, { method: 'POST', body: JSON.stringify(input) }),
+  dashboard: (org: string, from: string, to: string) => jsonRequest<DashboardResult>(`/api/organizations/${org}/reports/dashboard?${new URLSearchParams({ from, to })}`),
   session: () => jsonRequest<SessionResponse>('/api/auth/get-session'),
   signIn: (email: string, password: string) => jsonRequest<unknown>('/api/auth/sign-in/email', {
     method: 'POST', body: JSON.stringify({ email, password }),

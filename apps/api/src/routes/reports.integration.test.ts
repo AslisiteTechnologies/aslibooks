@@ -130,6 +130,17 @@ describe.skipIf(!enabled)('ledger and trial balance reports', () => {
     await request(app).get(`${path}/control-account-reconciliation`).set('x-fixture-actor', 'unknown-user').expect(403);
   });
 
+  it('returns date-filtered dashboard KPIs from posted ledger balances and real journal activity', async () => {
+    const today = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
+    await request(app).get(`${path}/dashboard?from=${today}&to=${today}`).expect(401);
+    await request(app).get(`${path}/dashboard?from=invalid&to=${today}`).set('x-fixture-actor', 'reports-viewer').expect(400);
+    const result = await request(app).get(`${path}/dashboard?from=${today}&to=${today}`).set('x-fixture-actor', 'reports-viewer').expect(200);
+    expect(result.body).toMatchObject({ from: today, to: today, revenuePaise: 4500, expensesPaise: 1700, netProfitPaise: 2800,
+      cashPaise: 12450, receivablesPaise: 750, payablesPaise: 400 });
+    expect(result.body.recentActivity).toHaveLength(5);
+    expect(result.body.recentActivity.map((row: { description: string }) => row.description)).toEqual(expect.arrayContaining(['Opening balance', 'Cash sale', 'Rent payment']));
+  });
+
   afterAll(async () => {
     if (!enabled) return;
     await JournalModel.collection.deleteMany({ organizationId: org });

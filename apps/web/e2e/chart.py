@@ -241,7 +241,15 @@ def test_chart():
                 page.get_by_role("button", name="Reconcile statement").click()
             assert bank_reconcile_response.value.status == 201, bank_reconcile_response.value.text()
             expect(page.get_by_text("reconciled to ledger", exact=False)).to_be_visible()
-            print("Verified signup, starter chart/opening balances, customer/vendor/service setup, invoice/vendor credits and print views, receipts, partial/final bill payments, account lifecycle, manual journals, bank CSV import/matching/reconciliation, responsive navigation, CSV export and reconciled reports (INR 34.66 net profit)")
+            page.get_by_role("button", name="Open navigation").click()
+            page.get_by_role("button", name="Overview", exact=True).click()
+            page.get_by_label("From").fill(today)
+            page.get_by_label("Through").fill(today)
+            expect(page.get_by_text("Ledger-derived values", exact=False)).to_be_visible()
+            expect(page.get_by_text("Net profit", exact=True)).to_be_visible()
+            expect(page.get_by_text("₹34.66", exact=True)).to_be_visible()
+            expect(page.get_by_role("heading", name="Recent ledger activity")).to_be_visible()
+            print("Verified signup, starter chart/opening balances, customer/vendor/service setup, invoice/vendor credits and print views, receipts, partial/final bill payments, account lifecycle, manual journals, bank CSV import/matching/reconciliation, date-filtered ledger dashboard, responsive navigation, CSV export and reconciled reports (INR 34.66 net profit)")
         finally:
             browser.close()
 
