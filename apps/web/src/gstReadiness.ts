@@ -7,3 +7,17 @@ export function getGstSetupIssues(product: Product): string[] {
   if (!product.hsnSacCode) issues.push('HSN/SAC code not entered');
   return issues;
 }
+
+export async function loadAllProducts(fetchPage: (after: string) => Promise<{ products: Product[]; next: string | null }>): Promise<Product[]> {
+  const products: Product[] = [];
+  const cursors = new Set<string>();
+  let after = '';
+  while (true) {
+    const page = await fetchPage(after);
+    products.push(...page.products);
+    if (!page.next) return products;
+    if (cursors.has(page.next)) throw new Error('Service catalog pagination did not advance.');
+    cursors.add(page.next);
+    after = page.next;
+  }
+}

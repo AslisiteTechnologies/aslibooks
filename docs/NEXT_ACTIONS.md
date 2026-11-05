@@ -264,8 +264,9 @@ Route audit: review `docs/ROUTE_SECURITY_MATRIX.md` against the actual current s
 
 Proceed with a review-only AI-assisted vendor-bill extraction workflow: explicit consent, tenant authorization, strict schema and input limits, clear uncertainty/provenance, editable fields, normal bill-draft validation, and no posting action. Then add route and UI tests proving AI output cannot post or persist without human submission.
 
-## Active task — publish strengthened AI bill assistance regression checks
-1. Focused extraction tests pass 3/3; focused MongoDB bill-route suite passes 5/5, including the 20-request hourly quota and 21st-request 429. Full suite passes 146/146; typecheck/lint/build/audit/diff checks pass locally.
-2. Commit and publish the local follow-up to `c503dd38694554597b10e37a19265459385d28cb` using a guarded ref update. Follow-up browser assertion checks there is no bill POST before a human submits the normal draft form.
-3. Verify exact-SHA CI, MongoDB, and Browser workflows. Previous AI workflow SHA `c503dd38694554597b10e37a19265459385d28cb` passed CI #501/#502, MongoDB #436/#437 and Browser #220/#221.
-4. Continue with the remaining route role/reference audit and accessibility checks; keep GST statutory applicability and production operational controls as explicit external gates. Do not state that the MVP or production readiness is complete until the acceptance matrix is fully evidenced and external release gates have owners and results.
+## Active task — commit all-catalog GST readiness review
+AI hardening SHA `4b820a7ea34d19c70d20e584eecbb7df4ac910ac` is hosted-green: CI #503/#504, MongoDB #438/#439 and Browser #222/#223. Local quota exhaustion and no-bill-submit regression checks are included.
+
+The GST setup review previously read only the first product page. The local fix fetches all cursor pages, prevents repeated-cursor loops, and shows how many active catalog items have been checked. Focused tests pass 5/5 and the full workspace suite passes 148/148; typecheck, lint, build and diff checks pass locally. Publish this follow-up with the updated acceptance/evidence docs and verify exact-SHA CI/MongoDB/Browser workflows.
+
+Next: continue the role/reference matrix and run a keyboard/accessibility review of responsive primary workflows. GST statutory rate/code applicability, staging infrastructure, backup/restore, operational grants and production deployment remain unverified owner/expert gates. Do not state the MVP or production readiness is complete until all acceptance evidence is satisfied.

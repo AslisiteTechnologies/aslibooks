@@ -80,8 +80,8 @@ export const api = {
     jsonRequest<{ id: string }>(contactsPath(org), { method: 'POST', body: JSON.stringify(input) }),
   updateContact: (org: string, id: string, input: Partial<ContactInput> | { active: false }) =>
     jsonRequest<{ id: string }>(`${contactsPath(org)}/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
-  products: (org: string, q = '', after = '') => jsonRequest<{ products: Product[]; next: string | null }>(
-    `/api/organizations/${org}/products` + `?${new URLSearchParams({ ...(q ? { q } : {}), ...(after ? { after } : {}) })}`,
+  products: (org: string, q = '', after = '', limit = 50) => jsonRequest<{ products: Product[]; next: string | null }>(
+    `/api/organizations/${org}/products` + `?${new URLSearchParams({ ...(q ? { q } : {}), limit: String(limit), ...(after ? { after } : {}) })}`,
   ),
   createProduct: (org: string, input: { code: string; name: string; unit?: string; unitPricePaise: number; hsnSacCode?: string; taxCategory?: TaxCategory; gstRateBasisPoints?: number }) =>
     jsonRequest<{ id: string }>(`/api/organizations/${org}/products`, { method: 'POST', body: JSON.stringify(input) }),

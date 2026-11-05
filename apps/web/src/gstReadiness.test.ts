@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getGstSetupIssues } from './gstReadiness';
+import { getGstSetupIssues, loadAllProducts } from './gstReadiness';
 import type { Product } from './api';
 
 const product = (overrides: Partial<Product> = {}): Product => ({
@@ -21,5 +21,21 @@ describe('GST setup review input completeness', () => {
   it('shows no data-entry gaps when category, code and any taxable rate are present', () => {
     expect(getGstSetupIssues(product({ taxCategory: 'taxable', gstRateBasisPoints: 1800, hsnSacCode: '998314' }))).toEqual([]);
     expect(getGstSetupIssues(product({ taxCategory: 'exempt', hsnSacCode: '998314' }))).toEqual([]);
+  });
+
+  it('loads every cursor page so the review does not silently omit later catalog items', async () => {
+    const calls: string[] = [];
+    const pages = new Map([
+      ['', { products: [product({ _id: 'first' })], next: 'cursor-1' }],
+      ['cursor-1', { products: [product({ _id: 'second' })], next: null }],
+    ]);
+    await expect(loadAllProducts(async after => { calls.push(after); return pages.get(after)!; }))
+      .resolves.toMatchObject([{ _id: 'first' }, { _id: 'second' }]);
+    expect(calls).toEqual(['', 'cursor-1']);
+  });
+
+  it('stops if a faulty API repeats its cursor instead of looping indefinitely', async () => {
+    await expect(loadAllProducts(async () => ({ products: [], next: 'same-cursor' })))
+      .rejects.toThrow('Service catalog pagination did not advance.');
   });
 });
