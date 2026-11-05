@@ -57,14 +57,14 @@ jobs:
           node apps/api/dist/index.js > /tmp/aslibooks-e2e-api.log 2>&1 &
           api_pid=$!
           for attempt in $(seq 1 90); do
-            if curl --fail --silent http://127.0.0.1:4000/health >/dev/null; then break; fi
+            if curl --fail --silent http://127.0.0.1:4000/health/ready >/dev/null; then break; fi
             if ! kill -0 "$api_pid" 2>/dev/null; then
               cat /tmp/aslibooks-e2e-api.log
               exit 1
             fi
             sleep 2
           done
-          if ! curl --fail --silent http://127.0.0.1:4000/health; then
+          if ! curl --fail --silent http://127.0.0.1:4000/health/ready; then
             cat /tmp/aslibooks-e2e-api.log
             exit 1
           fi

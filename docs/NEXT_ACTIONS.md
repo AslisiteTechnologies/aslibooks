@@ -8,7 +8,7 @@ Preserve the original workspace edits; never stage the owner-supplied vision fil
 
 ## Current implementation task
 
-Per-contact subledger reconciliation `0c6fb67e20b3484b7939880b066c659730c5eac2` passed CI #411/#412, MongoDB #348/#349, and Browser #131/#132. The production audit exposed five Vitest/Tinypool findings through Better Auth's optional peer dependency. Local remediation upgrades workspace Vitest to 4.1.12, adds Vitest source-only discovery configs to prevent compiled `dist` test duplication, and passes `pnpm audit --prod` with no known vulnerabilities. Local replica-set suite passes 111 tests once (105 API, 5 accounting, 1 web); typecheck, lint, build, and diff check pass. The first publication's lockfile blob was truncated during transfer, causing frozen install failures before tests ran. A complete lockfile blob is reconstructed and verified; publish the correction, then verify exact-SHA CI/MongoDB/Browser before reconciling the remaining master acceptance criteria and security/release gaps.
+Vitest/Tinypool remediation `d1001dc7f2742f54ca4777d0eec89581734956b2` passes CI #415/#416, MongoDB #352/#353 and Browser #135/#136 after correcting a truncated lockfile transfer; the earlier failed publication is retained in test evidence. Local tests pass 111/111 once with generated `dist` excluded, audit reports no known production vulnerabilities, and typecheck/lint/build pass. Next verify the new database-aware readiness probe, then continue the master acceptance review with tenant/role negatives, accounting reconciliation, and release-operation blockers.
 
 ## Exact verification commands
 
@@ -28,7 +28,7 @@ For local integration/browser tests, use a disposable MongoDB replica set and AP
 
 ## Remaining MVP work
 
-- Publish and verify the Vitest 4.1.12 security/test-discovery change on its exact SHA.
+- Publish and verify the database-aware readiness probe on its exact SHA.
 - Reconcile every master vision acceptance criterion to implemented code and direct test evidence, especially cross-tenant object access and viewer/accountant permissions.
 - Review invoice lifecycle, sales/purchase tax handling and credit/refund boundaries; keep unsupported GST cases blocked pending qualified review.
 - Verify financial reports, aging, customer/vendor ledgers and source journal reconciliation against realistic transaction fixtures.

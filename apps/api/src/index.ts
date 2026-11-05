@@ -7,6 +7,8 @@ import { createAuth, closeAuthConnection } from './auth.js';
 import { organizationRouter } from './routes/organizations.js';
 import { emailDeliveryEnabled } from './email.js';
 import { createAuthRateLimiter, createMongoAuthRateLimitStore } from './security/authRateLimit.js';
+import mongoose from 'mongoose';
+import { healthRouter } from './routes/health.js';
 
 async function start() {
   const auth = await createAuth();
@@ -22,7 +24,7 @@ async function start() {
   app.use('/api/auth', createAuthRateLimiter({ store: authRateLimitStore }));
   app.all('/api/auth/*splat', toNodeHandler(auth));
   app.use(express.json({ limit: '100kb' }));
-  app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'aslibooks-api' }));
+  app.use('/health', healthRouter(() => mongoose.connection.readyState === 1));
   app.use('/api/organizations', organizationRouter(async (headers) => {
     const session = await auth.api.getSession({ headers });
     return session?.user ? { id: session.user.id } : null;
