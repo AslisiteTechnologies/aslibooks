@@ -10,6 +10,7 @@ const accountsPath = (org: string) => `/api/organizations/${org}/accounts`;
 const contactsPath = (org: string) => `/api/organizations/${org}/contacts`;
 export type ContactInput = { displayName: string; roles: Array<'customer' | 'vendor'>; email?: string; phone?: string; gstin?: string; address?: string };
 export type Contact = ContactInput & { _id: string; active: boolean };
+export type ContactLedger = { contact: { id: string; displayName: string }; currency: 'INR'; rows: Array<{ id: string; date: string; type: string; reference: string; description: string; debitPaise: number; creditPaise: number; balancePaise: number }>; balancePaise: number; receivablePaise?: number; payablePaise?: number };
 export type TaxCategory = 'not_configured' | 'taxable' | 'exempt' | 'nil_rated' | 'non_gst';
 export type Product = { _id: string; code: string; name: string; description?: string; unit: string; unitPricePaise: number; hsnSacCode?: string; taxCategory: TaxCategory; gstRateBasisPoints?: number; active: boolean };
 export type Invoice = { id: string; customerId: string; customerName: string; status: 'draft' | 'issued' | 'partially_paid' | 'paid' | 'partially_credited' | 'credited'; totalPaise: number; amountPaidPaise: number; amountCreditedPaise?: number; taxTreatment?: 'none' | 'exclusive' | 'inclusive'; taxableSubtotalPaise?: number; cgstPaise?: number; sgstPaise?: number; igstPaise?: number; totalTaxPaise?: number; gstReviewRequired?: boolean; invoiceNumber?: string; dueDate?: string; overdue?: boolean; issuedAt?: string; createdAt: string };
@@ -73,6 +74,8 @@ export const api = {
   contacts: (org: string, q = '', after = '') => jsonRequest<{ contacts: Contact[]; next: string | null }>(
     contactsPath(org) + `?${new URLSearchParams({ ...(q ? { q } : {}), ...(after ? { after } : {}) })}`,
   ),
+  contactLedger: (org: string, id: string, role: 'customer' | 'vendor') =>
+    jsonRequest<ContactLedger>(`${contactsPath(org)}/${id}/ledger?role=${role}`),
   createContact: (org: string, input: ContactInput) =>
     jsonRequest<{ id: string }>(contactsPath(org), { method: 'POST', body: JSON.stringify(input) }),
   updateContact: (org: string, id: string, input: Partial<ContactInput> | { active: false }) =>
