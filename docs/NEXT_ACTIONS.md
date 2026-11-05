@@ -2,13 +2,13 @@
 
 ## Current checkpoint
 
-Recovery head `37e20d201df008db80774da73c3fd69056dc2666` contains all nine verified nonempty pagination files and CI #335 passed. Historical malformed head `64135f913bf234679408077212ba6f2c8b317e57` is retained as an incident record; CI/Mongo failed and E2E #53/#54 are invalid because the test file was empty. MongoDB #272 exposed a fixture query that still matched the second Coastal contact. The local assertion now searches Coastal Supply specifically; focused local integration remains skipped without MongoDB.
+Recovery head `37e20d201df008db80774da73c3fd69056dc2666` contains all nine verified nonempty pagination files and CI #335 passed. Historical malformed head `64135f913bf234679408077212ba6f2c8b317e57` is retained as an incident record; CI/Mongo failed and E2E #53/#54 are invalid because the test file was empty. Commit `451031e3d496008cc00964dd1850794419b8342d` fixed the Coastal archive test fixture and passed CI #341/#342, MongoDB #278/#279 and E2E #61/#62.
 
 Preserve the original workspace edits; never stage the owner-supplied vision file. Never merge PR #1 to `main` or deploy production.
 
 ## Current implementation task
 
-Publish the contact fixture correction with verified file content; verify exact-SHA CI, MongoDB and browser workflows, treating E2E #53/#54 as invalid evidence. Then continue with customer/vendor ledgers and remaining acceptance criteria.
+Verify exact-SHA CI, MongoDB and browser workflows for contact fixture correction, treating E2E #53/#54 as invalid evidence. Complete the contact ledger API with allocated advance and refund events, cursor pagination, integration fixtures and a responsive contact statement view; then reconcile ledgers to reports.
 
 ## Exact verification commands
 
