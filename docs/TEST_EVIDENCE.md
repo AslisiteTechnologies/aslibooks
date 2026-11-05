@@ -165,3 +165,5 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 
 - Statement UI is implemented locally with separate customer/vendor actions, a responsive transaction list and running balance. Typecheck, lint, build and web unit test passed; browser workflow coverage was added. Local browser execution could not start because the required MongoDB/API/web services are not running and Docker is not installed; verify via exact-SHA GitHub browser workflow.
 
+- Contact ledger API now includes customer advance receipt/refund and vendor advance events. MongoDB integration fixture creates a posted vendor bill and asserts the statement balance and row. Typecheck, lint, build passed; the focused suite is skipped locally without MongoDB and awaits exact-SHA CI.
+
