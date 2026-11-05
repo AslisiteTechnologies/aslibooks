@@ -20,6 +20,7 @@ describe.skipIf(!enabled)('bank statement import and reconciliation HTTP', () =>
   app.use('/orgs', organizationRouter(async headers => { const id = headers.get('x-fixture-actor'); return id ? { id } : null; }));
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => { res.status(500).json({ error: String(error) }); });
   const org = new Types.ObjectId(); const other = new Types.ObjectId(); const bank = new Types.ObjectId(); const equity = new Types.ObjectId();
+  const foreignBank = new Types.ObjectId(); const foreignEquity = new Types.ObjectId(); const foreignJournal = new Types.ObjectId();
   const path = `/orgs/${org}/bank-statements`; const owner = { 'x-fixture-actor': 'owner' };
   const row = { transactionDate: new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10), amountPaise: 10_000, description: 'Customer deposit' };
   beforeAll(async () => {
@@ -28,15 +29,25 @@ describe.skipIf(!enabled)('bank statement import and reconciliation HTTP', () =>
     await OrganizationModel.create([{ _id: org, name: 'Bank route test', slug: `bank-${org}` }, { _id: other, name: 'Bank peer', slug: `bank-peer-${other}` }]);
     await MembershipModel.create([{ organizationId: org, authUserId: 'owner', role: 'owner' }, { organizationId: org, authUserId: 'viewer', role: 'viewer' }, { organizationId: other, authUserId: 'other', role: 'accountant' }]);
     await AccountModel.create([{ _id: bank, organizationId: org, code: '1010', name: 'Bank', type: 'asset', system: true },
-      { _id: equity, organizationId: org, code: '3000', name: 'Opening equity', type: 'equity', system: true }]);
+      { _id: equity, organizationId: org, code: '3000', name: 'Opening equity', type: 'equity', system: true },
+      { _id: foreignBank, organizationId: other, code: '1010', name: 'Other bank', type: 'asset', system: true },
+      { _id: foreignEquity, organizationId: other, code: '3000', name: 'Other equity', type: 'equity', system: true }]);
+    await JournalModel.create({ _id: foreignJournal, organizationId: other, idempotencyKey: `foreign-bank-journal-${other}`,
+      currency: 'INR', description: 'Foreign bank journal', postedAt: new Date(), lines: [
+        { accountId: foreignBank, debitPaise: 10_000, creditPaise: 0 }, { accountId: foreignEquity, debitPaise: 0, creditPaise: 10_000 },
+      ] });
   });
   it('imports without posting, de-duplicates, requires exact journal match, then reconciles against ledger', async () => {
     const payload = { accountId: String(bank), transactions: [row] };
+    await request(app).post(path + '/import').set(owner).send({ ...payload, accountId: String(foreignBank) }).expect(422);
+    expect(await BankTransactionModel.countDocuments({ organizationId: org })).toBe(0);
     await request(app).post(path + '/import').set(owner).send(payload).expect(201, { imported: 1, duplicates: 0 });
     await request(app).post(path + '/import').set(owner).send(payload).expect(201, { imported: 0, duplicates: 1 });
     expect(await BankTransactionModel.countDocuments({ organizationId: org })).toBe(1);
     expect(await JournalModel.countDocuments({ organizationId: org })).toBe(0);
     const transaction = await BankTransactionModel.findOne({ organizationId: org });
+    await request(app).post(path + `/${transaction!._id}/match`).set(owner).send({ journalId: String(foreignJournal) }).expect(404);
+    expect(await BankTransactionModel.findById(transaction!._id)).toMatchObject({ status: 'unmatched' });
     await request(app).post(path + '/reconcile').set(owner).send({ accountId: String(bank), periodStart: row.transactionDate, periodEnd: row.transactionDate, openingBalancePaise: 0, closingBalancePaise: 10_000 }).expect(409);
     const journal = await postAuthorizedJournal('owner', { organizationId: String(org), idempotencyKey: `bank-match-${org}-0001`, description: 'Deposit received', lines: [
       { accountId: String(bank), debitPaise: 10_000, creditPaise: 0 }, { accountId: String(equity), debitPaise: 0, creditPaise: 10_000 },
