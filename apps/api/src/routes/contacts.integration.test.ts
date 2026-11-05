@@ -87,7 +87,15 @@ describe.skipIf(!enabled)('contacts API', () => {
         { type: 'payment', reference: 'BILL-STATEMENT-1', debitPaise: 0, creditPaise: 2500, balancePaise: 10000 },
         { type: 'vendor_credit', reference: 'BILL-STATEMENT-1', debitPaise: 0, creditPaise: 3000, balancePaise: 7000 },
       ] });
+    const firstStatementPage = await request(app).get(path + '/' + id + '/ledger?limit=2').set(owner).expect(200);
+    expect(firstStatementPage.body.rows.map((row: { type: string }) => row.type)).toEqual(['bill', 'payment']);
+    expect(firstStatementPage.body).toMatchObject({ openingBalancePaise: 0, balancePaise: 7000 });
+    expect(firstStatementPage.body.next).toEqual(expect.any(String));
+    const lastStatementPage = await request(app).get(path + '/' + id + '/ledger?limit=2&after=' + encodeURIComponent(firstStatementPage.body.next)).set(owner).expect(200);
+    expect(lastStatementPage.body).toMatchObject({ openingBalancePaise: 10000, balancePaise: 7000, next: null,
+      rows: [{ type: 'vendor_credit', creditPaise: 3000, balancePaise: 7000 }] });
     await request(app).get(path + '/' + id + '/ledger?role=invalid').set(owner).expect(400);
+    await request(app).get(path + '/' + id + '/ledger?after=invalid').set(owner).expect(400);
     await request(app).get(foreignPath + '/' + id + '/ledger').set(owner).expect(403);
     const defaultPage = await request(app).get(path).set(owner).expect(200);
     expect(defaultPage.body.contacts.length).toBeGreaterThan(1);
