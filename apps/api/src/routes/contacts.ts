@@ -2,7 +2,11 @@ import { Router, type RequestHandler } from 'express';
 import mongoose, { Types } from 'mongoose';
 import { z } from 'zod';
 import { AuditEventModel } from '../models/auditEvent.js';
+import { BillModel, VendorCreditModel } from '../models/bill.js';
 import { ContactModel, contactRoles } from '../models/contact.js';
+import { CreditNoteModel, InvoiceModel } from '../models/invoice.js';
+import { ReceiptModel } from '../models/receipt.js';
+import { VendorPaymentModel } from '../models/vendorPayment.js';
 import { fenceLedgerPermission, hasPermission } from '../security/authorization.js';
 
 class ContactError extends Error {
@@ -68,6 +72,53 @@ export function contactRouter() {
     if (!contact) { res.status(404).json({ error: 'Contact not found' }); return; }
     res.json({ contact });
   });
+  router.get('/:id/ledger', async (req, res) => {
+    const { organizationId, authUserId } = res.locals;
+    if (!await hasPermission(authUserId, String(organizationId), 'ledger:read')) { res.status(403).json({ error: 'Contact ledger access denied' }); return; }
+    if (!Types.ObjectId.isValid(req.params.id)) { res.status(400).json({ error: 'Invalid contact ID' }); return; }
+    const party = await ContactModel.findOne({ _id: req.params.id, organizationId })
+      .lean<{ _id: Types.ObjectId; roles: string[]; displayName: string } | null>();
+    if (!party) { res.status(404).json({ error: 'Contact not found' }); return; }
+    const customerRole = party.roles.includes('customer');
+    const vendorRole = party.roles.includes('vendor');
+    const requestedRole = req.query.role;
+    if (requestedRole !== undefined && requestedRole !== 'customer' && requestedRole !== 'vendor') { res.status(400).json({ error: 'Ledger role must be customer or vendor' }); return; }
+    if (customerRole && vendorRole && requestedRole === undefined) { res.status(400).json({ error: 'Choose customer or vendor ledger for this contact' }); return; }
+    const isCustomer = customerRole && (!vendorRole || requestedRole === 'customer');
+    const isVendor = vendorRole && (!customerRole || requestedRole === 'vendor');
+    if (!isCustomer && !isVendor) { res.status(422).json({ error: 'Contact has no customer or vendor ledger' }); return; }
+    const events: Array<{ id: string; date: Date; type: string; reference: string; description: string; debitPaise: number; creditPaise: number }> = [];
+    if (isCustomer) {
+      const [invoices, receipts, credits] = await Promise.all([
+        InvoiceModel.find({ organizationId, customerId: party._id, status: { $ne: 'draft' } }).lean(),
+        ReceiptModel.find({ organizationId, customerId: party._id }).lean(),
+        CreditNoteModel.find({ organizationId, invoiceId: { $in: await InvoiceModel.find({ organizationId, customerId: party._id, status: { $ne: 'draft' } }).distinct('_id') } }).lean(),
+      ]);
+      const invoiceIds = new Set(invoices.map(row => String(row._id)));
+      for (const row of invoices) events.push({ id: String(row._id), date: row.issuedAt ?? row.createdAt, type: 'invoice', reference: row.invoiceNumber ?? String(row._id), description: `Invoice ${row.invoiceNumber ?? ''}`.trim(), debitPaise: row.totalPaise, creditPaise: 0 });
+      for (const row of receipts) for (const allocation of row.allocations) if (invoiceIds.has(String(allocation.invoiceId))) events.push({ id: `${row._id}:${allocation.invoiceId}`, date: row.receivedAt, type: 'receipt', reference: allocation.invoiceNumber, description: 'Customer receipt', debitPaise: 0, creditPaise: allocation.amountPaise });
+      for (const row of credits) if (invoiceIds.has(String(row.invoiceId))) events.push({ id: String(row._id), date: row.issuedAt, type: 'credit_note', reference: row.invoiceNumber, description: row.reason, debitPaise: 0, creditPaise: row.amountPaise });
+    }
+    if (isVendor) {
+      const [bills, payments, credits] = await Promise.all([
+        BillModel.find({ organizationId, vendorId: party._id, status: { $ne: 'draft' } }).lean(),
+        VendorPaymentModel.find({ organizationId, vendorId: party._id }).lean(),
+        VendorCreditModel.find({ organizationId, billId: { $in: await BillModel.find({ organizationId, vendorId: party._id, status: { $ne: 'draft' } }).distinct('_id') } }).lean(),
+      ]);
+      const billIds = new Set(bills.map(row => String(row._id)));
+      for (const row of bills) events.push({ id: String(row._id), date: row.postedAt ?? row.createdAt, type: 'bill', reference: row.vendorReference, description: row.description, debitPaise: row.amountPaise, creditPaise: 0 });
+      for (const row of payments) for (const allocation of row.allocations) if (billIds.has(String(allocation.billId))) events.push({ id: `${row._id}:${allocation.billId}`, date: row.paidAt, type: 'payment', reference: allocation.vendorReference, description: 'Vendor payment', debitPaise: 0, creditPaise: allocation.amountPaise });
+      for (const row of credits) if (billIds.has(String(row.billId))) events.push({ id: String(row._id), date: row.issuedAt, type: 'vendor_credit', reference: row.vendorReference, description: row.reason, debitPaise: 0, creditPaise: row.amountPaise });
+    }
+    events.sort((a, b) => a.date.getTime() - b.date.getTime() || a.id.localeCompare(b.id));
+    let balancePaise = 0;
+    const rows = events.map(event => {
+      balancePaise += event.debitPaise - event.creditPaise;
+      if (!Number.isSafeInteger(balancePaise)) throw new Error('Contact ledger exceeds supported integer range');
+      return { ...event, date: event.date.toISOString(), balancePaise };
+    });
+    res.json({ contact: { id: String(party._id), displayName: party.displayName }, currency: 'INR', rows, balancePaise, receivablePaise: isCustomer ? balancePaise : undefined, payablePaise: isVendor ? balancePaise : undefined });
+  });
   router.post('/', write);
   router.patch('/:id', write);
   return router;
@@ -122,3 +173,4 @@ const write: RequestHandler = async (req, res, next) => {
     next(error);
   }
 };
+
