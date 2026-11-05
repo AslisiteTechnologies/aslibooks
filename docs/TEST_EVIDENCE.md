@@ -122,4 +122,5 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 - Product selector follow-up: run #13 failed after exact product selector scoping timed out because the form ancestor was not reliably discoverable in that mobile navigation state. The exact accessible Name/Code selectors are now used without the ancestor form. Browser rerun pending.
 - Product selector follow-up: run #15 timed out on exact Code matching even though the broad match had found both Code and HSN/SAC. The required-field label caused the exact locator mismatch; Code now uses the first broad label match, which is first in the product form. Rerun pending.
 - Product unit selector follow-up: runs #17/#18 passed product Code, then selected numeric Unit price for the Unit substring locator. The unit input now selects the textbox role, separating it from the number spinbutton. Rerun pending.
+- Product Unit follow-up: run #19/#20 passed Code but the textbox role locator timed out on Unit. The product input has a unique `maxlength=24`, now used as the selector. Rerun pending.
 
