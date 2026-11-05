@@ -2,13 +2,13 @@
 
 ## Current checkpoint
 
-Published head `64135f913bf234679408077212ba6f2c8b317e57` has empty blobs for the nine intended pagination files due to a concurrent remote-publish read race. CI #333/#334 and MongoDB #270/#271 failed; E2E #53/#54 were false-green because the script itself was empty. Prior head `1f88eea89ff18fbc47076248672dfa88fb5b885f` is the last correctly published commit. Local source and tests are preserved; republish all nine complete files with sequential verified reads, then rerun exact-SHA workflows.
+Recovery head `37e20d201df008db80774da73c3fd69056dc2666` contains all nine verified nonempty pagination files and CI #335 passed. Historical malformed head `64135f913bf234679408077212ba6f2c8b317e57` is retained as an incident record; CI/Mongo failed and E2E #53/#54 are invalid because the test file was empty. MongoDB #272 exposed a fixture query that still matched the second Coastal contact. The local assertion now searches Coastal Supply specifically; focused local integration remains skipped without MongoDB.
 
 Preserve the original workspace edits; never stage the owner-supplied vision file. Never merge PR #1 to `main` or deploy production.
 
 ## Current implementation task
 
-Repair the empty remote blobs by creating fresh nonempty GitHub blobs from local source, then verify exact-SHA CI/MongoDB/browser runs and fix any test failures. Do not count the prior browser status as evidence. Once green, continue with customer/vendor ledgers and remaining acceptance criteria.
+Publish the contact fixture correction with verified file content; verify exact-SHA CI, MongoDB and browser workflows, treating E2E #53/#54 as invalid evidence. Then continue with customer/vendor ledgers and remaining acceptance criteria.
 
 ## Exact verification commands
 
