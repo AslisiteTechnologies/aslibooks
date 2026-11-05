@@ -32,6 +32,7 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
   const customerId = new Types.ObjectId();
   const peerCustomerId = new Types.ObjectId();
   const serviceId = new Types.ObjectId();
+  const peerServiceId = new Types.ObjectId();
   const taxableServiceId = new Types.ObjectId();
   const arId = new Types.ObjectId();
   const incomeId = new Types.ObjectId();
@@ -61,6 +62,7 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
       { _id: peerCustomerId, organizationId: peerId, displayName: 'Peer Customer', roles: ['customer'] },
     ]);
     await ProductModel.create({ _id: serviceId, organizationId, code: 'CONSULT', name: 'Consulting', unitPricePaise: 2500 });
+    await ProductModel.create({ _id: peerServiceId, organizationId: peerId, code: 'PEER-CONSULT', name: 'Peer consulting', unitPricePaise: 2500 });
     await ProductModel.create({ _id: taxableServiceId, organizationId, code: 'TAXED', name: 'Tax configured service', unit: 'hour', unitPricePaise: 10_000, hsnSacCode: '998314', taxCategory: 'taxable', gstRateBasisPoints: 1800 });
     await AccountModel.create([
       { _id: arId, organizationId, code: '1100', name: 'Receivable', type: 'asset' },
@@ -72,6 +74,10 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
     await request(app).post(path).set(owner).send({ customerId: String(customerId), lines: [{ productId: String(serviceId), quantity: 1 }] }).expect(400, { error: 'Provide a valid invoice draft idempotency key' });
     const outsiderDraft = await request(app).post(path).set(owner).send({ idempotencyKey: 'invoice-outsider-draft-01', customerId: String(peerCustomerId), lines: [{ productId: String(serviceId), quantity: 1 }] }).expect(422);
     expect(outsiderDraft.body.error).toContain('active customer');
+    const foreignProductDraft = await request(app).post(path).set(owner).send({ idempotencyKey: 'invoice-foreign-product-01',
+      customerId: String(customerId), lines: [{ productId: String(peerServiceId), quantity: 1 }] }).expect(422);
+    expect(foreignProductDraft.body.error).toContain('active services from this organization');
+    expect(await InvoiceModel.countDocuments({ organizationId, draftIdempotencyKey: 'invoice-foreign-product-01' })).toBe(0);
     await request(app).post(path).set({ 'x-fixture-actor': 'invoice-viewer' })
       .send({ idempotencyKey: 'invoice-viewer-draft-01', customerId: String(customerId), lines: [{ productId: String(serviceId), quantity: 1 }] }).expect(403);
     await request(app).post(path).set(owner).send({
