@@ -73,6 +73,10 @@ describe.skipIf(!enabled)('organization member and invitation workflows', () => 
     const memberList = await request(app).get(path + '/members').set(owner).expect(200);
     const invitedMember = memberList.body.members.find((member: { id: string }) => member.id === invitedMembershipId);
     expect(invitedMember).toMatchObject({ name: 'Invited', email: 'invited@members.example', role: 'accountant', status: 'active' });
+    const peerOwnerMembership = await MembershipModel.findOne({ organizationId: peer, authUserId: String(invitedId) });
+    await request(app).get(`/orgs/${peer}/members`).set(owner).expect(403);
+    await request(app).patch(`${path}/members/${peerOwnerMembership!._id}`).set(owner).send({ status: 'suspended' }).expect(404);
+    expect(await MembershipModel.findById(peerOwnerMembership!._id)).toMatchObject({ organizationId: peer, status: 'active' });
     await request(app).patch(`${path}/members/${invitedMembershipId}`).set(admin).send({ role: 'admin' }).expect(403);
     await request(app).patch(`${path}/members/${invitedMembershipId}`).set(owner).send({ role: 'admin' }).expect(200);
     await request(app).patch(`${path}/members/${invitedMembershipId}`).set(owner).send({ role: 'owner' }).expect(400);
