@@ -2,11 +2,11 @@
 
 ## Current checkpoint
 
-Development branch head `018ae5c1664fb1d7163f56f42536e8e6643a519e`; CI #266 and MongoDB integration #203 passed after restoring the exact lockfile. A session-expiry E2E assertion is added locally and syntax-checked; full browser run needs local API/database services. Preserve the owner-supplied vision document in the original workspace; it must remain unstaged.
+Development branch head `142277e4ed11d343e6e6f7f71d60aa0ae7d0d894`; CI #270 and MongoDB integration #207 passed, including actual GridFS attachment upload/download integration. The source-document browser test is added, but the full browser flow requires local API/database services that are currently unavailable. Preserve the owner-supplied vision document in the original workspace; it must remain unstaged.
 
 ## Current implementation task
 
-Verify the session-expiry browser assertion when a local API/database test environment is available. Then proceed to secure source-document attachments, beginning with an isolated storage adapter, tenant-scoped metadata and authorization tests. Do not enable production uploads without configured private storage, retention/size/type rules and download authorization. Authentication POST rate limiting is verified at 20 per 15 minutes per process; the in-memory store does not share state across API replicas and needs a shared store before horizontal production scaling. AI needs optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
+Implement a MongoDB-backed shared store for authentication rate limits and test it across two store instances, so counters remain consistent across API replicas and restarts. Then run full tests/typecheck/lint/build and exact-commit CI. Do not enable production uploads without retention policy approval, MongoDB encryption/backup validation and malware-scanning review. AI needs optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
 ## Exact verification commands
 
 ```powershell

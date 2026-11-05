@@ -10,6 +10,10 @@ Provision a runtime identity with find/insert access to journals and audit event
 
 ## Remaining controls
 
-Review cookie lifetime and HTTPS flags, allowed origins, CSRF on business routes, abuse limits, sensitive exception logging and dependency advisories before release. Separate credentials by environment. Keep secrets and financial payloads out of logs and support tickets. Defer uploads and AI processing until access control, validation, retention and consent are specified.
+Authentication POST requests are currently limited to 20 per 15 minutes per API process with standard rate-limit headers; GET session checks are excluded. This uses express-rate-limit's in-memory store, so replicas do not share counters and restarts reset limits. Before horizontal production scaling, configure and test a shared store and set the deployment proxy trust boundary deliberately. This is a basic abuse control, not a complete credential-stuffing defense.
+
+Attachment storage uses private MongoDB GridFS and is accessible only through tenant-authorized API routes. Uploads accept PDF/PNG/JPEG signatures up to 10 MB and store metadata/audit records transactionally; the exact-commit MongoDB test covers cross-tenant access and content download. No malware scanning, retention/purge policy, account export/deletion workflow or at-rest encryption configuration has been verified; do not enable production uploads until those controls are chosen and tested. GridFS chunks can remain orphaned if database cleanup fails after an upload error; include orphan reconciliation in operations review.
+
+Review cookie lifetime and HTTPS flags, allowed origins, CSRF on business routes, distributed abuse limits, sensitive exception logging and dependency advisories before release. Separate credentials by environment. Keep secrets and financial payloads out of logs and support tickets.
 
 Restore an encrypted backup into a separate isolated database with restricted credentials. Compare tenant counts, journal/audit linkage, unique indexes, trial balance and sample reports as of the restore point. Record elapsed recovery time and data loss against owner-approved recovery objectives. Rehearse before production cutover.
