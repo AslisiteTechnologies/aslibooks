@@ -8,6 +8,7 @@ const createProduct = z.strictObject({
   code: z.string().trim().min(1).max(32).regex(/^[a-zA-Z0-9_-]+$/),
   name: z.string().trim().min(1).max(160),
   description: z.string().trim().max(1000).optional(),
+  unit: z.string().trim().min(1).max(24).default('unit'),
   unitPricePaise: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
   hsnSacCode: z.string().trim().regex(/^(?:\d{2}|\d{4}|\d{6}|\d{8})$/).optional(),
   taxCategory: z.enum(['not_configured', 'taxable', 'exempt', 'nil_rated', 'non_gst']).default('not_configured'),
@@ -20,6 +21,7 @@ const updateProduct = z.union([
   z.strictObject({
     name: z.string().trim().min(1).max(160).optional(),
     description: z.string().trim().max(1000).optional(),
+    unit: z.string().trim().min(1).max(24).optional(),
     unitPricePaise: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
   }).refine(fields => Object.values(fields).some(field => field !== undefined)),
   z.strictObject({ active: z.literal(false) }),
@@ -56,7 +58,7 @@ export function productRouter() {
       ...(parsed.data.q ? { name: { $regex: parsed.data.q.replace(/[.*+?^\x24{}()|[\]\\]/g, '\\$&'), $options: 'i' } } : {}),
     };
     const items = await ProductModel.find(filter).sort({ _id: 1 }).limit(limit + 1).lean();
-    res.json({ products: items.slice(0, limit), next: items.length > limit ? String(items[limit - 1]._id) : null });
+    res.json({ products: items.slice(0, limit).map(item => ({ ...item, unit: item.unit || 'unit' })), next: items.length > limit ? String(items[limit - 1]._id) : null });
   });
   router.post('/', writeProduct);
   router.patch('/:id', writeProduct);

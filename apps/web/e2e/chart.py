@@ -21,7 +21,7 @@ def test_chart():
             page.get_by_role("button", name="Create workspace").click()
             page.get_by_role("button", name="Accounting", exact=True).click()
             page.get_by_role("button", name="Add starter chart").click()
-            expect(page.get_by_text("Added 23 starter accounts", exact=False)).to_be_visible()
+            expect(page.get_by_text("Added 25 starter accounts", exact=False)).to_be_visible()
             page.get_by_role("button", name="Opening balances", exact=True).click()
             page.get_by_label("Account 1").click()
             page.get_by_role("option", name="1000 · Cash on hand (asset)").click()
@@ -88,6 +88,7 @@ def test_chart():
             page.get_by_role("button", name="Products", exact=True).click()
             page.get_by_label("Code", exact=False).fill("E2E-SERVICE")
             page.get_by_label("Name", exact=False).fill("Consulting service")
+            page.get_by_label("Unit", exact=True).fill("hour")
             page.get_by_label("Unit price (₹)").fill("50.00")
             page.get_by_role("button", name="Save service").click()
             expect(page.get_by_text("E2E-SERVICE · Consulting service")).to_be_visible()
@@ -119,7 +120,7 @@ def test_chart():
             page.get_by_role("button", name="Confirm and issue").click()
             expect(page.get_by_text("Credit note issued for ₹5.00", exact=False)).to_be_visible()
             page.get_by_role("button", name="Print invoice").click()
-            expect(page.get_by_text("Consulting service × 1")).to_be_visible()
+            expect(page.get_by_text("Consulting service × 1 hour")).to_be_visible()
             with page.expect_popup() as print_page_info:
                 page.get_by_role("button", name="Print", exact=True).click()
             print_page = print_page_info.value

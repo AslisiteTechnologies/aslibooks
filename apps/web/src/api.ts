@@ -11,9 +11,9 @@ const contactsPath = (org: string) => `/api/organizations/${org}/contacts`;
 export type ContactInput = { displayName: string; roles: Array<'customer' | 'vendor'>; email?: string; phone?: string; gstin?: string; address?: string };
 export type Contact = ContactInput & { _id: string; active: boolean };
 export type TaxCategory = 'not_configured' | 'taxable' | 'exempt' | 'nil_rated' | 'non_gst';
-export type Product = { _id: string; code: string; name: string; description?: string; unitPricePaise: number; hsnSacCode?: string; taxCategory: TaxCategory; gstRateBasisPoints?: number; active: boolean };
+export type Product = { _id: string; code: string; name: string; description?: string; unit: string; unitPricePaise: number; hsnSacCode?: string; taxCategory: TaxCategory; gstRateBasisPoints?: number; active: boolean };
 export type Invoice = { id: string; customerId: string; customerName: string; status: 'draft' | 'issued' | 'partially_paid' | 'paid' | 'partially_credited' | 'credited'; totalPaise: number; amountPaidPaise: number; amountCreditedPaise?: number; taxTreatment?: 'none' | 'exclusive' | 'inclusive'; taxableSubtotalPaise?: number; cgstPaise?: number; sgstPaise?: number; igstPaise?: number; totalTaxPaise?: number; gstReviewRequired?: boolean; invoiceNumber?: string; dueDate?: string; overdue?: boolean; issuedAt?: string; createdAt: string };
-export type InvoiceDocument = Invoice & { lines: Array<{ name: string; quantity: number; unitPricePaise: number; lineTotalPaise: number; hsnSacCode?: string; taxCategory?: TaxCategory; gstRateBasisPoints?: number; taxablePaise?: number; cgstPaise?: number; sgstPaise?: number; igstPaise?: number }> };
+export type InvoiceDocument = Invoice & { lines: Array<{ name: string; unit: string; quantity: number; unitPricePaise: number; lineTotalPaise: number; hsnSacCode?: string; taxCategory?: TaxCategory; gstRateBasisPoints?: number; taxablePaise?: number; cgstPaise?: number; sgstPaise?: number; igstPaise?: number }> };
 export type Receipt = { id: string; customerName: string; amountPaise: number; receivedAt: string; journalId: string; allocations: Array<{ invoiceId: string; invoiceNumber: string; amountPaise: number }> };
 export type CustomerAdvance = { id: string; customerId: string; customerName: string; amountPaise: number; allocatedPaise: number; refundedPaise: number; availablePaise: number; receivedAt: string; journalId: string };
 export type Attachment = { id: string; resourceType: 'invoice' | 'bill' | 'journal'; resourceId: string; filename: string; contentType: string; sizeBytes: number; sha256: string; createdAt: string };
@@ -80,7 +80,7 @@ export const api = {
   products: (org: string, q = '') => jsonRequest<{ products: Product[]; next: string | null }>(
     `/api/organizations/${org}/products` + (q ? `?q=${encodeURIComponent(q)}` : ''),
   ),
-  createProduct: (org: string, input: { code: string; name: string; unitPricePaise: number; hsnSacCode?: string; taxCategory?: TaxCategory; gstRateBasisPoints?: number }) =>
+  createProduct: (org: string, input: { code: string; name: string; unit?: string; unitPricePaise: number; hsnSacCode?: string; taxCategory?: TaxCategory; gstRateBasisPoints?: number }) =>
     jsonRequest<{ id: string }>(`/api/organizations/${org}/products`, { method: 'POST', body: JSON.stringify(input) }),
   invoices: (org: string) => jsonRequest<{ invoices: Invoice[]; next: string | null }>(`/api/organizations/${org}/invoices`),
   invoice: (org: string, id: string) => jsonRequest<{ invoice: InvoiceDocument }>(`/api/organizations/${org}/invoices/${id}`),

@@ -61,7 +61,7 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
       { _id: peerCustomerId, organizationId: peerId, displayName: 'Peer Customer', roles: ['customer'] },
     ]);
     await ProductModel.create({ _id: serviceId, organizationId, code: 'CONSULT', name: 'Consulting', unitPricePaise: 2500 });
-    await ProductModel.create({ _id: taxableServiceId, organizationId, code: 'TAXED', name: 'Tax configured service', unitPricePaise: 10_000, hsnSacCode: '998314', taxCategory: 'taxable', gstRateBasisPoints: 1800 });
+    await ProductModel.create({ _id: taxableServiceId, organizationId, code: 'TAXED', name: 'Tax configured service', unit: 'hour', unitPricePaise: 10_000, hsnSacCode: '998314', taxCategory: 'taxable', gstRateBasisPoints: 1800 });
     await AccountModel.create([
       { _id: arId, organizationId, code: '1100', name: 'Receivable', type: 'asset' },
       { _id: incomeId, organizationId, code: '4000', name: 'Sales', type: 'income' },
@@ -83,7 +83,7 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
     }).expect(201);
     const taxDocument = await InvoiceModel.findById(taxDraft.body.id).lean<{ lines: Array<Record<string, unknown>>; [key: string]: unknown } | null>();
     expect(taxDocument).toMatchObject({ totalPaise: 11_800, taxableSubtotalPaise: 10_000, cgstPaise: 900, sgstPaise: 900, igstPaise: 0, totalTaxPaise: 1800, placeOfSupplyStateCode: '29' });
-    expect(taxDocument?.lines[0]).toMatchObject({ hsnSacCode: '998314', taxCategory: 'taxable', gstRateBasisPoints: 1800, taxablePaise: 10_000, lineTotalPaise: 11_800 });
+    expect(taxDocument?.lines[0]).toMatchObject({ unit: 'hour', hsnSacCode: '998314', taxCategory: 'taxable', gstRateBasisPoints: 1800, taxablePaise: 10_000, lineTotalPaise: 11_800 });
     await request(app).post(`${path}/${taxDraft.body.id}/issue`).set(owner).send({ idempotencyKey: 'invoice-tax-disabled-01' }).expect(422);
     expect(await InvoiceModel.findById(taxDraft.body.id)).toMatchObject({ status: 'draft' });
     expect(await JournalModel.countDocuments({ organizationId })).toBe(0);

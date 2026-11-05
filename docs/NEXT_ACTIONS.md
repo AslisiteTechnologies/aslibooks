@@ -2,11 +2,11 @@
 
 ## Current checkpoint
 
-Published development branch head `ba92c81d6889dd06520533a500beac2c8186ffa0`; CI #270 and MongoDB integration #207 passed, including actual GridFS attachment upload/download integration. The source-document browser test is added, but the full browser flow requires local API/database services that are currently unavailable. Preserve the owner-supplied vision document in the original workspace; it must remain unstaged.
+Published development branch head `c16ac0ae5e119caca1eea8577631271ec6b0e5e0`; CI #284 and MongoDB integration #221 passed. Browser run #4 identified a stale assertion expecting 23 instead of 25 starter accounts. The original workspace and its uncommitted owner work remain untouched; never stage the owner-supplied vision file.
 
 ## Current implementation task
 
-Fix and rerun `.github/workflows/e2e.yml`. The first run (#2) got MongoDB and the API healthy but never received a response from the Vite server; local testing confirmed the direct `pnpm ... exec vite --host ... --port ...` form starts correctly. The workflow now builds/starts the API bundle, launches Vite directly, extends API readiness and prints server logs on failure. Verify the full browser journey on the exact published commit, fix any UI failures, then continue the next unfinished MVP milestone. Do not enable production uploads without retention policy approval, MongoDB encryption/backup validation and malware-scanning review. AI needs optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
+Commit and publish the product unit/invoice snapshot work and corrected browser assertion. Local suite/typecheck/lint/build/script syntax passed; now verify CI, MongoDB catalog/invoice tests and the browser workflow on the exact SHA. Previous run #4 established compiled API and direct Vite startup work, then failed at the stale 23-account assertion. Fix subsequent browser failures and continue the next unfinished MVP milestone. Production uploads remain gated on retention, encryption/backup validation and malware-scanning decisions. AI requires optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
 ## Exact verification commands
 
 ```powershell
