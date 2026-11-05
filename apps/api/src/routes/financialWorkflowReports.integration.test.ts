@@ -108,6 +108,15 @@ describe.skipIf(!enabled)('source transaction report reconciliation', () => {
       idempotencyKey: `source-vendor-credit-${suffix}`, amountPaise: 1_000, reason: 'Returned supplies',
     }).expect(201);
 
+    const customerStatement = await request(app).get(`${organizationPath}/contacts/${customerId}/ledger`).set(owner).expect(200);
+    expect(customerStatement.body).toMatchObject({ balancePaise: 6_000,
+      subledger: { openDocumentBalancePaise: 6_000, unallocatedAdvancePaise: 0, netBalancePaise: 6_000, differencePaise: 0, reconciled: true } });
+    expect(customerStatement.body.rows.map((row: { type: string }) => row.type)).toEqual(['invoice', 'receipt', 'credit_note']);
+    const vendorStatement = await request(app).get(`${organizationPath}/contacts/${vendorId}/ledger`).set(owner).expect(200);
+    expect(vendorStatement.body).toMatchObject({ balancePaise: 5_000,
+      subledger: { openDocumentBalancePaise: 5_000, unallocatedAdvancePaise: 0, netBalancePaise: 5_000, differencePaise: 0, reconciled: true } });
+    expect(vendorStatement.body.rows.map((row: { type: string }) => row.type)).toEqual(['bill', 'payment', 'vendor_credit']);
+
     const trialBalance = await request(app).get(`${reportsPath}/trial-balance?asOf=${indiaToday}`).set(owner).expect(200);
     expect(trialBalance.body).toMatchObject({ balanced: true, debitTotalPaise: 64_000, creditTotalPaise: 64_000 });
     expect(trialBalance.body.accounts).toEqual(expect.arrayContaining([
