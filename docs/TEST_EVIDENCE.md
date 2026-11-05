@@ -165,5 +165,7 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 
 - Statement UI is implemented locally with separate customer/vendor actions, a responsive transaction list and running balance. Typecheck, lint, build and web unit test passed; browser workflow coverage was added. Local browser execution could not start because the required MongoDB/API/web services are not running and Docker is not installed; verify via exact-SHA GitHub browser workflow.
 
-- Contact ledger API now includes customer advance receipt/refund and vendor advance events. MongoDB integration fixture creates a posted vendor bill and asserts the statement balance and row. Typecheck, lint, build passed; the focused suite is skipped locally without MongoDB and awaits exact-SHA CI.
+- Contact ledger API includes customer advance receipt/refund and vendor advance events. The integration fixture creates a posted vendor bill, allocated payment and vendor credit, then asserts all rows and the 7,000-paise outstanding balance. Current local API typecheck and lint pass; the focused suite is skipped locally without MongoDB. Exact-SHA workflow verification is pending for this expanded fixture.
+
+- E2E #94/#95 for statement UI commit 230c6e5df3d8365b15a5a45c5c6fc4e9c93472c0 failed: contacts* mock did not cover the nested /contacts/{id}/ledger path, and the UI reached the test API which returned Contact not found. The pattern now covers nested paths locally. Expanded bill/payment/credit test fixture and mock fix await exact-SHA CI/MongoDB/E2E reruns.
 
