@@ -17,6 +17,7 @@ export function ExpensesScreen({ organization }: { organization: Organization })
   const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false);
   const [revision, setRevision] = useState(0); const [toPost, setToPost] = useState<Bill | null>(null);
   const draftRetry = useRef<{ signature: string; key: string } | null>(null);
+  const creditRetry = useRef<{ signature: string; key: string } | null>(null);
   const [toPay, setToPay] = useState<Bill | null>(null); const [cashAccountId, setCashAccountId] = useState(''); const [paymentAmount, setPaymentAmount] = useState('');
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [advanceVendorId, setAdvanceVendorId] = useState(''); const [advanceAmount, setAdvanceAmount] = useState(''); const [advanceConfirm, setAdvanceConfirm] = useState(false);
@@ -70,7 +71,7 @@ export function ExpensesScreen({ organization }: { organization: Organization })
     const outstanding = bill.amountPaise - bill.amountPaidPaise;
     if (!Number.isSafeInteger(paise) || paise <= 0 || paise > outstanding || !cashAccountId) { setError('Enter a positive payment no greater than the outstanding balance and choose cash or bank.'); return; }
     setSaving(true); setError(''); setNotice('');
-    try { await api.recordVendorPayment(organization.id, { idempotencyKey: `vendor-payment:${bill.id}:${bill.amountPaidPaise}:${paise}`, cashAccountId, allocations: [{ billId: bill.id, amountPaise: paise }] }); setNotice(`${formatMoney(paise)} paid to ${bill.vendorName} and allocated to ${bill.vendorReference}.`); setPayDialogOpen(false); setToPay(null); setPaymentAmount(''); setRevision(n => n + 1); }
+    try { await api.recordVendorPayment(organization.id, { idempotencyKey: `vendor-payment:${bill.id}:${bill.amountPaidPaise}:${paise}:${cashAccountId}`, cashAccountId, allocations: [{ billId: bill.id, amountPaise: paise }] }); setNotice(`${formatMoney(paise)} paid to ${bill.vendorName} and allocated to ${bill.vendorReference}.`); setPayDialogOpen(false); setToPay(null); setPaymentAmount(''); setRevision(n => n + 1); }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Payment could not be recorded.'); }
     finally { setSaving(false); }
   }
@@ -79,9 +80,16 @@ export function ExpensesScreen({ organization }: { organization: Organization })
     const paise = match ? Number(match[1]) * 100 + Number((match[2] || '').padEnd(2, '0')) : NaN;
     const outstanding = bill.amountPaise - bill.amountPaidPaise - (bill.amountCreditedPaise ?? 0);
     if (!Number.isSafeInteger(paise) || paise <= 0 || paise > outstanding || creditReason.trim().length < 3) { setError('Enter a positive credit no greater than the unpaid bill and a reason.'); return; }
+    const input = { amountPaise: paise, reason: creditReason.trim() };
+    const signature = JSON.stringify([organization.id, bill.id, bill.amountCreditedPaise ?? 0, input]);
+    const idempotencyKey = creditRetry.current?.signature === signature
+      ? creditRetry.current.key
+      : `vendor-credit:${crypto.randomUUID()}`;
+    creditRetry.current = { signature, key: idempotencyKey };
     setSaving(true); setError(''); setNotice('');
     try {
-      await api.issueVendorCredit(organization.id, bill.id, { idempotencyKey: `vendor-credit:${bill.id}:${bill.amountCreditedPaise ?? 0}:${paise}`, amountPaise: paise, reason: creditReason.trim() });
+      await api.issueVendorCredit(organization.id, bill.id, { idempotencyKey, ...input });
+      creditRetry.current = null;
       setNotice(`Vendor credit of ${formatMoney(paise)} issued. Accounts payable and the expense account were adjusted.`);
       setToCredit(null); setCreditAmount(''); setCreditReason(''); setRevision(n => n + 1);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Vendor credit could not be issued.'); }
@@ -125,7 +133,7 @@ export function ExpensesScreen({ organization }: { organization: Organization })
       <Typography variant="h6">Pay a vendor advance</Typography><Typography color="text.secondary">Prepayments are assets in vendor-advances control account 1400 until applied to a bill.</Typography>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
         <TextField select label="Vendor" value={advanceVendorId} onChange={e => { setAdvanceVendorId(e.target.value); setAdvanceKey(''); }}>{activeVendors.map(v => <MenuItem key={v._id} value={v._id}>{v.displayName}</MenuItem>)}</TextField>
-        <TextField select label="Pay from" value={cashAccountId} onChange={e => setCashAccountId(e.target.value)}>{cashAccounts.map(a => <MenuItem key={a.id} value={a.id}>{a.code} · {a.name}</MenuItem>)}</TextField>
+          <TextField select label="Pay from" value={cashAccountId} onChange={e => setCashAccountId(e.target.value)}>{cashAccounts.map(a => <MenuItem key={a.id} value={a.id}>{a.code} · {a.name}</MenuItem>)}</TextField>
         <TextField label="Amount (INR)" value={advanceAmount} onChange={e => { setAdvanceAmount(e.target.value); setAdvanceKey(''); }} inputProps={{ inputMode: 'decimal' }} />
         <Button variant="contained" disabled={saving || loading || !advanceVendorId || !cashAccountId || !parseAmount(advanceAmount) || !accounts.some(a => a.active && a.code === '1400')} onClick={() => setAdvanceConfirm(true)}>Review advance</Button>
       </Stack>
@@ -156,7 +164,7 @@ export function ExpensesScreen({ organization }: { organization: Organization })
     <Dialog open={!!toPost} onClose={() => { if (!saving) setToPost(null); }}><DialogTitle>Post this vendor bill?</DialogTitle><DialogContent><DialogContentText>{toPost && `${toPost.vendorName} · ${toPost.vendorReference} · ${formatMoney(toPost.amountPaise)}. This debits ${toPost.expenseAccountName} and credits accounts payable. Posted bill details cannot be edited; correct mistakes with a reversal.`}</DialogContentText></DialogContent><DialogActions><Button disabled={saving} onClick={() => setToPost(null)}>Keep as draft</Button><Button disabled={saving} variant="contained" onClick={() => { if (toPost) void post(toPost); }}>Confirm and post</Button></DialogActions></Dialog>
     <Dialog open={payDialogOpen} onClose={(_event, reason) => { if (!saving && reason === 'escapeKeyDown') { setPayDialogOpen(false); setToPay(null); } }}><DialogTitle>Record vendor payment</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
       <Typography>{toPay && `${toPay.vendorName} · ${toPay.vendorReference} · outstanding ${formatMoney(toPay.amountPaise - toPay.amountPaidPaise)}`}</Typography>
-      <TextField select required label="Pay from cash or bank" value={cashAccountId} onChange={e => setCashAccountId(e.target.value)}>{cashAccounts.map(a => <MenuItem key={a.id} value={a.id}>{a.code} · {a.name}</MenuItem>)}</TextField>
+      <TextField select required label="Pay from cash or bank" value={cashAccountId} onChange={e => { setCashAccountId(e.target.value); setAdvanceKey(''); }}>{cashAccounts.map(a => <MenuItem key={a.id} value={a.id}>{a.code} · {a.name}</MenuItem>)}</TextField>
       <TextField required label="Amount paid (INR)" type="number" inputProps={{ min: '0.01', step: '0.01' }} value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} />
     </Stack></DialogContent><DialogActions><Button disabled={saving} onClick={() => { setPayDialogOpen(false); setToPay(null); }}>Cancel</Button><Button disabled={saving || !cashAccounts.length} variant="contained" onClick={() => { if (toPay) void pay(toPay); }}>Review and record payment</Button></DialogActions></Dialog>
     <Dialog open={!!toCredit} onClose={() => { if (!saving) setToCredit(null); }}><DialogTitle>Review vendor credit</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>

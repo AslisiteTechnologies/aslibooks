@@ -151,7 +151,7 @@ export function ReceiptsScreen({ organization }: { organization: Organization })
           <TextField select required label="Customer" value={advanceCustomerId} onChange={event => { setAdvanceCustomerId(event.target.value); setAdvanceKey(''); }}>
             {customers.filter(customer => customer.active).map(customer => <MenuItem key={customer._id} value={customer._id}>{customer.displayName}</MenuItem>)}
           </TextField>
-          <TextField select required label="Deposit to" value={cashAccountId} onChange={event => setCashAccountId(event.target.value)}>
+          <TextField select required label="Deposit to" value={cashAccountId} onChange={event => { setCashAccountId(event.target.value); setAdvanceKey(''); }}>
             {accounts.filter(account => account.active && ['1000', '1010'].includes(account.code)).map(account => <MenuItem key={account.id} value={account.id}>{account.code} · {account.name}</MenuItem>)}
           </TextField>
           <TextField required label="Amount received (₹)" value={advanceAmount} onChange={event => { setAdvanceAmount(event.target.value); setAdvanceKey(''); }} inputProps={{ inputMode: 'decimal' }} />
@@ -164,7 +164,7 @@ export function ReceiptsScreen({ organization }: { organization: Organization })
             <TextField select label="Advance" value={refundAdvanceId} onChange={event => { setRefundAdvanceId(event.target.value); setRefundKey(''); }}>
               {advances.filter(row => row.availablePaise > 0).map(row => <MenuItem key={row.id} value={row.id}>{row.customerName} · available {formatMoney(row.availablePaise)}</MenuItem>)}
             </TextField>
-            <TextField select label="Refund from" value={cashAccountId} onChange={event => setCashAccountId(event.target.value)}>
+            <TextField select label="Refund from" value={cashAccountId} onChange={event => { setCashAccountId(event.target.value); setRefundKey(''); }}>
               {accounts.filter(account => account.active && ['1000', '1010'].includes(account.code)).map(account => <MenuItem key={account.id} value={account.id}>{account.code} · {account.name}</MenuItem>)}
             </TextField>
             <TextField label="Refund amount (₹)" value={refundAmount} onChange={event => { setRefundAmount(event.target.value); setRefundKey(''); }} inputProps={{ inputMode: 'decimal' }} />

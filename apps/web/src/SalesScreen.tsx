@@ -28,6 +28,7 @@ export function SalesScreen({ organization }: { organization: Organization }) {
   const [printInvoice, setPrintInvoice] = useState<InvoiceDocument | null>(null);
   const [documentError, setDocumentError] = useState('');
   const draftRetry = useRef<{ signature: string; idempotencyKey: string } | null>(null);
+  const creditRetry = useRef<{ signature: string; idempotencyKey: string } | null>(null);
   const canWrite = ['owner', 'admin', 'accountant'].includes(organization.role);
   const customers = useMemo(() => contacts.filter(contact => contact.roles.includes('customer')), [contacts]);
   const totalPaise = draftLines.reduce((total, line) => {
@@ -98,9 +99,16 @@ export function SalesScreen({ organization }: { organization: Organization }) {
     const paise = match ? Number(match[1]) * 100 + Number((match[2] || '').padEnd(2, '0')) : NaN;
     const outstanding = invoice.totalPaise - invoice.amountPaidPaise - (invoice.amountCreditedPaise ?? 0);
     if (!Number.isSafeInteger(paise) || paise <= 0 || paise > outstanding || creditReason.trim().length < 3) { setError('Enter a positive credit no greater than the unpaid amount and a reason.'); return; }
+    const input = { amountPaise: paise, reason: creditReason.trim() };
+    const signature = JSON.stringify([organization.id, invoice.id, invoice.amountCreditedPaise ?? 0, input]);
+    const idempotencyKey = creditRetry.current?.signature === signature
+      ? creditRetry.current.idempotencyKey
+      : `credit-note:${crypto.randomUUID()}`;
+    creditRetry.current = { signature, idempotencyKey };
     setSaving(true); setError(''); setNotice('');
     try {
-      await api.issueCreditNote(organization.id, invoice.id, { idempotencyKey: `credit-note:${invoice.id}:${invoice.amountCreditedPaise ?? 0}:${paise}`, amountPaise: paise, reason: creditReason.trim() });
+      await api.issueCreditNote(organization.id, invoice.id, { idempotencyKey, ...input });
+      creditRetry.current = null;
       setNotice(`Credit note issued for ${formatMoney(paise)}. Accounts receivable and sales income were adjusted.`);
       setToCredit(null); setCreditAmount(''); setCreditReason(''); setRevision(value => value + 1);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Credit note could not be issued.'); }

@@ -248,3 +248,7 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 
 ## Customer and vendor advance concurrent retries (local verification, exact-SHA pending)
 - Customer advance receipt, allocation and refund, plus vendor advance receipt and allocation tests race identical payloads using the same idempotency key. Each pair returns one create and one replay. Focused replica-set suites pass 2/2; the full serial API suite passes 130/130. Exact-SHA workflow checks for these additional advance cases await publication.
+
+## UI idempotency-key follow-up (local verification; exact-SHA workflows pending)
+- Invoice and vendor-bill draft forms retain a request key only for an identical normalized form payload and reuse it after a dropped response. Customer and vendor credit flows now include the reason in retry identity, so an unchanged retry is replayed while a changed request is not accidentally sent under the old payload hash. Vendor payment identity includes its cash account. Customer advance receipt/refund controls reset retry keys when their cash account changes.
+- Verification on the source checkout: `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm audit --audit-level=high`, `pnpm test` with the isolated MongoDB replica set (130 API + 5 accounting + 1 web tests), full Playwright chart flow at 390px, and `git diff --check` passed. Exact-SHA CI/MongoDB/Browser runs are pending for the follow-up commit.

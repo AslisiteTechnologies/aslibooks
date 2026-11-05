@@ -48,3 +48,10 @@ Get-Content docs/IMPLEMENTATION_STATUS.md
 Get-Content docs/TEST_EVIDENCE.md -Tail 80
 Get-Content docs/NEXT_ACTIONS.md
 ```
+
+## Active task: finish retry-key follow-up, then close tenant/role test gaps
+1. Publish the verified customer/vendor credit and payment retry-key UI corrections on top of the latest remote `develop/phase-1-foundation` commit without including unrelated work from the stale/dirty source checkout.
+2. Verify all six exact-SHA push/PR workflows (CI, MongoDB integration and Browser).
+3. Inventory mounted API routes and compare each organization-scoped read, write, attachment, statement and export endpoint with `apps/api/src/security/authorization.ts` plus the acceptance matrix. Add tests for uncovered foreign-tenant and viewer-write cases.
+
+Local evidence: full replica-set workspace suite (130 API, five accounting, one web), `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm audit --audit-level=high`, and `apps/web/e2e/chart.py` passed on the source checkout. Exact-SHA workflows for the new commit are pending.
