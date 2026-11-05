@@ -1,4 +1,5 @@
 import { Router, type RequestHandler } from 'express';
+import { createHash } from 'node:crypto';
 import mongoose, { Types } from 'mongoose';
 import { z } from 'zod';
 import { assertPostingPeriodOpen } from '../accounting/fiscalPeriods.js';
@@ -15,6 +16,7 @@ import { fenceLedgerPermission, hasPermission } from '../security/authorization.
 
 const lineInput = z.strictObject({ productId: z.string().regex(/^[a-f\d]{24}$/i), quantity: z.number().int().min(1).max(1_000_000) });
 const invoiceInput = z.strictObject({
+  idempotencyKey: z.string().regex(/^[a-zA-Z0-9:_-]{8,128}$/).optional(),
   customerId: z.string().regex(/^[a-f\d]{24}$/i), lines: z.array(lineInput).min(1).max(50), dueDate: z.string().date().optional(),
   taxTreatment: z.strictObject({
     kind: z.enum(['none', 'exclusive', 'inclusive']),
@@ -99,9 +101,20 @@ const writeDraft: RequestHandler = async (req, res, next) => {
   if (!req.is('application/json')) { res.status(415).json({ error: 'Send JSON invoice data' }); return; }
   const parsed = invoiceInput.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: 'Provide a customer and one to 50 service lines with positive whole quantities' }); return; }
+  if (req.method === 'POST' && !parsed.data.idempotencyKey) { res.status(400).json({ error: 'Provide a valid invoice draft idempotency key' }); return; }
+  const draftPayload = { customerId: parsed.data.customerId, lines: parsed.data.lines, ...(parsed.data.dueDate ? { dueDate: parsed.data.dueDate } : {}), ...(parsed.data.taxTreatment ? { taxTreatment: parsed.data.taxTreatment } : {}) };
+  const draftRequestHash = createHash('sha256').update(JSON.stringify(draftPayload)).digest('hex');
   try {
     const result = await mongoose.connection.transaction(async session => {
       if (!await fenceLedgerPermission(authUserId, String(organizationId), session)) throw new InvoiceError(403, 'Invoice changes require posting permission');
+      if (req.method === 'POST' && parsed.data.idempotencyKey) {
+        const existing = await InvoiceModel.findOne({ organizationId, draftIdempotencyKey: parsed.data.idempotencyKey })
+          .select('+draftRequestHash').session(session);
+        if (existing) {
+          if (existing.draftRequestHash !== draftRequestHash) throw new InvoiceError(409, 'Invoice draft idempotency key was already used with different details');
+          return { id: String(existing._id), status: existing.status, replayed: true };
+        }
+      }
       const customer = await ContactModel.findOne({ _id: parsed.data.customerId, organizationId, active: true, roles: 'customer' })
         .select('displayName').session(session).lean<{ _id: Types.ObjectId; displayName: string } | null>();
       if (!customer) throw new InvoiceError(422, 'Select an active customer in this organization');
@@ -146,9 +159,9 @@ const writeDraft: RequestHandler = async (req, res, next) => {
       if (![totals.taxable, totals.cgst, totals.sgst, totals.igst, totals.cgst + totals.sgst + totals.igst].every(Number.isSafeInteger)) throw new InvoiceError(400, 'Invoice tax total exceeds the supported INR range');
       const taxFields = { taxTreatment: taxTreatment.kind, ...(taxTreatment.placeOfSupplyStateCode ? { placeOfSupplyStateCode: taxTreatment.placeOfSupplyStateCode } : {}), ...(taxTreatment.supplyKind ? { supplyKind: taxTreatment.supplyKind } : {}), taxableSubtotalPaise: totals.taxable, cgstPaise: totals.cgst, sgstPaise: totals.sgst, igstPaise: totals.igst, totalTaxPaise: totals.cgst + totals.sgst + totals.igst };
       if (req.method === 'POST') {
-        const [created] = await InvoiceModel.create([{ organizationId, customerId: customer._id, customerName: customer.displayName, lines, totalPaise, ...taxFields, ...(parsed.data.dueDate ? { dueDate: parsed.data.dueDate } : {}), status: 'draft' }], { session });
+        const [created] = await InvoiceModel.create([{ organizationId, customerId: customer._id, customerName: customer.displayName, lines, totalPaise, ...taxFields, ...(parsed.data.dueDate ? { dueDate: parsed.data.dueDate } : {}), ...(parsed.data.idempotencyKey ? { draftIdempotencyKey: parsed.data.idempotencyKey, draftRequestHash } : {}), status: 'draft' }], { session });
         await AuditEventModel.create([{ organizationId, actorAuthUserId: authUserId, action: 'invoice.draft_created', resourceType: 'invoice', resourceId: String(created._id) }], { session });
-        return String(created._id);
+        return { id: String(created._id), status: created.status, replayed: false };
       }
       const invoice = await InvoiceModel.findOne({ _id: id, organizationId, status: 'draft' }).session(session);
       if (!invoice) throw new InvoiceError(404, 'Draft invoice not found');
@@ -157,11 +170,19 @@ const writeDraft: RequestHandler = async (req, res, next) => {
       invoice.set('lines', lines); invoice.totalPaise = totalPaise; Object.assign(invoice, taxFields);
       await invoice.save({ session });
       await AuditEventModel.create([{ organizationId, actorAuthUserId: authUserId, action: 'invoice.draft_updated', resourceType: 'invoice', resourceId: String(invoice._id) }], { session });
-      return String(invoice._id);
+      return { id: String(invoice._id), status: invoice.status, replayed: false };
     });
-    res.status(req.method === 'POST' ? 201 : 200).json({ id: result, status: 'draft' });
+    res.status(req.method === 'POST' && !result.replayed ? 201 : 200).json({ id: result.id, status: result.status, ...(req.method === 'POST' ? { replayed: result.replayed } : {}) });
   } catch (error) {
     if (error instanceof InvoiceError) { res.status(error.status).json({ error: error.message }); return; }
+    if (req.method === 'POST' && parsed.data.idempotencyKey && error instanceof Error && 'code' in error && error.code === 11000) {
+      const existing = await InvoiceModel.findOne({ organizationId, draftIdempotencyKey: parsed.data.idempotencyKey }).select('+draftRequestHash')
+        .lean<{ _id: Types.ObjectId; status: string; draftRequestHash?: string } | null>();
+      if (existing) {
+        if (existing.draftRequestHash !== draftRequestHash) { res.status(409).json({ error: 'Invoice draft idempotency key was already used with different details' }); return; }
+        res.status(200).json({ id: String(existing._id), status: existing.status, replayed: true }); return;
+      }
+    }
     next(error);
   }
 };

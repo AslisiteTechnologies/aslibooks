@@ -23,3 +23,5 @@
 - Normalize `WEB_ORIGIN` once for CORS and Better Auth, and enforce exact Origin matching on unsafe organization business writes to protect cookie-authenticated browser flows. Origin-less API clients remain supported for integrations. This complements (and does not replace) session, membership and role authorization.
 
 - GST calculator discounts are optional explicit fixed paise applied to the entered amount before tax arithmetic; this is a generic calculation convention for reproducible estimates, not a statement about statutory discount eligibility or invoice policy. Tax-bearing posting stays blocked pending professional review.
+
+- Invoice draft POST requires an idempotency key. The server stores an organization-scoped unique key and a non-exposed SHA-256 hash of normalized request data; same-key identical retries return the existing draft, while changed details return 409. The web form retains the key across a failed response for an unchanged payload. This prevents duplicate drafts after lost responses without posting ledger entries.

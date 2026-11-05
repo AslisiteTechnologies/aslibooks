@@ -80,7 +80,7 @@ describe.skipIf(!enabled)('customer receipts HTTP lifecycle', () => {
   async function createIssuedInvoice() {
     const invoicesPath = `/orgs/${organizationId}/invoices`;
     const draft = await request(app).post(invoicesPath).set(owner)
-      .send({ customerId: String(customerId), lines: [{ productId: String(productId), quantity: 1 }] }).expect(201);
+      .send({ idempotencyKey: `receipt-invoice-draft-${new Types.ObjectId()}`, customerId: String(customerId), lines: [{ productId: String(productId), quantity: 1 }] }).expect(201);
     const issued = await request(app).post(`${invoicesPath}/${draft.body.id}/issue`).set(owner)
       .send({ idempotencyKey: `receipt-test-${new Types.ObjectId()}` }).expect(201);
     return issued.body.id as string;

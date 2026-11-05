@@ -36,6 +36,8 @@ const invoiceSchema = new Schema({
   amountPaidPaise: { type: Number, required: true, min: 0, default: 0, validate: Number.isSafeInteger },
   amountCreditedPaise: { type: Number, required: true, min: 0, default: 0, validate: Number.isSafeInteger },
   invoiceNumber: { type: String, maxlength: 40 },
+  draftIdempotencyKey: { type: String, maxlength: 128 },
+  draftRequestHash: { type: String, maxlength: 64, select: false },
   issueIdempotencyKey: { type: String, maxlength: 128 },
   issuedAt: { type: Date },
   journalId: { type: Schema.Types.ObjectId, ref: 'Journal' },
@@ -45,6 +47,7 @@ invoiceSchema.index({ organizationId: 1, createdAt: -1, _id: -1 });
 invoiceSchema.index({ organizationId: 1, customerId: 1, issuedAt: 1, _id: 1 });
 invoiceSchema.index({ organizationId: 1, invoiceNumber: 1 }, { unique: true, partialFilterExpression: { invoiceNumber: { $type: 'string' } } });
 invoiceSchema.index({ organizationId: 1, issueIdempotencyKey: 1 }, { unique: true, partialFilterExpression: { issueIdempotencyKey: { $type: 'string' } } });
+invoiceSchema.index({ organizationId: 1, draftIdempotencyKey: 1 }, { unique: true, partialFilterExpression: { draftIdempotencyKey: { $type: 'string' } } });
 invoiceSchema.pre('save', async function () {
   if (this.isNew) return;
   const current = await InvoiceModel.findById(this._id).session(this.$session() ?? null).select('status')
@@ -101,5 +104,4 @@ creditNoteSchema.pre('findOneAndDelete', rejectCreditNoteMutation);
 creditNoteSchema.pre('bulkWrite', rejectCreditNoteMutation);
 export const CreditNoteModel = mongoose.models.CreditNote || mongoose.model('CreditNote', creditNoteSchema);
 export type InvoiceId = Types.ObjectId;
-
 

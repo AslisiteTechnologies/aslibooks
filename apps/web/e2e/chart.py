@@ -104,7 +104,27 @@ def test_chart():
             page.get_by_role("option", name="E2E-SERVICE · Consulting service").click()
             due_date = page.evaluate("new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date())")
             page.get_by_label("Due date").fill(due_date)
+            draft_keys = []
+            def lose_invoice_draft_response(route):
+                if route.request.method != "POST":
+                    route.continue_()
+                    return
+                payload = route.request.post_data_json
+                draft_keys.append(payload["idempotencyKey"])
+                response = route.fetch()
+                if len(draft_keys) == 1:
+                    route.abort()
+                else:
+                    route.fulfill(response=response)
+            page.route("**/api/organizations/*/invoices", lose_invoice_draft_response)
             page.get_by_role("button", name="Save draft").click()
+            expect(page.get_by_role("alert").filter(has_text="Failed to fetch")).to_be_visible()
+            with page.expect_response(lambda response: response.url.endswith("/invoices") and response.request.method == "POST") as draft_retry_response:
+                page.get_by_role("button", name="Save draft").click()
+            assert draft_retry_response.value.status == 200, draft_retry_response.value.text()
+            assert draft_retry_response.value.json()["replayed"] is True
+            assert len(draft_keys) == 2 and draft_keys[0] == draft_keys[1]
+            page.unroute("**/api/organizations/*/invoices", lose_invoice_draft_response)
             expect(page.get_by_text("Draft saved. No journal or income has been recorded.")).to_be_visible()
             page.get_by_role("button", name="Review and issue").click()
             page.get_by_role("button", name="Confirm and issue").click()

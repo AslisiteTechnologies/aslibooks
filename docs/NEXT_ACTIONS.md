@@ -8,7 +8,7 @@ Preserve the original workspace edits; never stage the owner-supplied vision fil
 
 ## Current implementation task
 
-Vendor payment race commit `af602ef7a9216a85ff08d5f9858b15a3660d8217` passed CI #433/#434, MongoDB #370/#371 and Browser #153/#154. Customer and vendor advance allocation race tests now each prove exactly one request can consume a shared remaining amount (focused suites 2/2); full replica-set workspace tests pass 136/136, with typecheck, lint, build, audit and diff check passing. Publish these advance race checks and refreshed evidence, then verify the exact SHA. Next work on network/retry failure behavior and remaining route-specific tenant/object-access gaps.
+Customer and vendor advance allocation tests at `a4487e36ec6a7185a9d331320d4ba3729614a4e9` passed CI #435/#436, MongoDB #372/#373 and Browser #155/#156. Invoice draft POST now requires an idempotency key; same-body concurrent retries return one draft, changed-body reuse returns 409, and a browser test drops the first committed response then verifies the UI retries safely with the same key. Focused replica-set tests pass 5/5; the full workspace suite passes 136/136, and typecheck, lint, build, audit, diff check and complete local Playwright pass. Publish this retry hardening with updated docs, verify exact-SHA workflows, then add the same lost-response handling for bill drafts and continue network/retry coverage.
 
 ## Exact verification commands
 

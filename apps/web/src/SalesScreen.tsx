@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
 import { api, type Contact, type Invoice, type InvoiceDocument, type Organization, type Product } from './api';
 import { AttachmentsPanel } from './AttachmentsPanel';
@@ -27,6 +27,7 @@ export function SalesScreen({ organization }: { organization: Organization }) {
   const [creditReason, setCreditReason] = useState('');
   const [printInvoice, setPrintInvoice] = useState<InvoiceDocument | null>(null);
   const [documentError, setDocumentError] = useState('');
+  const draftRetry = useRef<{ signature: string; idempotencyKey: string } | null>(null);
   const canWrite = ['owner', 'admin', 'accountant'].includes(organization.role);
   const customers = useMemo(() => contacts.filter(contact => contact.roles.includes('customer')), [contacts]);
   const totalPaise = draftLines.reduce((total, line) => {
@@ -65,10 +66,17 @@ export function SalesScreen({ organization }: { organization: Organization }) {
     }
     setSaving(true); setError(''); setNotice('');
     try {
-      const result = await api.createInvoiceDraft(organization.id, {
+      const payload = {
         customerId, lines: draftLines.map(line => ({ productId: line.productId, quantity: Number(line.quantity) })), ...(dueDate ? { dueDate } : {}),
         ...(needsTax ? { taxTreatment: { kind: taxTreatment, placeOfSupplyStateCode, supplyKind } } : {}),
-      });
+      };
+      const signature = `${organization.id}:${JSON.stringify(payload)}`;
+      const idempotencyKey = draftRetry.current?.signature === signature
+        ? draftRetry.current.idempotencyKey
+        : `invoice-draft:${crypto.randomUUID()}`;
+      draftRetry.current = { signature, idempotencyKey };
+      const result = await api.createInvoiceDraft(organization.id, { ...payload, idempotencyKey });
+      draftRetry.current = null;
       setNotice('Draft saved. No journal or income has been recorded. Tax-bearing drafts are retained for review and cannot be posted yet.'); setDueDate(''); setRevision(value => value + 1);
       return result.id;
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Draft could not be saved.'); }
@@ -203,5 +211,4 @@ export function SalesScreen({ organization }: { organization: Organization }) {
     {documentError && <Alert severity="error" onClose={() => setDocumentError('')}>{documentError}</Alert>}
   </Stack>;
 }
-
 

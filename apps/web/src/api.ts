@@ -89,8 +89,8 @@ export const api = {
     jsonRequest<{ id: string }>(`/api/organizations/${org}/products/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
   invoices: (org: string) => jsonRequest<{ invoices: Invoice[]; next: string | null }>(`/api/organizations/${org}/invoices`),
   invoice: (org: string, id: string) => jsonRequest<{ invoice: InvoiceDocument }>(`/api/organizations/${org}/invoices/${id}`),
-  createInvoiceDraft: (org: string, input: { customerId: string; lines: Array<{ productId: string; quantity: number }>; dueDate?: string; taxTreatment?: { kind: 'none' | 'exclusive' | 'inclusive'; placeOfSupplyStateCode?: string; supplyKind?: 'intra_state' | 'inter_state' } }) =>
-    jsonRequest<{ id: string; status: 'draft' }>(`/api/organizations/${org}/invoices`, { method: 'POST', body: JSON.stringify(input) }),
+  createInvoiceDraft: (org: string, input: { idempotencyKey: string; customerId: string; lines: Array<{ productId: string; quantity: number }>; dueDate?: string; taxTreatment?: { kind: 'none' | 'exclusive' | 'inclusive'; placeOfSupplyStateCode?: string; supplyKind?: 'intra_state' | 'inter_state' } }) =>
+    jsonRequest<{ id: string; status: Invoice['status']; replayed: boolean }>(`/api/organizations/${org}/invoices`, { method: 'POST', body: JSON.stringify(input) }),
   issueInvoice: (org: string, id: string, idempotencyKey: string) =>
     jsonRequest<{ id: string; invoiceNumber: string; journalId: string; replayed: boolean; status: 'issued' | 'partially_paid' | 'paid' | 'partially_credited' | 'credited' }>(
       `/api/organizations/${org}/invoices/${id}/issue`, { method: 'POST', body: JSON.stringify({ idempotencyKey }) },

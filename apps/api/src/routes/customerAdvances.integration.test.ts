@@ -47,7 +47,7 @@ describe.skipIf(!enabled)('customer advances', () => {
     expect(advanceJournal?.lines.map(line => [String(line.accountId), line.debitPaise, line.creditPaise]))
       .toEqual([[String(cash), 12000, 0], [String(liability), 0, 12000]]);
 
-    const draft = await request(app).post(`/orgs/${org}/invoices`).set(owner).send({ customerId: String(customer), lines: [{ productId: String(product), quantity: 1 }] }).expect(201);
+    const draft = await request(app).post(`/orgs/${org}/invoices`).set(owner).send({ idempotencyKey: `advance-invoice-draft-${org}`, customerId: String(customer), lines: [{ productId: String(product), quantity: 1 }] }).expect(201);
     const issued = await request(app).post(`/orgs/${org}/invoices/${draft.body.id}/issue`).set(owner).send({ idempotencyKey: `advance-invoice-${org}` }).expect(201);
     const firstPayload = { idempotencyKey: `advance-allocation-${org}`, invoiceId: issued.body.id, amountPaise: 6000 };
     const first = await request(app).post(`${path}/${advanceId}/allocations`).set(owner).send(firstPayload).expect(201);
@@ -63,10 +63,10 @@ describe.skipIf(!enabled)('customer advances', () => {
     const second = competingFinals.find(response => response.status === 201)!;
     expect(await InvoiceModel.findById(issued.body.id)).toMatchObject({ status: 'paid', amountPaidPaise: 10000 });
     await request(app).post(`${path}/${advanceId}/allocations`).set(owner).send({ idempotencyKey: `advance-overdraw-${org}`, invoiceId: issued.body.id, amountPaise: 1 }).expect(409);
-    const peerDraft = await request(app).post(`/orgs/${org}/invoices`).set(owner).send({ customerId: String(peerCustomer), lines: [{ productId: String(product), quantity: 1 }] }).expect(201);
+    const peerDraft = await request(app).post(`/orgs/${org}/invoices`).set(owner).send({ idempotencyKey: `advance-peer-invoice-draft-${org}`, customerId: String(peerCustomer), lines: [{ productId: String(product), quantity: 1 }] }).expect(201);
     const peerInvoice = await request(app).post(`/orgs/${org}/invoices/${peerDraft.body.id}/issue`).set(owner).send({ idempotencyKey: `advance-peer-invoice-${org}` }).expect(201);
     await request(app).post(`${path}/${advanceId}/allocations`).set(owner).send({ idempotencyKey: `advance-wrong-customer-${org}`, invoiceId: peerInvoice.body.id, amountPaise: 1 }).expect(422);
-    const nextDraft = await request(app).post(`/orgs/${org}/invoices`).set(owner).send({ customerId: String(customer), lines: [{ productId: String(product), quantity: 1 }] }).expect(201);
+    const nextDraft = await request(app).post(`/orgs/${org}/invoices`).set(owner).send({ idempotencyKey: `advance-next-invoice-draft-${org}`, customerId: String(customer), lines: [{ productId: String(product), quantity: 1 }] }).expect(201);
     const nextInvoice = await request(app).post(`/orgs/${org}/invoices/${nextDraft.body.id}/issue`).set(owner).send({ idempotencyKey: `advance-next-invoice-${org}` }).expect(201);
     await request(app).post(`${path}/${advanceId}/allocations`).set(owner).send({ idempotencyKey: `advance-insufficient-${org}`, invoiceId: nextInvoice.body.id, amountPaise: 2001 }).expect(409);
     const refundPayload = { idempotencyKey: `advance-refund-${org}`, cashAccountId: String(cash), amountPaise: 1000 };

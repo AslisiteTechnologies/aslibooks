@@ -69,15 +69,16 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
   });
 
   it('creates editable drafts and issues one balanced, numbered, audited journal idempotently', async () => {
-    const outsiderDraft = await request(app).post(path).set(owner).send({ customerId: String(peerCustomerId), lines: [{ productId: String(serviceId), quantity: 1 }] }).expect(422);
+    await request(app).post(path).set(owner).send({ customerId: String(customerId), lines: [{ productId: String(serviceId), quantity: 1 }] }).expect(400, { error: 'Provide a valid invoice draft idempotency key' });
+    const outsiderDraft = await request(app).post(path).set(owner).send({ idempotencyKey: 'invoice-outsider-draft-01', customerId: String(peerCustomerId), lines: [{ productId: String(serviceId), quantity: 1 }] }).expect(422);
     expect(outsiderDraft.body.error).toContain('active customer');
     await request(app).post(path).set({ 'x-fixture-actor': 'invoice-viewer' })
-      .send({ customerId: String(customerId), lines: [{ productId: String(serviceId), quantity: 1 }] }).expect(403);
+      .send({ idempotencyKey: 'invoice-viewer-draft-01', customerId: String(customerId), lines: [{ productId: String(serviceId), quantity: 1 }] }).expect(403);
     await request(app).post(path).set(owner).send({
-      customerId: String(customerId), lines: [{ productId: String(serviceId), quantity: 1, taxRate: 18 }],
+      idempotencyKey: 'invoice-invalid-draft-01', customerId: String(customerId), lines: [{ productId: String(serviceId), quantity: 1, taxRate: 18 }],
     }).expect(400);
 
-    const taxDraft = await request(app).post(path).set(owner).send({ customerId: String(customerId),
+    const taxDraft = await request(app).post(path).set(owner).send({ idempotencyKey: 'invoice-tax-draft-01', customerId: String(customerId),
       lines: [{ productId: String(taxableServiceId), quantity: 1 }],
       taxTreatment: { kind: 'exclusive', placeOfSupplyStateCode: '29', supplyKind: 'intra_state' },
     }).expect(201);
@@ -88,10 +89,20 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
     expect(await InvoiceModel.findById(taxDraft.body.id)).toMatchObject({ status: 'draft' });
     expect(await JournalModel.countDocuments({ organizationId })).toBe(0);
 
-    const created = await request(app).post(path).set(owner)
-      .send({ customerId: String(customerId), lines: [{ productId: String(serviceId), quantity: 2 }], dueDate: '2026-11-30' }).expect(201);
+    const draftInput = { idempotencyKey: 'invoice-draft-create-01', customerId: String(customerId), lines: [{ productId: String(serviceId), quantity: 2 }], dueDate: '2026-11-30' };
+    const competingDrafts = await Promise.all([
+      request(app).post(path).set(owner).send(draftInput),
+      request(app).post(path).set(owner).send(draftInput),
+    ]);
+    expect(competingDrafts.map(response => response.status).sort()).toEqual([200, 201]);
+    expect(competingDrafts[0].body.id).toBe(competingDrafts[1].body.id);
+    const created = competingDrafts.find(response => response.status === 201)!;
     draftId = created.body.id;
     expect(created.body.status).toBe('draft');
+    await request(app).post(path).set(owner).send(draftInput).expect(200, { id: draftId, status: 'draft', replayed: true });
+    await request(app).post(path).set(owner).send({ ...draftInput, lines: [{ productId: String(serviceId), quantity: 3 }] }).expect(409);
+    expect(await InvoiceModel.countDocuments({ organizationId, draftIdempotencyKey: draftInput.idempotencyKey })).toBe(1);
+    expect(await AuditEventModel.countDocuments({ organizationId, resourceId: draftId, action: 'invoice.draft_created' })).toBe(1);
     await request(app).get(path).set(owner).expect(200).expect(response => expect(response.body.invoices[0].dueDate).toBe('2026-11-30'));
     expect(await JournalModel.countDocuments({ organizationId })).toBe(0);
     await request(app).patch(`${path}/${draftId}`).set(owner)
@@ -143,7 +154,7 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
     await ProductModel.create({ _id: secondProduct, organizationId: secondOrg, code: 'SVC', name: 'Service', unitPricePaise: 100 });
     const secondPath = `/orgs/${secondOrg}/invoices`;
     const draft = await request(app).post(secondPath).set(owner)
-      .send({ customerId: String(secondCustomer), lines: [{ productId: String(secondProduct), quantity: 1 }] }).expect(201);
+      .send({ idempotencyKey: 'invoice-rollback-draft-01', customerId: String(secondCustomer), lines: [{ productId: String(secondProduct), quantity: 1 }] }).expect(201);
     await request(app).post(`${secondPath}/${draft.body.id}/issue`).set(owner).send({ idempotencyKey: 'invoice-issue-rollback' }).expect(422);
     expect(await InvoiceModel.findById(draft.body.id)).toMatchObject({ status: 'draft' });
     expect(await InvoiceSequenceModel.countDocuments({ organizationId: secondOrg })).toBe(0);
@@ -152,5 +163,4 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
 
   afterAll(async () => { await mongoose.disconnect(); });
 });
-
 
