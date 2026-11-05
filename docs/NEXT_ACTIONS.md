@@ -75,3 +75,22 @@ Membership audit extension: tests deny peer-organization member list access and 
 Bank statement audit extension: tests use real foreign account and journal records to prove import/matching remain organization-scoped. Focused suite passes 1/1; full suite passes 137/137 and typecheck/lint/build/high-severity audit/diff checks pass locally. Publish the bank/member group, verify exact-SHA workflows; then continue auditing remaining route families and close the route inventory.
 
 Journal reversal audit extension: a real foreign source journal cannot be reversed through another organization's path. Focused suite passes 1/1; full workspace suite passes 137/137 and typecheck/lint/build/high-severity audit/diff checks pass. Parent `9867ef263e2cd28ad8e6b2499198cd26b8ab1cd7` passed CI #464 and MongoDB #401; Browser #184 remains in progress. Publish the bank/journal group and verify exact-SHA workflows; then inspect route inventory for uncovered foreign IDs or write permission gaps.
+
+## Active task: publish GST setup review, then continue closing the MVP gap list
+1. Publish only `apps/web/src/GSTReadinessScreen.tsx`, `apps/web/src/gstReadiness.ts`, `apps/web/src/gstReadiness.test.ts`, `docs/IMPLEMENTATION_STATUS.md`, `docs/MVP_ACCEPTANCE_MATRIX.md`, `docs/TEST_EVIDENCE.md`, and this file on top of the latest remote `develop/phase-1-foundation` head; preserve all other work.
+2. Verify exact-SHA CI, MongoDB integration, and Browser workflows; investigate any failure.
+3. Continue with source document and lifecycle workflows from `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`: inspect product/service and invoice UX for remaining inaccessible or incomplete lifecycle states, add the next verified end-to-end gap, then run the full validation cycle.
+
+Exact local validation commands (Windows PowerShell, from repository root):
+```powershell
+$env:MONGODB_TEST_URI='mongodb://127.0.0.1:37491/?replicaSet=testset'
+$env:MONGODB_TEST_DB_NAME='aslibooks_test_final_gst_readiness'
+pnpm test
+pnpm typecheck
+pnpm lint
+pnpm build
+pnpm audit --audit-level=high
+git diff --check
+```
+
+External gates still open: qualified GST/accounting policy review; staging/production credentials and approval; database least-privilege grants, backup/restore rehearsal, monitoring, email deliverability, attachment malware/retention policy; final accessibility/security review. Do not merge to `main` or deploy without explicit authorization.

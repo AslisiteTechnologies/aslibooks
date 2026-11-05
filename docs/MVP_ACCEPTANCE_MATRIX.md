@@ -46,3 +46,5 @@ Membership object-reference follow-up (locally verified; exact-SHA pending): an 
 Bank statement object-reference follow-up (local verified; exact-SHA pending): a real foreign bank account is rejected during import, and a local bank line cannot be matched to a real foreign journal; the line stays unmatched. Focused replica-set test passes 1/1; full suite passes 137/137 and typecheck/lint/build/audit/diff checks pass.
 
 Journal reversal boundary follow-up (local verified; exact-SHA pending): a foreign journal ID cannot create a reversal under the current tenant, and neither tenant's journal state changes. Focused journal suite passes 1/1; full suite passes 137/137 and typecheck/lint/build/audit/diff checks pass locally.
+
+GST catalog input review is implemented in `apps/web/src/GSTReadinessScreen.tsx` and `apps/web/src/gstReadiness.ts`, with 3 focused tests. This verifies input completeness only; professional validation, tax-bearing invoice issuance, and GST compliance remain out of scope/unverified. Local full suite (140/140), typecheck, lint, build and high-severity audit passed. Exact-SHA CI/MongoDB/Browser results are pending.
