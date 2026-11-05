@@ -7,8 +7,12 @@ const productSchema = new Schema({
   name: { type: String, required: true, trim: true, maxlength: 160 },
   description: { type: String, trim: true, maxlength: 1000 },
   unitPricePaise: { type: Number, required: true, min: 0, validate: Number.isSafeInteger },
+  hsnSacCode: { type: String, trim: true, maxlength: 8, match: /^\d{4,8}$/ },
+  taxCategory: { type: String, enum: ['not_configured', 'taxable', 'exempt', 'nil_rated', 'non_gst'], required: true, default: 'not_configured' },
+  gstRateBasisPoints: { type: Number, min: 0, max: 100_000, validate: Number.isSafeInteger },
   active: { type: Boolean, required: true, default: true },
 }, { timestamps: true, strict: 'throw' });
 
 productSchema.index({ organizationId: 1, code: 1 }, { unique: true });
 export const ProductModel = mongoose.models.Product || mongoose.model('Product', productSchema);
+

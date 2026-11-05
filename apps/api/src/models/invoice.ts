@@ -7,6 +7,13 @@ const invoiceLineSchema = new Schema({
   quantity: { type: Number, required: true, min: 1, validate: Number.isSafeInteger },
   unitPricePaise: { type: Number, required: true, min: 0, validate: Number.isSafeInteger },
   lineTotalPaise: { type: Number, required: true, min: 0, validate: Number.isSafeInteger },
+  hsnSacCode: { type: String, maxlength: 8 },
+  taxCategory: { type: String, enum: ['not_configured', 'taxable', 'exempt', 'nil_rated', 'non_gst'], required: true, default: 'not_configured' },
+  gstRateBasisPoints: { type: Number, min: 0, max: 100_000, validate: Number.isSafeInteger },
+  taxablePaise: { type: Number, min: 0, validate: Number.isSafeInteger, required: true, default: 0 },
+  cgstPaise: { type: Number, min: 0, validate: Number.isSafeInteger, required: true, default: 0 },
+  sgstPaise: { type: Number, min: 0, validate: Number.isSafeInteger, required: true, default: 0 },
+  igstPaise: { type: Number, min: 0, validate: Number.isSafeInteger, required: true, default: 0 },
 }, { _id: false, strict: 'throw', versionKey: false });
 
 const invoiceSchema = new Schema({
@@ -16,6 +23,14 @@ const invoiceSchema = new Schema({
   status: { type: String, enum: ['draft', 'issued', 'partially_paid', 'paid', 'partially_credited', 'credited'], required: true, default: 'draft' },
   lines: { type: [invoiceLineSchema], required: true },
   totalPaise: { type: Number, required: true, min: 1, validate: Number.isSafeInteger },
+  taxTreatment: { type: String, enum: ['none', 'exclusive', 'inclusive'], required: true, default: 'none' },
+  placeOfSupplyStateCode: { type: String, match: /^\d{2}$/ },
+  supplyKind: { type: String, enum: ['intra_state', 'inter_state'] },
+  taxableSubtotalPaise: { type: Number, min: 0, validate: Number.isSafeInteger, required: true, default: 0 },
+  cgstPaise: { type: Number, min: 0, validate: Number.isSafeInteger, required: true, default: 0 },
+  sgstPaise: { type: Number, min: 0, validate: Number.isSafeInteger, required: true, default: 0 },
+  igstPaise: { type: Number, min: 0, validate: Number.isSafeInteger, required: true, default: 0 },
+  totalTaxPaise: { type: Number, min: 0, validate: Number.isSafeInteger, required: true, default: 0 },
   dueDate: { type: String, match: /^\d{4}-\d{2}-\d{2}$/ },
   amountPaidPaise: { type: Number, required: true, min: 0, default: 0, validate: Number.isSafeInteger },
   amountCreditedPaise: { type: Number, required: true, min: 0, default: 0, validate: Number.isSafeInteger },
@@ -84,3 +99,4 @@ creditNoteSchema.pre('findOneAndDelete', rejectCreditNoteMutation);
 creditNoteSchema.pre('bulkWrite', rejectCreditNoteMutation);
 export const CreditNoteModel = mongoose.models.CreditNote || mongoose.model('CreditNote', creditNoteSchema);
 export type InvoiceId = Types.ObjectId;
+

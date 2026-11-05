@@ -9,6 +9,12 @@ const createProduct = z.strictObject({
   name: z.string().trim().min(1).max(160),
   description: z.string().trim().max(1000).optional(),
   unitPricePaise: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+  hsnSacCode: z.string().trim().regex(/^\d{4,8}$/).optional(),
+  taxCategory: z.enum(['not_configured', 'taxable', 'exempt', 'nil_rated', 'non_gst']).default('not_configured'),
+  gstRateBasisPoints: z.number().int().min(0).max(100_000).optional(),
+}).superRefine((value, context) => {
+  if (value.taxCategory === 'taxable' && !(value.gstRateBasisPoints && value.gstRateBasisPoints > 0)) context.addIssue({ code: 'custom', message: 'Taxable items need an explicitly entered positive rate', path: ['gstRateBasisPoints'] });
+  if (value.taxCategory !== 'taxable' && (value.gstRateBasisPoints ?? 0) !== 0) context.addIssue({ code: 'custom', message: 'Only taxable items can have a nonzero rate', path: ['gstRateBasisPoints'] });
 });
 const updateProduct = z.union([
   z.strictObject({
@@ -96,4 +102,5 @@ const writeProduct: RequestHandler = async (req, res, next) => {
     next(error);
   }
 };
+
 

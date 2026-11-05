@@ -13,6 +13,9 @@ export function SalesScreen({ organization }: { organization: Organization }) {
   const [productId, setProductId] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [dueDate, setDueDate] = useState('');
+  const [taxTreatment, setTaxTreatment] = useState<'none' | 'exclusive' | 'inclusive'>('none');
+  const [placeOfSupplyStateCode, setPlaceOfSupplyStateCode] = useState('');
+  const [supplyKind, setSupplyKind] = useState<'intra_state' | 'inter_state'>('intra_state');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(true);
@@ -48,12 +51,17 @@ export function SalesScreen({ organization }: { organization: Organization }) {
     if (!customerId || !productId || !Number.isSafeInteger(totalPaise) || totalPaise <= 0) {
       setError('Choose a customer and service with a valid quantity.'); return;
     }
+    const needsTax = selectedProduct?.taxCategory === 'taxable' && (selectedProduct.gstRateBasisPoints ?? 0) > 0;
+    if (needsTax && (taxTreatment === 'none' || !/^\d{2}$/.test(placeOfSupplyStateCode))) {
+      setError('Select an explicit tax price basis and two-digit place-of-supply state code.'); return;
+    }
     setSaving(true); setError(''); setNotice('');
     try {
       const result = await api.createInvoiceDraft(organization.id, {
         customerId, lines: [{ productId, quantity: Number(quantity) }], ...(dueDate ? { dueDate } : {}),
+        ...(needsTax ? { taxTreatment: { kind: taxTreatment, placeOfSupplyStateCode, supplyKind } } : {}),
       });
-      setNotice('Draft saved. No journal or income has been recorded.'); setDueDate(''); setRevision(value => value + 1);
+      setNotice('Draft saved. No journal or income has been recorded. Tax-bearing drafts are retained for review and cannot be posted yet.'); setDueDate(''); setRevision(value => value + 1);
       return result.id;
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Draft could not be saved.'); }
     finally { setSaving(false); }
@@ -101,7 +109,7 @@ export function SalesScreen({ organization }: { organization: Organization }) {
 
   return <Stack spacing={2}>
     <Typography variant="h5">Sales invoices</Typography>
-    <Alert severity="info">This first invoice flow is for services without GST or discounts. Tax and inventory accounting are not included; do not issue invoices that require them.</Alert>
+    <Alert severity="info">Tax categories and paise calculations are recorded as draft data only. Tax-bearing invoices cannot be posted until rates, supply classification and journal treatment receive qualified review. Do not treat these fields as GST compliance advice.</Alert>
     {canWrite && <Paper variant="outlined" sx={{ p: 2 }}>
       <Stack component="form" spacing={2} onSubmit={event => { void createDraft(event); }}>
         <Typography variant="h6">New service invoice draft</Typography>
@@ -109,13 +117,24 @@ export function SalesScreen({ organization }: { organization: Organization }) {
           {customers.map(customer => <MenuItem key={customer._id} value={customer._id}>{customer.displayName}</MenuItem>)}
         </TextField>
         <TextField select required label="Service" value={productId} onChange={event => setProductId(event.target.value)}>
-          {products.map(product => <MenuItem key={product._id} value={product._id}>{product.code} · {product.name} — {formatMoney(product.unitPricePaise)}</MenuItem>)}
+          {products.map(product => <MenuItem key={product._id} value={product._id}>{product.code} · {product.name} — {formatMoney(product.unitPricePaise)} · {product.taxCategory.replaceAll('_', ' ')}</MenuItem>)}
         </TextField>
         <TextField required label="Quantity" type="number" inputProps={{ min: 1, max: 1000000, step: 1 }} value={quantity}
           onChange={event => setQuantity(event.target.value)} />
         <TextField label="Due date" type="date" slotProps={{ inputLabel: { shrink: true } }} value={dueDate}
           onChange={event => setDueDate(event.target.value)} />
-        <Typography>Total before tax: {formatMoney(totalPaise)}</Typography>
+        {selectedProduct?.taxCategory === 'taxable' && (selectedProduct.gstRateBasisPoints ?? 0) > 0 && <>
+          <TextField select required label="Configured tax price basis" value={taxTreatment} onChange={event => setTaxTreatment(event.target.value as typeof taxTreatment)}>
+            <MenuItem value="none">Choose tax basis</MenuItem><MenuItem value="exclusive">Price excludes configured tax</MenuItem><MenuItem value="inclusive">Price includes configured tax</MenuItem>
+          </TextField>
+          <TextField required label="Place-of-supply state code" inputProps={{ maxLength: 2, inputMode: 'numeric' }} helperText="Enter the applicable two-digit code after professional review."
+            value={placeOfSupplyStateCode} onChange={event => setPlaceOfSupplyStateCode(event.target.value.replace(/\D/g, '').slice(0, 2))} />
+          <TextField select required label="Tax component treatment" value={supplyKind} onChange={event => setSupplyKind(event.target.value as typeof supplyKind)}>
+            <MenuItem value="intra_state">Central plus state components</MenuItem><MenuItem value="inter_state">Integrated component</MenuItem>
+          </TextField>
+          <Typography>Configured total rate: {((selectedProduct.gstRateBasisPoints ?? 0) / 100).toFixed(2)}% · draft only</Typography>
+        </>}
+        <Typography>Service price: {formatMoney(totalPaise)}{taxTreatment === 'exclusive' ? ' before configured tax' : taxTreatment === 'inclusive' ? ' including configured tax' : ''}</Typography>
         <Button type="submit" variant="contained" disabled={saving || !customers.length || !products.length}>Save draft</Button>
         {!customers.length && <Typography color="text.secondary">Add a customer in Contacts before drafting an invoice.</Typography>}
         {!products.length && <Typography color="text.secondary">Add a service under Products before drafting an invoice.</Typography>}
@@ -129,8 +148,11 @@ export function SalesScreen({ organization }: { organization: Organization }) {
         <Stack spacing={0.5}>
           <Typography variant="h6">{invoice.invoiceNumber || 'Draft invoice'} · {invoice.customerName}</Typography>
           <Typography>{invoice.status}{invoice.dueDate ? ` · due ${invoice.dueDate}` : ''}{invoice.overdue ? ' · overdue' : ''} · {formatMoney(invoice.totalPaise - (invoice.amountCreditedPaise ?? 0))} balance before receipts</Typography>
+          {(invoice.totalTaxPaise ?? 0) > 0 && <Typography variant="body2" color="text.secondary">Taxable {formatMoney(invoice.taxableSubtotalPaise ?? 0)} · CGST {formatMoney(invoice.cgstPaise ?? 0)} · SGST {formatMoney(invoice.sgstPaise ?? 0)} · IGST {formatMoney(invoice.igstPaise ?? 0)} · total tax {formatMoney(invoice.totalTaxPaise ?? 0)}</Typography>}
         </Stack>
-        {canWrite && invoice.status === 'draft' && <Button onClick={() => setToIssue(invoice)}>Review and issue</Button>}
+        {canWrite && invoice.status === 'draft' && (invoice.gstReviewRequired || (invoice.totalTaxPaise ?? 0) > 0 || (invoice.taxTreatment && invoice.taxTreatment !== 'none')
+          ? <Button disabled>Tax review required before issue</Button>
+          : <Button onClick={() => setToIssue(invoice)}>Review and issue</Button>)}
         {invoice.status !== 'draft' && <Button onClick={() => void loadInvoiceDocument(invoice)}>Print invoice</Button>}
         {canWrite && ['issued', 'partially_paid', 'partially_credited'].includes(invoice.status) && invoice.totalPaise > invoice.amountPaidPaise + (invoice.amountCreditedPaise ?? 0) && <Button onClick={() => { setToCredit(invoice); setCreditAmount(((invoice.totalPaise - invoice.amountPaidPaise - (invoice.amountCreditedPaise ?? 0)) / 100).toFixed(2)); }}>Issue credit note</Button>}
       </Stack>
@@ -167,3 +189,4 @@ export function SalesScreen({ organization }: { organization: Organization }) {
     {documentError && <Alert severity="error" onClose={() => setDocumentError('')}>{documentError}</Alert>}
   </Stack>;
 }
+

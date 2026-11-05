@@ -39,6 +39,10 @@ describe.skipIf(!enabled)('product catalog API', () => {
     for (const price of [-1, 0.1, Number.MAX_SAFE_INTEGER + 1]) {
       await request(app).post(path).set(owner).send({ ...item, unitPricePaise: price }).expect(400);
     }
+    await request(app).post(path).set(owner).send({ ...item, code: 'GST1', taxCategory: 'taxable' }).expect(400);
+    await request(app).post(path).set(owner).send({ ...item, code: 'GST2', taxCategory: 'exempt', gstRateBasisPoints: 1800 }).expect(400);
+    const taxed = await request(app).post(path).set(owner).send({ ...item, code: 'GST3', hsnSacCode: '998314', taxCategory: 'taxable', gstRateBasisPoints: 1800 }).expect(201);
+    expect(await ProductModel.findById(taxed.body.id)).toMatchObject({ hsnSacCode: '998314', taxCategory: 'taxable', gstRateBasisPoints: 1800 });
     const { body } = await request(app).post(path).set(owner).send(item).expect(201);
     await request(app).post(path).set(owner).send(item).expect(409);
     await request(app).get(otherPath).set(owner).expect(403);
@@ -70,3 +74,4 @@ describe.skipIf(!enabled)('product catalog API', () => {
     await mongoose.disconnect();
   });
 });
+

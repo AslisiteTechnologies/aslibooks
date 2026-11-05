@@ -10,9 +10,10 @@ const accountsPath = (org: string) => `/api/organizations/${org}/accounts`;
 const contactsPath = (org: string) => `/api/organizations/${org}/contacts`;
 export type ContactInput = { displayName: string; roles: Array<'customer' | 'vendor'>; email?: string; phone?: string; gstin?: string; address?: string };
 export type Contact = ContactInput & { _id: string; active: boolean };
-export type Product = { _id: string; code: string; name: string; description?: string; unitPricePaise: number; active: boolean };
-export type Invoice = { id: string; customerName: string; status: 'draft' | 'issued' | 'partially_paid' | 'paid' | 'partially_credited' | 'credited'; totalPaise: number; amountPaidPaise: number; amountCreditedPaise?: number; invoiceNumber?: string; dueDate?: string; overdue?: boolean; issuedAt?: string; createdAt: string };
-export type InvoiceDocument = Invoice & { lines: Array<{ name: string; quantity: number; unitPricePaise: number; lineTotalPaise: number }> };
+export type TaxCategory = 'not_configured' | 'taxable' | 'exempt' | 'nil_rated' | 'non_gst';
+export type Product = { _id: string; code: string; name: string; description?: string; unitPricePaise: number; hsnSacCode?: string; taxCategory: TaxCategory; gstRateBasisPoints?: number; active: boolean };
+export type Invoice = { id: string; customerName: string; status: 'draft' | 'issued' | 'partially_paid' | 'paid' | 'partially_credited' | 'credited'; totalPaise: number; amountPaidPaise: number; amountCreditedPaise?: number; taxTreatment?: 'none' | 'exclusive' | 'inclusive'; taxableSubtotalPaise?: number; cgstPaise?: number; sgstPaise?: number; igstPaise?: number; totalTaxPaise?: number; gstReviewRequired?: boolean; invoiceNumber?: string; dueDate?: string; overdue?: boolean; issuedAt?: string; createdAt: string };
+export type InvoiceDocument = Invoice & { lines: Array<{ name: string; quantity: number; unitPricePaise: number; lineTotalPaise: number; hsnSacCode?: string; taxCategory?: TaxCategory; gstRateBasisPoints?: number; taxablePaise?: number; cgstPaise?: number; sgstPaise?: number; igstPaise?: number }> };
 export type Receipt = { id: string; customerName: string; amountPaise: number; receivedAt: string; journalId: string; allocations: Array<{ invoiceId: string; invoiceNumber: string; amountPaise: number }> };
 export type Bill = { id: string; vendorName: string; vendorReference: string; expenseAccountName: string; description: string; status: 'draft' | 'posted' | 'partially_paid' | 'paid' | 'partially_credited' | 'credited'; amountPaise: number; amountPaidPaise: number; amountCreditedPaise?: number; dueDate?: string; overdue?: boolean; journalId?: string };
 export type VendorPayment = { id: string; vendorName: string; amountPaise: number; paidAt: string; journalId: string; allocations: Array<{ billId: string; vendorReference: string; amountPaise: number }> };
@@ -69,11 +70,11 @@ export const api = {
   products: (org: string, q = '') => jsonRequest<{ products: Product[]; next: string | null }>(
     `/api/organizations/${org}/products` + (q ? `?q=${encodeURIComponent(q)}` : ''),
   ),
-  createProduct: (org: string, input: { code: string; name: string; unitPricePaise: number }) =>
+  createProduct: (org: string, input: { code: string; name: string; unitPricePaise: number; hsnSacCode?: string; taxCategory?: TaxCategory; gstRateBasisPoints?: number }) =>
     jsonRequest<{ id: string }>(`/api/organizations/${org}/products`, { method: 'POST', body: JSON.stringify(input) }),
   invoices: (org: string) => jsonRequest<{ invoices: Invoice[]; next: string | null }>(`/api/organizations/${org}/invoices`),
   invoice: (org: string, id: string) => jsonRequest<{ invoice: InvoiceDocument }>(`/api/organizations/${org}/invoices/${id}`),
-  createInvoiceDraft: (org: string, input: { customerId: string; lines: Array<{ productId: string; quantity: number }>; dueDate?: string }) =>
+  createInvoiceDraft: (org: string, input: { customerId: string; lines: Array<{ productId: string; quantity: number }>; dueDate?: string; taxTreatment?: { kind: 'none' | 'exclusive' | 'inclusive'; placeOfSupplyStateCode?: string; supplyKind?: 'intra_state' | 'inter_state' } }) =>
     jsonRequest<{ id: string; status: 'draft' }>(`/api/organizations/${org}/invoices`, { method: 'POST', body: JSON.stringify(input) }),
   issueInvoice: (org: string, id: string, idempotencyKey: string) =>
     jsonRequest<{ id: string; invoiceNumber: string; journalId: string; replayed: boolean; status: 'issued' | 'partially_paid' | 'paid' | 'partially_credited' | 'credited' }>(

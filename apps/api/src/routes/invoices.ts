@@ -2,6 +2,7 @@ import { Router, type RequestHandler } from 'express';
 import mongoose, { Types } from 'mongoose';
 import { z } from 'zod';
 import { assertPostingPeriodOpen } from '../accounting/fiscalPeriods.js';
+import { calculateGstAmounts, type GstAmounts, type GstSupplyKind } from '../accounting/gst.js';
 import { PostingError } from '../accounting/postJournal.js';
 import { AccountModel, markPostingAccounts } from '../models/account.js';
 import { AuditEventModel } from '../models/auditEvent.js';
@@ -13,7 +14,14 @@ import { OrganizationModel } from '../models/organization.js';
 import { fenceLedgerPermission, hasPermission } from '../security/authorization.js';
 
 const lineInput = z.strictObject({ productId: z.string().regex(/^[a-f\d]{24}$/i), quantity: z.number().int().min(1).max(1_000_000) });
-const invoiceInput = z.strictObject({ customerId: z.string().regex(/^[a-f\d]{24}$/i), lines: z.array(lineInput).min(1).max(50), dueDate: z.string().date().optional() });
+const invoiceInput = z.strictObject({
+  customerId: z.string().regex(/^[a-f\d]{24}$/i), lines: z.array(lineInput).min(1).max(50), dueDate: z.string().date().optional(),
+  taxTreatment: z.strictObject({
+    kind: z.enum(['none', 'exclusive', 'inclusive']),
+    placeOfSupplyStateCode: z.string().regex(/^\d{2}$/).optional(),
+    supplyKind: z.enum(['intra_state', 'inter_state']).optional(),
+  }).optional(),
+});
 const pageQuery = z.strictObject({ after: z.string().regex(/^[a-f\d]{24}$/i).optional(), limit: z.string().regex(/^\d{1,3}$/).optional() });
 const issueInput = z.strictObject({ idempotencyKey: z.string().regex(/^[a-zA-Z0-9:_-]{8,128}$/) });
 const creditNoteInput = z.strictObject({ idempotencyKey: z.string().regex(/^[a-zA-Z0-9:_-]{8,128}$/), amountPaise: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER), reason: z.string().trim().min(3).max(500) });
@@ -63,10 +71,11 @@ const listInvoices: RequestHandler = async (req, res) => {
   if (!parsed.success) { res.status(400).json({ error: 'Invalid invoice cursor' }); return; }
   const limit = Math.min(Number(parsed.data.limit) || 50, 100);
   const rows = await InvoiceModel.find({ organizationId, ...(parsed.data.after ? { _id: { $lt: new Types.ObjectId(parsed.data.after) } } : {}) })
-    .sort({ _id: -1 }).limit(limit + 1).select('customerName status totalPaise amountPaidPaise amountCreditedPaise invoiceNumber dueDate issuedAt createdAt').lean();
+    .sort({ _id: -1 }).limit(limit + 1).select('customerName status totalPaise amountPaidPaise amountCreditedPaise invoiceNumber dueDate issuedAt createdAt lines.hsnSacCode lines.taxCategory taxTreatment taxableSubtotalPaise cgstPaise sgstPaise igstPaise totalTaxPaise').lean();
   const today = indiaDateString(new Date());
   const invoices = rows.slice(0, limit).map(invoice => ({ ...invoice,
     amountCreditedPaise: invoice.amountCreditedPaise ?? 0,
+    gstReviewRequired: invoice.taxTreatment !== 'none' || invoice.lines.some((line: { hsnSacCode?: string; taxCategory?: string }) => !!line.hsnSacCode || line.taxCategory !== 'not_configured'),
     overdue: ['issued', 'partially_paid', 'partially_credited'].includes(invoice.status) && !!invoice.dueDate && invoice.dueDate < today,
     id: String(invoice._id), _id: undefined,
   }));
@@ -98,19 +107,46 @@ const writeDraft: RequestHandler = async (req, res, next) => {
       if (!customer) throw new InvoiceError(422, 'Select an active customer in this organization');
       const ids = [...new Set(parsed.data.lines.map(line => line.productId))];
       const products = await ProductModel.find({ _id: { $in: ids }, organizationId, active: true })
-        .select('name unitPricePaise').session(session).lean<Array<{ _id: Types.ObjectId; name: string; unitPricePaise: number }>>();
+        .select('name unitPricePaise hsnSacCode taxCategory gstRateBasisPoints').session(session).lean<Array<{
+          _id: Types.ObjectId; name: string; unitPricePaise: number; hsnSacCode?: string;
+          taxCategory: 'not_configured' | 'taxable' | 'exempt' | 'nil_rated' | 'non_gst'; gstRateBasisPoints?: number;
+        }>>();
       const byId = new Map(products.map(product => [String(product._id), product]));
       if (byId.size !== ids.length) throw new InvoiceError(422, 'Select active services from this organization');
+      const taxTreatment = parsed.data.taxTreatment ?? { kind: 'none' as const };
+      if (taxTreatment.kind !== 'none' && (!taxTreatment.placeOfSupplyStateCode || !taxTreatment.supplyKind)) {
+        throw new InvoiceError(400, 'Tax treatment requires an explicit place-of-supply state code and supply classification');
+      }
       const lines = parsed.data.lines.map(line => {
         const product = byId.get(line.productId.toLowerCase())!;
-        const lineTotalPaise = product.unitPricePaise * line.quantity;
-        if (!Number.isSafeInteger(lineTotalPaise)) throw new InvoiceError(400, 'Invoice line total exceeds the supported INR range');
-      return { productId: product._id, name: product.name, quantity: line.quantity, unitPricePaise: product.unitPricePaise, lineTotalPaise };
+        const amountPaise = product.unitPricePaise * line.quantity;
+        if (!Number.isSafeInteger(amountPaise)) throw new InvoiceError(400, 'Invoice line total exceeds the supported INR range');
+        if (product.taxCategory === 'taxable' && product.gstRateBasisPoints === undefined) throw new InvoiceError(422, `Set an explicit tax rate for ${product.name}`);
+        if (taxTreatment.kind === 'none' && product.taxCategory === 'taxable') {
+          throw new InvoiceError(422, 'Choose an explicit tax-inclusive or tax-exclusive treatment for taxable services');
+        }
+        let amounts: GstAmounts;
+        try {
+          amounts = taxTreatment.kind === 'none'
+            ? { taxablePaise: amountPaise, cgstPaise: 0, sgstPaise: 0, igstPaise: 0, totalTaxPaise: 0, grossPaise: amountPaise }
+            : calculateGstAmounts({ amountPaise, totalRateBasisPoints: product.taxCategory === 'taxable' ? product.gstRateBasisPoints ?? 0 : 0,
+              priceIncludesTax: taxTreatment.kind === 'inclusive', supplyKind: taxTreatment.supplyKind as GstSupplyKind });
+        } catch (error) { throw new InvoiceError(400, error instanceof Error ? error.message : 'Tax calculation input is invalid'); }
+        return { productId: product._id, name: product.name, quantity: line.quantity, unitPricePaise: product.unitPricePaise,
+          lineTotalPaise: amounts.grossPaise, hsnSacCode: product.hsnSacCode, taxCategory: product.taxCategory,
+          gstRateBasisPoints: product.gstRateBasisPoints ?? 0, taxablePaise: amounts.taxablePaise,
+          cgstPaise: amounts.cgstPaise, sgstPaise: amounts.sgstPaise, igstPaise: amounts.igstPaise };
       });
       const totalPaise = lines.reduce((sum, line) => sum + line.lineTotalPaise, 0);
       if (!Number.isSafeInteger(totalPaise) || totalPaise <= 0) throw new InvoiceError(400, 'Invoice total must be positive and within the supported INR range');
+      const totals = lines.reduce((sum, line) => ({
+        taxable: sum.taxable + line.taxablePaise, cgst: sum.cgst + line.cgstPaise,
+        sgst: sum.sgst + line.sgstPaise, igst: sum.igst + line.igstPaise,
+      }), { taxable: 0, cgst: 0, sgst: 0, igst: 0 });
+      if (![totals.taxable, totals.cgst, totals.sgst, totals.igst, totals.cgst + totals.sgst + totals.igst].every(Number.isSafeInteger)) throw new InvoiceError(400, 'Invoice tax total exceeds the supported INR range');
+      const taxFields = { taxTreatment: taxTreatment.kind, ...(taxTreatment.placeOfSupplyStateCode ? { placeOfSupplyStateCode: taxTreatment.placeOfSupplyStateCode } : {}), ...(taxTreatment.supplyKind ? { supplyKind: taxTreatment.supplyKind } : {}), taxableSubtotalPaise: totals.taxable, cgstPaise: totals.cgst, sgstPaise: totals.sgst, igstPaise: totals.igst, totalTaxPaise: totals.cgst + totals.sgst + totals.igst };
       if (req.method === 'POST') {
-        const [created] = await InvoiceModel.create([{ organizationId, customerId: customer._id, customerName: customer.displayName, lines, totalPaise, ...(parsed.data.dueDate ? { dueDate: parsed.data.dueDate } : {}), status: 'draft' }], { session });
+        const [created] = await InvoiceModel.create([{ organizationId, customerId: customer._id, customerName: customer.displayName, lines, totalPaise, ...taxFields, ...(parsed.data.dueDate ? { dueDate: parsed.data.dueDate } : {}), status: 'draft' }], { session });
         await AuditEventModel.create([{ organizationId, actorAuthUserId: authUserId, action: 'invoice.draft_created', resourceType: 'invoice', resourceId: String(created._id) }], { session });
         return String(created._id);
       }
@@ -118,7 +154,7 @@ const writeDraft: RequestHandler = async (req, res, next) => {
       if (!invoice) throw new InvoiceError(404, 'Draft invoice not found');
       invoice.customerId = customer._id; invoice.customerName = customer.displayName;
       if (parsed.data.dueDate !== undefined) invoice.dueDate = parsed.data.dueDate;
-      invoice.set('lines', lines); invoice.totalPaise = totalPaise;
+      invoice.set('lines', lines); invoice.totalPaise = totalPaise; Object.assign(invoice, taxFields);
       await invoice.save({ session });
       await AuditEventModel.create([{ organizationId, actorAuthUserId: authUserId, action: 'invoice.draft_updated', resourceType: 'invoice', resourceId: String(invoice._id) }], { session });
       return String(invoice._id);
@@ -142,6 +178,9 @@ const issueInvoice: RequestHandler = async (req, res) => {
       if (!await fenceLedgerPermission(authUserId, String(organizationId), session)) throw new InvoiceError(403, 'Issuing an invoice requires posting permission');
       const invoice = await InvoiceModel.findOne({ _id: invoiceId, organizationId }).session(session);
       if (!invoice) throw new InvoiceError(404, 'Invoice not found');
+      if ((invoice.totalTaxPaise ?? 0) > 0 || (invoice.taxTreatment && invoice.taxTreatment !== 'none') || invoice.lines.some((line: { hsnSacCode?: string; taxCategory?: string }) => !!line.hsnSacCode || line.taxCategory !== 'not_configured')) {
+        throw new InvoiceError(422, 'GST-classified or tax-bearing invoice posting is disabled until the tax policy and journal mapping are reviewed');
+      }
       if (invoice.status !== 'draft') {
         if (invoice.issueIdempotencyKey !== parsed.data.idempotencyKey) throw new InvoiceError(409, 'Invoice has already been issued');
         return { id: String(invoice._id), invoiceNumber: invoice.invoiceNumber!, journalId: String(invoice.journalId), replayed: true, status: invoice.status };
@@ -257,3 +296,4 @@ const issueCreditNote: RequestHandler = async (req, res) => {
     res.status(500).json({ error: 'Credit note could not be issued' });
   }
 };
+
