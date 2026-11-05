@@ -1,6 +1,6 @@
 # Implementation status
 
-Status updated 2026-11-05 in the active implementation branch. Published development head: `c920a3b32fc46dc880aa8c24c7a6538438c3e157`; CI #280 and MongoDB integration #217 passed (104 API tests). HSN/SAC syntax correction passed CI #278 and MongoDB #215; shared auth rate limiting passed across two stores in MongoDB #211. Local multi-line invoice draft entry and a new GitHub browser end-to-end workflow are now added; local tests passed 32 with 72 MongoDB tests skipped, typecheck/lint/build and Python syntax passed. The browser workflow has not run yet. This remains an MVP in active development, not a production-ready release.
+Status updated 2026-11-05 in the active implementation branch. Published development head: `95899d1d417a9a2b45ef198ca97eef2a4fc6b348`; CI #282 and MongoDB integration #219 passed (104 API tests). The first browser end-to-end run (#2) failed before Chromium because the workflow did not get Vite to answer on port 5176. Direct local Vite startup with `pnpm --filter @aslibooks/web exec vite --host 127.0.0.1 --port 5176` succeeded; the workflow now uses that invocation and compiled API startup, with diagnostics, pending rerun. This remains an MVP in active development, not a production-ready release.
 
 | Area | Status | Verified implementation and remaining gaps |
 | --- | --- | --- |

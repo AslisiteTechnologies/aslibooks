@@ -6,7 +6,7 @@ Published development branch head `ba92c81d6889dd06520533a500beac2c8186ffa0`; CI
 
 ## Current implementation task
 
-Run the new `.github/workflows/e2e.yml` browser workflow against the latest published branch and fix failures. It starts disposable MongoDB/API/web services and runs the existing 390px-inclusive primary workflow; this replaces the unavailable local browser run without claiming success before the exact commit completes. Then continue the next unfinished MVP milestone in dependency order. Do not enable production uploads without retention policy approval, MongoDB encryption/backup validation and malware-scanning review. AI needs optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
+Fix and rerun `.github/workflows/e2e.yml`. The first run (#2) got MongoDB and the API healthy but never received a response from the Vite server; local testing confirmed the direct `pnpm ... exec vite --host ... --port ...` form starts correctly. The workflow now builds/starts the API bundle, launches Vite directly, extends API readiness and prints server logs on failure. Verify the full browser journey on the exact published commit, fix any UI failures, then continue the next unfinished MVP milestone. Do not enable production uploads without retention policy approval, MongoDB encryption/backup validation and malware-scanning review. AI needs optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
 ## Exact verification commands
 
 ```powershell

@@ -53,21 +53,36 @@ jobs:
             sleep 2
           done
 
-          pnpm --filter @aslibooks/api dev > /tmp/aslibooks-e2e-api.log 2>&1 &
+          pnpm --filter @aslibooks/api build
+          node apps/api/dist/index.js > /tmp/aslibooks-e2e-api.log 2>&1 &
           api_pid=$!
-          for attempt in $(seq 1 60); do
+          for attempt in $(seq 1 90); do
             if curl --fail --silent http://127.0.0.1:4000/health >/dev/null; then break; fi
+            if ! kill -0 "$api_pid" 2>/dev/null; then
+              cat /tmp/aslibooks-e2e-api.log
+              exit 1
+            fi
             sleep 2
           done
-          curl --fail --silent http://127.0.0.1:4000/health
+          if ! curl --fail --silent http://127.0.0.1:4000/health; then
+            cat /tmp/aslibooks-e2e-api.log
+            exit 1
+          fi
 
-          pnpm --filter @aslibooks/web dev -- --host 127.0.0.1 --port 5176 > /tmp/aslibooks-e2e-web.log 2>&1 &
+          pnpm --filter @aslibooks/web exec vite --host 127.0.0.1 --port 5176 > /tmp/aslibooks-e2e-web.log 2>&1 &
           web_pid=$!
           for attempt in $(seq 1 60); do
             if curl --fail --silent http://127.0.0.1:5176 >/dev/null; then break; fi
+            if ! kill -0 "$web_pid" 2>/dev/null; then
+              cat /tmp/aslibooks-e2e-web.log
+              exit 1
+            fi
             sleep 2
           done
-          curl --fail --silent http://127.0.0.1:5176 >/dev/null
+          if ! curl --fail --silent http://127.0.0.1:5176 >/dev/null; then
+            cat /tmp/aslibooks-e2e-web.log
+            exit 1
+          fi
 
           python -m pip install --disable-pip-version-check playwright
           python -m playwright install --with-deps chromium
