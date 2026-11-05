@@ -8,7 +8,7 @@ Preserve the original workspace edits; never stage the owner-supplied vision fil
 
 ## Current implementation task
 
-Verify exact-SHA CI, MongoDB and browser workflows for contact fixture correction, treating E2E #53/#54 as invalid evidence. Fix and publish the contact statement cross-tenant test (expected 403), rerun CI/MongoDB/browser at exact SHA, then verify the responsive statement dialog with browser E2E. Complete cursor pagination, statement export and financial reconciliation fixtures.
+Publish the expanded vendor statement fixture and corrected browser route glob; rerun CI, MongoDB and browser E2E at exact SHA. The prior E2E #94/#95 failure showed that nested statement requests escaped the mock and hit the real test API. Then complete cursor pagination, statement export and financial reconciliation fixtures.
 
 ## Exact verification commands
 
