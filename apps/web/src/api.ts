@@ -37,6 +37,7 @@ export type VendorPayment = { id: string; vendorName: string; amountPaise: numbe
 export type VendorAdvance = { id: string; vendorId: string; vendorName: string; amountPaise: number; allocatedPaise: number; availablePaise: number; paidAt: string; journalId: string };
 export type OpeningBalance = { id: string; asOf: string; totalPaise: number; journalId: string; lines: Array<{ accountId: string; accountCode: string; accountName: string; side: 'debit' | 'credit'; amountPaise: number }> };
 export type Journal = { id: string; description: string; postedAt: string; reversalOf: string | null; lineCount: number };
+export type JournalDraft = { id: string; description: string; status: 'draft'; lines: Array<{ accountId: string; debitPaise: number; creditPaise: number }>; createdAt: string; updatedAt: string };
 export type JournalDetail = Omit<Journal, 'lineCount'> & { lines: Array<{ accountId: string; debitPaise: number; creditPaise: number }> };
 export type JournalInput = { idempotencyKey: string; description: string; lines: Array<{ accountId: string; debitPaise: number; creditPaise: number }> };
 export type TrialBalanceRow = { accountId: string; code: string; name: string; type: string; debitBalancePaise: number; creditBalancePaise: number };
@@ -173,6 +174,15 @@ export const api = {
     jsonRequest<{ id: string }>(`${accountsPath(org)}/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
   journals: (org: string, after = '') => jsonRequest<{ journals: Journal[]; next: string | null }>(
     `/api/organizations/${org}/journals` + (after ? `?after=${encodeURIComponent(after)}` : ''),
+  ),
+  journalDrafts: (org: string) => jsonRequest<{ drafts: JournalDraft[] }>(`/api/organizations/${org}/journals/drafts`),
+  createJournalDraft: (org: string, input: JournalInput) => jsonRequest<{ draftId: string; replayed: boolean }>(
+    `/api/organizations/${org}/journals/drafts`, { method: 'POST', body: JSON.stringify(input) },
+  ),
+  updateJournalDraft: (org: string, id: string, input: Omit<JournalInput, 'idempotencyKey'>) =>
+    jsonRequest<{ draftId: string }>(`/api/organizations/${org}/journals/drafts/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  postJournalDraft: (org: string, id: string) => jsonRequest<{ journalId: string; replayed: boolean }>(
+    `/api/organizations/${org}/journals/drafts/${id}/post`, { method: 'POST', body: '{}' },
   ),
   journal: (org: string, id: string) => jsonRequest<{ journal: JournalDetail }>(`/api/organizations/${org}/journals/${id}`),
   postJournal: (org: string, input: JournalInput) => jsonRequest<{ journalId: string; replayed: boolean }>(

@@ -1,6 +1,7 @@
 import mongoose, { Types } from 'mongoose';
 import { markPostingAccounts } from '../models/account.js';
 import { JournalModel } from '../models/journal.js';
+import { JournalDraftModel } from '../models/journalDraft.js';
 import { AuditEventModel } from '../models/auditEvent.js';
 import { fenceLedgerPermission } from '../security/authorization.js';
 import { assertPostingPeriodOpen } from './fiscalPeriods.js';
@@ -12,6 +13,7 @@ export type PostingCommand = {
   idempotencyKey: string;
   description: string;
   lines: PostingLine[];
+  sourceDraftId?: string;
 };
 export class PostingError extends Error {
   constructor(public readonly code: 'INVALID' | 'ACCOUNT' | 'CONFLICT' | 'PERIOD_CLOSED', message: string) { super(message); }
@@ -21,6 +23,7 @@ export function validatePosting(command: PostingCommand): void {
   if (!command.actorAuthUserId.trim()) throw new PostingError('INVALID', 'Actor required');
   if (!/^[a-zA-Z0-9:_-]{8,128}$/.test(command.idempotencyKey)) throw new PostingError('INVALID', 'Invalid idempotency key');
   if (!command.description.trim() || command.description.length > 500) throw new PostingError('INVALID', 'Invalid description');
+  if (command.sourceDraftId && !Types.ObjectId.isValid(command.sourceDraftId)) throw new PostingError('INVALID', 'Invalid source draft');
   if (command.lines.length < 2 || command.lines.length > 200) throw new PostingError('INVALID', 'Journal requires 2 to 200 lines');
   let debit = 0;
   let credit = 0;
@@ -38,8 +41,9 @@ export function validatePosting(command: PostingCommand): void {
   if (debit !== credit) throw new PostingError('INVALID', 'Journal is not balanced');
 }
 
-function samePayload(existing: { reversalOf?: Types.ObjectId; description: string; lines: PostingLine[] }, command: PostingCommand) {
+function samePayload(existing: { reversalOf?: Types.ObjectId; sourceDraftId?: Types.ObjectId; description: string; lines: PostingLine[] }, command: PostingCommand) {
   return !existing.reversalOf && existing.description === command.description &&
+    String(existing.sourceDraftId ?? '') === (command.sourceDraftId?.toLowerCase() ?? '') &&
     existing.lines.length === command.lines.length &&
     existing.lines.every((line, i) =>
       String(line.accountId) === command.lines[i].accountId.toLowerCase() &&
@@ -78,6 +82,7 @@ export async function postJournal(command: PostingCommand, options: { enforceMem
           creditPaise: line.creditPaise,
         })),
         postedAt: new Date(),
+        ...(command.sourceDraftId ? { sourceDraftId: new Types.ObjectId(command.sourceDraftId) } : {}),
       }], { session });
       await AuditEventModel.create([{
         organizationId,
@@ -135,11 +140,22 @@ async function postJournalFenced(command: PostingCommand): Promise<{ journalId: 
       throw new PostingError('ACCOUNT', 'Account missing, inactive, or outside organization');
     const [journal] = await JournalModel.create([{
       organizationId, idempotencyKey: command.idempotencyKey, currency: 'INR',
+      ...(command.sourceDraftId ? { sourceDraftId: new Types.ObjectId(command.sourceDraftId) } : {}),
       description: command.description, lines: command.lines.map(line => ({
         accountId: new Types.ObjectId(line.accountId),
         debitPaise: line.debitPaise, creditPaise: line.creditPaise,
       })), postedAt: new Date(),
     }], { session });
+    if (command.sourceDraftId) {
+      const draft = await JournalDraftModel.findOne({ _id: command.sourceDraftId, organizationId, status: 'draft' }).session(session);
+      if (!draft) throw new PostingError('CONFLICT', 'Journal draft is no longer available to post');
+      draft.status = 'posted'; draft.postedJournalId = journal._id; draft.postedAt = journal.postedAt;
+      await draft.save({ session });
+      await AuditEventModel.create([{
+        organizationId, actorAuthUserId: command.actorAuthUserId,
+        action: 'journal.draft_posted', resourceType: 'journalDraft', resourceId: String(draft._id),
+      }], { session });
+    }
     await AuditEventModel.create([{
       organizationId, actorAuthUserId: command.actorAuthUserId,
       action: 'journal.posted', resourceType: 'journal', resourceId: String(journal._id),

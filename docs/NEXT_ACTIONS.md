@@ -292,3 +292,23 @@ git diff --check
 ```
 
 The running acceptance matrix remains partial. Qualified GST/accounting review, production credentials, database grants, backup/restore, monitoring, email deliverability, attachment malware/retention, and final security/accessibility review remain external release gates.
+
+## Current checkpoint — persisted manual journal drafts
+
+The chart-grouping and normal-balance slice is complete locally and remotely; exact SHA `ea3fbf4bcb691dea45e3ad3dae9203dfe2718157` passed CI #515/#516, MongoDB #450/#451, Browser #234/#235. Persisted manual journal drafts are implemented and locally verified: focused journal suite 2/2 and full replica-set suite 151/151 (138 API, five accounting, eight web), typecheck, lint, build, high-severity audit and diff check pass. The Python/Playwright browser runner is unavailable locally; verify the changed browser workflow on the published SHA. Commit and publish to the existing development branch, inspect all six exact-SHA workflows, fix any failures, update this checkpoint, then immediately continue the remaining route role/reference audit and responsive accessibility checks.
+
+Validation commands (PowerShell, repository root):
+
+```powershell
+$env:MONGODB_TEST_URI='mongodb://127.0.0.1:37491/?replicaSet=testset'
+$env:MONGODB_TEST_DB_NAME='aslibooks_test_journal_drafts_final'
+pnpm --filter @aslibooks/api test -- src/routes/journals.integration.test.ts
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm build
+pnpm audit --audit-level=high
+git diff --check
+```
+
+After the hosted checks pass, resume with a concrete uncovered operation/reference from `docs/ROUTE_SECURITY_MATRIX.md`; add focused no-side-effect integration coverage, run the full suite and quality commands above, then review keyboard/focus behavior at narrow viewport. Keep acceptance criteria partial while route permutations, external release gates, and statutory review remain incomplete.

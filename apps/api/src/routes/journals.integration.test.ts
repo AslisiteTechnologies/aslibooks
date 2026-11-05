@@ -6,6 +6,7 @@ import { AccountModel } from '../models/account.js';
 import { AuditEventModel } from '../models/auditEvent.js';
 import { FiscalPeriodModel } from '../models/fiscalPeriod.js';
 import { JournalModel } from '../models/journal.js';
+import { JournalDraftModel } from '../models/journalDraft.js';
 import { MembershipModel } from '../models/membership.js';
 import { OrganizationModel } from '../models/organization.js';
 import { organizationRouter } from './organizations.js';
@@ -48,7 +49,7 @@ describe.skipIf(!enabled)('authenticated manual journal API', () => {
     await mongoose.connect(uri!, { dbName: dbName!, serverSelectionTimeoutMS: 10000 });
     await Promise.all([
       OrganizationModel.init(), MembershipModel.init(), AccountModel.init(), JournalModel.init(),
-      AuditEventModel.init(), FiscalPeriodModel.init(),
+      AuditEventModel.init(), FiscalPeriodModel.init(), JournalDraftModel.init(),
     ]);
     await OrganizationModel.create([
       { _id: org, name: 'Journal test', slug: `journal-${suffix}` },
@@ -112,10 +113,53 @@ describe.skipIf(!enabled)('authenticated manual journal API', () => {
     expect(await AuditEventModel.countDocuments({ organizationId: org, actorAuthUserId: 'journal-accountant' })).toBe(2);
   });
 
+  it('saves, edits, reviews, posts and replays a journal draft atomically', async () => {
+    const beforeJournals = await JournalModel.countDocuments({ organizationId: org });
+    const beforeAudits = await AuditEventModel.countDocuments({ organizationId: org });
+    const input = { ...valid, idempotencyKey: `journal-draft:${suffix}`, lines: [
+      valid.lines[0], { ...valid.lines[1], creditPaise: 10000 },
+    ] };
+    await request(app).post(`${path}/drafts`).set({ 'x-fixture-actor': 'journal-viewer' }).send(input).expect(403);
+    await request(app).post(`${path}/drafts`).set(accountant).send({ ...input, lines: [
+      { ...input.lines[0], debitPaise: 0 }, input.lines[1],
+    ] }).expect(400);
+    await request(app).post(`${path}/drafts`).set(accountant).send({ ...input, lines: [
+      { ...input.lines[0], accountId: String(foreignDebit) }, input.lines[1],
+    ] }).expect(422);
+    const created = await request(app).post(`${path}/drafts`).set(accountant).send(input).expect(201);
+    expect(created.body).toMatchObject({ replayed: false });
+    const replay = await request(app).post(`${path}/drafts`).set(accountant).send(input).expect(200);
+    expect(replay.body).toMatchObject({ draftId: created.body.draftId, replayed: true });
+    await request(app).post(`${path}/drafts`).set(accountant).send({ ...input, description: 'Changed details' }).expect(409);
+    const page = await request(app).get(`${path}/drafts`).set({ 'x-fixture-actor': 'journal-viewer' }).expect(200);
+    expect(page.body.drafts).toEqual([expect.objectContaining({ id: created.body.draftId, status: 'draft' })]);
+    expect(await JournalModel.countDocuments({ organizationId: org })).toBe(beforeJournals);
+
+    const edited = { description: 'Reviewed cash adjustment', lines: [
+      { ...input.lines[0], debitPaise: 4567 }, { ...input.lines[1], creditPaise: 4567 },
+    ] };
+    await request(app).patch(`${path}/drafts/${created.body.draftId}`).set(accountant).send(edited).expect(200);
+    await request(app).post(`${path}/drafts/${created.body.draftId}/post`).set({ 'x-fixture-actor': 'journal-viewer' }).send({}).expect(403);
+    expect(await JournalModel.countDocuments({ organizationId: org })).toBe(beforeJournals);
+    const posted = await request(app).post(`${path}/drafts/${created.body.draftId}/post`).set(accountant).send({}).expect(201);
+    expect(posted.body.replayed).toBe(false);
+    const journal = await JournalModel.findById(posted.body.journalId).lean<{
+      _id: Types.ObjectId; description: string; sourceDraftId?: Types.ObjectId;
+    } | null>();
+    expect(journal).toMatchObject({ description: edited.description, sourceDraftId: new Types.ObjectId(created.body.draftId) });
+    expect(await JournalDraftModel.findById(created.body.draftId)).toMatchObject({ status: 'posted', postedJournalId: journal?._id });
+    const postedReplay = await request(app).post(`${path}/drafts/${created.body.draftId}/post`).set(accountant).send({}).expect(200);
+    expect(postedReplay.body).toMatchObject({ journalId: posted.body.journalId, replayed: true });
+    await request(app).patch(`${path}/drafts/${created.body.draftId}`).set(accountant).send(edited).expect(404);
+    expect(await JournalModel.countDocuments({ organizationId: org })).toBe(beforeJournals + 1);
+    expect(await AuditEventModel.countDocuments({ organizationId: org })).toBe(beforeAudits + 4);
+  });
+
   afterAll(async () => {
     if (!enabled) return;
     const ids = [org, foreignOrg];
     await JournalModel.collection.deleteMany({ organizationId: { $in: ids } });
+    await JournalDraftModel.collection.deleteMany({ organizationId: { $in: ids } });
     await AuditEventModel.deleteMany({ organizationId: { $in: ids } });
     await FiscalPeriodModel.deleteMany({ organizationId: { $in: ids } });
     await AccountModel.deleteMany({ organizationId: { $in: ids } });
