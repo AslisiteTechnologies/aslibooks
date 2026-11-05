@@ -29,12 +29,18 @@ describe.skipIf(!enabled)('receivable and payable aging reports', () => {
     await Promise.all([BillModel.init(), InvoiceModel.init(), MembershipModel.init(), OrganizationModel.init()]);
     await OrganizationModel.create([{ _id: organizationId, name: 'Aging fixture', slug: `aging-${organizationId}` }, { _id: foreignId, name: 'Foreign aging', slug: `aging-foreign-${foreignId}` }]);
     await MembershipModel.create([{ organizationId, authUserId: 'aging-reader', role: 'viewer' }, { organizationId: foreignId, authUserId: 'aging-reader', role: 'owner' }]);
-    await InvoiceModel.create(rows.map((row, i) => ({ organizationId, customerId, customerName: 'Customer', status: 'issued', lines: [], totalPaise: row.totalPaise,
+    await InvoiceModel.create(rows.map((row, i) => ({ organizationId, customerId, customerName: 'Customer', status: 'issued', issuedAt: new Date('2025-04-30T12:00:00Z'), lines: [], totalPaise: row.totalPaise,
       amountPaidPaise: row.amountPaidPaise, ...(row.dueDate ? { dueDate: row.dueDate } : {}), ...(i === 0 ? { invoiceNumber: 'AGE-1' } : {}) })));
     await BillModel.create(rows.map((row, i) => ({ organizationId, vendorId, vendorName: 'Vendor', vendorReference: `AGE-${i}`,
       expenseAccountId: new Types.ObjectId(), expenseAccountName: 'Expense', description: 'Aging fixture', status: 'posted', amountPaise: row.totalPaise,
-      amountPaidPaise: row.amountPaidPaise, ...(row.dueDate ? { dueDate: row.dueDate } : {}) })));
-    await InvoiceModel.create({ organizationId: foreignId, customerId, customerName: 'Foreign', status: 'issued', lines: [], totalPaise: 999999, amountPaidPaise: 0, dueDate: '2025-04-01' });
+      amountPaidPaise: row.amountPaidPaise, postedAt: new Date('2025-04-30T12:00:00Z'), ...(row.dueDate ? { dueDate: row.dueDate } : {}) })));
+    await InvoiceModel.create([
+      { organizationId: foreignId, customerId, customerName: 'Foreign', status: 'issued', issuedAt: new Date('2025-04-30T12:00:00Z'), lines: [], totalPaise: 999999, amountPaidPaise: 0, dueDate: '2025-04-01' },
+      { organizationId, customerId, customerName: 'Future Customer', status: 'issued', issuedAt: new Date('2025-05-02T20:00:00Z'), lines: [], totalPaise: 888888, amountPaidPaise: 0, dueDate: '2025-04-01' },
+    ]);
+    await BillModel.create({ organizationId, vendorId, vendorName: 'Future Vendor', vendorReference: 'AGE-FUTURE', expenseAccountId: new Types.ObjectId(),
+      expenseAccountName: 'Expense', description: 'Future posted bill', status: 'posted', amountPaise: 777777, amountPaidPaise: 0,
+      postedAt: new Date('2025-05-02T20:00:00Z'), dueDate: '2025-04-01' });
   });
   it('ages only the authorized organization outstanding balances by India-local calendar day', async () => {
     await request(app).get(`${path}/aged-receivables?asOf=2025-02-30`).set({ 'x-fixture-actor': 'aging-reader' }).expect(400);
@@ -52,3 +58,4 @@ describe.skipIf(!enabled)('receivable and payable aging reports', () => {
   });
   afterAll(async () => { await mongoose.disconnect(); });
 });
+

@@ -377,7 +377,7 @@ export function reportRouter() {
     if (!parsed.success) { res.status(400).json({ error: 'Invalid aging report date' }); return; }
     const asOf = parsed.data.asOf ?? indiaToday();
     if (!validDate(asOf)) { res.status(400).json({ error: 'Invalid aging report date' }); return; }
-    const invoices = await InvoiceModel.find({ organizationId, status: { $in: ['issued', 'partially_paid', 'partially_credited'] } })
+    const invoices = await InvoiceModel.find({ organizationId, status: { $in: ['issued', 'partially_paid', 'partially_credited'] }, issuedAt: { $lt: nextIndiaDate(asOf) } })
       .select('dueDate totalPaise amountPaidPaise amountCreditedPaise').lean<Array<{ dueDate?: string; totalPaise: number; amountPaidPaise: number; amountCreditedPaise?: number }>>();
     const summary = agingSummary(invoices.map(row => ({ dueDate: row.dueDate, amountPaise: row.totalPaise - (row.amountCreditedPaise ?? 0), amountPaidPaise: row.amountPaidPaise })), asOf);
     if (!summary.safe) { res.status(422).json({ error: 'Receivables aging exceeds the supported integer amount range' }); return; }
@@ -390,7 +390,7 @@ export function reportRouter() {
     if (!parsed.success) { res.status(400).json({ error: 'Invalid aging report date' }); return; }
     const asOf = parsed.data.asOf ?? indiaToday();
     if (!validDate(asOf)) { res.status(400).json({ error: 'Invalid aging report date' }); return; }
-    const bills = await BillModel.find({ organizationId, status: { $in: ['posted', 'partially_paid', 'partially_credited'] } })
+    const bills = await BillModel.find({ organizationId, status: { $in: ['posted', 'partially_paid', 'partially_credited'] }, postedAt: { $lt: nextIndiaDate(asOf) } })
       .select('dueDate amountPaise amountPaidPaise amountCreditedPaise').lean<Array<{ dueDate?: string; amountPaise: number; amountPaidPaise: number; amountCreditedPaise?: number }>>();
     const summary = agingSummary(bills.map(row => ({ dueDate: row.dueDate, amountPaise: row.amountPaise - (row.amountCreditedPaise ?? 0), amountPaidPaise: row.amountPaidPaise })), asOf);
     if (!summary.safe) { res.status(422).json({ error: 'Payables aging exceeds the supported integer amount range' }); return; }
@@ -398,3 +398,4 @@ export function reportRouter() {
   });
   return router;
 }
+

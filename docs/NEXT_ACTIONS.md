@@ -2,13 +2,13 @@
 
 ## Current checkpoint
 
-Published head `7b8e8b2cb12cf6004e36b39f36680e83a7c03565` passed CI #326/#325, MongoDB #263/#262, and browser E2E #46/#45. Product/service creation, edit, and confirmed archive are covered by the browser flow. This local change adds confirmation-gated contact archiving and browser assertions after customer/vendor transactions; run checks, publish it, and verify exact-SHA Actions. Local tests skip DB-backed cases and browser execution needs MongoDB/API/web services; Docker and mongod are unavailable on this host.
+Published head `f39e76e0408fcf8aa66bdbdd285ef92cff34789f` passed CI #328/#327, MongoDB #265/#264, and browser E2E #48/#47. Product and contact create/edit/archive and the end-to-end financial flow are covered. The current local change adds India-local posting-date cutoffs to aging reports and excludes future-posted documents, with regression data; verify by exact-SHA MongoDB workflow and publish it. Local integration was skipped because no replica-set URI is configured.
 
 Preserve the original workspace edits; never stage the owner-supplied vision file. Never merge PR #1 to `main` or deploy production.
 
 ## Current implementation task
 
-Publish the contact archive UI and E2E coverage to `develop/phase-1-foundation`. Confirm exact-SHA CI, MongoDB, and browser runs; investigate and fix any failures. Then continue with the highest-priority unmet acceptance criteria in `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`, inspecting current route, model, UI, and tests before each change. The MVP is not complete: tax scenarios, customer/vendor subledgers, acceptance/security coverage, release operations, and live provider configuration still need review and implementation where unblocked.
+Verify and publish the aging report cutoff and test to `develop/phase-1-foundation`. Confirm exact-SHA CI, MongoDB, and browser workflows; investigate failures. Then continue the highest-priority unmet acceptance criteria in the master vision, inspecting current routes, models, UI and tests first. Remaining gaps include richer customer/vendor ledgers, qualified GST policy and scenarios, acceptance/security coverage, release operations and live provider configuration.
 
 ## Exact verification commands
 

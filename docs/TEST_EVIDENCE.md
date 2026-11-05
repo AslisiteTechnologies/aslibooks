@@ -143,7 +143,11 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 - Local `pnpm test`: 32 passed; 72 MongoDB-backed tests skipped because no local replica-set URI is configured. `pnpm typecheck`, meaningful `pnpm lint`, `pnpm build`, and `git diff --check` passed.
 - Local browser attempt failed before app interaction with `ERR_CONNECTION_REFUSED` at `127.0.0.1:5176`; this checkout has neither Docker nor `mongod` available to provision disposable MongoDB/API/web services. This is not a passing browser test. Published head `7b8e8b2cb12cf6004e36b39f36680e83a7c03565` passed CI #326 (push #325), MongoDB #263 (push #262) and browser E2E #46 (push #45).
 
-## Contact archive UI (local, pending exact-commit workflows)
+## Contact archive UI (published and verified)
 - Added confirmation before archiving a customer/vendor; the message explains that only new transactions are blocked and prior documents/history remain. Added E2E steps archiving both fixture contacts after financial transactions.
-- Exact-commit CI/MongoDB/browser verification is pending. Local suite is being run; no result is claimed until it completes.
+- Published head `f39e76e0408fcf8aa66bdbdd285ef92cff34789f` passed CI #328 (push #327), MongoDB #265 (push #264), and Browser end-to-end #48 (push #47). Local `pnpm test`: 32 passed, 72 MongoDB-backed tests skipped; typecheck, lint, build, Python compile and `git diff --check` passed.
+
+## As-of aging report cutoff (local, pending exact-commit workflows)
+- Aging reports now filter invoices by India-local `issuedAt` and bills by India-local `postedAt` through the selected as-of day. Added future-issued/future-posted documents to the integration fixture and kept expected totals unchanged.
+- Focused local aging integration test is skipped without `MONGODB_TEST_URI` and a replica set. Full local suite passed 32 tests with 72 DB tests skipped; typecheck, lint, build and `git diff --check` passed. Exact MongoDB workflow is required to verify the regression assertion.
 
