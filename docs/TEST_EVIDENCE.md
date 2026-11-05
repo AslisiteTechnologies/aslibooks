@@ -130,4 +130,5 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 - Receipt locator follow-up: run #31 showed the last label match was the advance amount, while the first (invoice receipt) amount was disabled during loading. E2E now selects the first field, waits for it to enable, and asserts the prefilled 45.00 balance. Rerun pending.
 - Receipt and bill browser progress: run #33 passed customer receipt form load, recorded partial receipts of ₹20 and ₹25, and reached vendor bills. It then found Vendor combobox substring matching the empty label and selected Test Vendor control. E2E now requires exact Vendor label; rerun pending.
 - Vendor selector follow-up: run #35/#36 showed two exact Vendor comboboxes: required bill vendor and optional vendor advance vendor. E2E now selects the first (required bill) combobox. Rerun pending.
+- Bill E2E follow-up: run #37 passed vendor selection and found two Amount (INR) fields with different types. Bill amount now uses the exact spinbutton role; rerun pending.
 

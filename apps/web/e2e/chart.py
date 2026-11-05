@@ -183,7 +183,7 @@ def test_chart():
             page.get_by_label("Expense category").click()
             page.get_by_role("option", name="E2E-EXP · Office expenses").click()
             page.get_by_label("Description").fill("Monthly office supplies")
-            page.get_by_label("Amount (INR)").fill("12.34")
+            page.get_by_role("spinbutton", name="Amount (INR)", exact=True).fill("12.34")
             page.get_by_role("button", name="Save bill draft").click()
             expect(page.get_by_text("Bill draft saved. It has not affected the ledger.")).to_be_visible()
             expect(page.get_by_text(f"V-{run} · Test Vendor")).to_be_visible()
