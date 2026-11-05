@@ -128,7 +128,7 @@ const writeDraft: RequestHandler = async (req, res, next) => {
         let amounts: GstAmounts;
         try {
           amounts = taxTreatment.kind === 'none'
-            ? { taxablePaise: amountPaise, cgstPaise: 0, sgstPaise: 0, igstPaise: 0, totalTaxPaise: 0, grossPaise: amountPaise }
+            ? { discountPaise: 0, amountAfterDiscountPaise: amountPaise, taxablePaise: amountPaise, cgstPaise: 0, sgstPaise: 0, igstPaise: 0, totalTaxPaise: 0, grossPaise: amountPaise }
             : calculateGstAmounts({ amountPaise, totalRateBasisPoints: product.taxCategory === 'taxable' ? product.gstRateBasisPoints ?? 0 : 0,
               priceIncludesTax: taxTreatment.kind === 'inclusive', supplyKind: taxTreatment.supplyKind as GstSupplyKind });
         } catch (error) { throw new InvoiceError(400, error instanceof Error ? error.message : 'Tax calculation input is invalid'); }
@@ -296,5 +296,4 @@ const issueCreditNote: RequestHandler = async (req, res) => {
     res.status(500).json({ error: 'Credit note could not be issued' });
   }
 };
-
 

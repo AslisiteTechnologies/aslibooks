@@ -8,7 +8,7 @@ Preserve the original workspace edits; never stage the owner-supplied vision fil
 
 ## Current implementation task
 
-Remote head `06ea15b994d2ebc0aa6a7f06f35d7232997efeef` passed CI #425/#426, MongoDB #362/#363 and Browser #145/#146. Local full replica-set tests pass 135/135 after adding an explicit trusted-Origin guard for organization business writes (129 API across 32 files, five accounting, one web); production build, frozen offline install and full `pnpm audit` pass. Local 390px Playwright is running. Next publish the trusted-origin guard with its tests and evidence, verify all six workflows on that exact SHA, then continue the route-by-route tenant authorization audit and MVP work.
+Trusted-Origin commit `e1c8e71cd5a4994cdde244311715a3d9be24bc79` passed CI #427/#428, MongoDB #364/#365 and Browser #147/#148. The next local GST gap is partially closed: generic tax arithmetic now supports an explicit fixed paise discount before tax; invoice-level discounts and tax-bearing posting remain blocked pending qualified review. Focused GST tests pass 4/4; full disposable replica-set workspace tests pass 136/136 (130 API, five accounting, one web), and typecheck, lint, build, audit and browser journey pass. Publish the GST arithmetic with evidence and verify all six exact-SHA workflows; next inspect cross-route authorization and acceptance 10 error/replay coverage.
 
 ## Exact verification commands
 
@@ -18,7 +18,9 @@ pnpm typecheck
 pnpm lint
 pnpm build
 git diff --check
-pnpm --filter @aslibooks/api test --maxWorkers=1 src/routes/contacts.integration.test.ts
+$env:MONGODB_TEST_URI="mongodb://127.0.0.1:27017/?replicaSet=rs0"
+$env:MONGODB_TEST_DB_NAME="aslibooks_test_codex"
+pnpm test
 $env:PYTHONPATH="$env:TEMP\aslibooks-playwright-runtime"
 $env:PLAYWRIGHT_BROWSERS_PATH="$env:TEMP\codex-aslibooks-browsers"
 & "$env:USERPROFILE\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe" apps/web/e2e/chart.py
