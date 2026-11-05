@@ -392,8 +392,15 @@ def test_chart():
             page.get_by_role("option", name="3000 · Owner capital").click()
             page.get_by_label("Amount (INR)").nth(0).fill("125.00")
             page.get_by_label("Amount (INR)").nth(1).fill("125.00")
-            page.get_by_role("button", name="Review journal").click()
-            page.get_by_role("button", name="Confirm and post").click()
+            with page.expect_response(lambda response: response.url.endswith("/journals/drafts") and response.request.method == "POST") as journal_draft_response:
+                page.get_by_role("button", name="Save journal draft").click()
+            assert journal_draft_response.value.status == 201, journal_draft_response.value.text()
+            expect(page.get_by_role("heading", name="Saved journal drafts")).to_be_visible()
+            expect(page.get_by_text("Opening cash entry", exact=True)).to_be_visible()
+            page.get_by_role("button", name="Review and post").click()
+            with page.expect_response(lambda response: "/journals/drafts/" in response.url and response.url.endswith("/post") and response.request.method == "POST") as journal_draft_post_response:
+                page.get_by_role("button", name="Confirm and post").click()
+            assert journal_draft_post_response.value.status == 201, journal_draft_post_response.value.text()
             expect(page.get_by_text("Journal posted and recorded in the audit trail.")).to_be_visible()
             page.get_by_text("Opening cash entry", exact=False).locator("xpath=../..").get_by_role("button", name="View details").click()
             expect(page.get_by_text("1000 · Cash on hand — Debit ₹125.00 / Credit ₹0.00")).to_be_visible()
@@ -441,8 +448,9 @@ def test_chart():
             page.get_by_role("option", name="1000 · Cash on hand").click()
             page.get_by_label("Amount (INR)").nth(0).fill("25.00")
             page.get_by_label("Amount (INR)").nth(1).fill("25.00")
-            page.get_by_role("button", name="Review journal").click()
-            with page.expect_response(lambda response: response.url.endswith("/journals") and response.request.method == "POST") as bank_journal_response:
+            page.get_by_role("button", name="Save journal draft").click()
+            page.get_by_role("button", name="Review and post").click()
+            with page.expect_response(lambda response: "/journals/drafts/" in response.url and response.url.endswith("/post") and response.request.method == "POST") as bank_journal_response:
                 page.get_by_role("button", name="Confirm and post").click()
             assert bank_journal_response.value.status == 201, bank_journal_response.value.text()
             journal_id = bank_journal_response.value.json()["journalId"]

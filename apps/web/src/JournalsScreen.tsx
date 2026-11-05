@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
-import { api, type Account, type Journal, type JournalDetail, type Organization } from './api';
+import { api, type Account, type Journal, type JournalDetail, type JournalDraft, type Organization } from './api';
 
 type LineDraft = { accountId: string; side: 'debit' | 'credit'; amount: string };
 const initialLines: LineDraft[] = [{ accountId: '', side: 'debit', amount: '' }, { accountId: '', side: 'credit', amount: '' }];
@@ -11,18 +11,22 @@ const parsePaise = (value: string): number | null => {
   return paise > 0n && paise <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(paise) : null;
 };
 const formatPaise = (value: number) => `₹${Math.floor(value / 100).toLocaleString('en-IN')}.${String(value % 100).padStart(2, '0')}`;
+const amountInput = (paise: number) => `${Math.floor(paise / 100)}.${String(paise % 100).padStart(2, '0')}`;
 
 export function JournalsScreen({ organization }: { organization: Organization }) {
   const canPost = ['owner', 'admin', 'accountant'].includes(organization.role);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [journals, setJournals] = useState<Journal[]>([]);
+  const [drafts, setDrafts] = useState<JournalDraft[]>([]);
   const [next, setNext] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [lines, setLines] = useState<LineDraft[]>(initialLines);
   const [details, setDetails] = useState<Record<string, JournalDetail>>({});
   const [reverseId, setReverseId] = useState('');
   const [reverseReason, setReverseReason] = useState('');
-  const [confirmPost, setConfirmPost] = useState(false);
+  const [postingDraft, setPostingDraft] = useState<JournalDraft | null>(null);
+  const [editingDraftId, setEditingDraftId] = useState('');
+  const [draftIdempotencyKey, setDraftIdempotencyKey] = useState(() => `journal-draft:${crypto.randomUUID()}`);
   const [busy, setBusy] = useState(false);
   const [revision, setRevision] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -40,7 +44,9 @@ export function JournalsScreen({ organization }: { organization: Organization })
     async function load() {
       setLoading(true); setError('');
       try {
-        const [chart, page] = await Promise.all([api.accounts(organization.id), api.journals(organization.id)]);
+        const [chart, page, draftPage] = await Promise.all([
+          api.accounts(organization.id), api.journals(organization.id), api.journalDrafts(organization.id),
+        ]);
         const allAccounts = [...chart.accounts];
         let cursor = chart.next;
         while (cursor) {
@@ -52,6 +58,7 @@ export function JournalsScreen({ organization }: { organization: Organization })
           const active = allAccounts.filter(account => account.active);
           setAccounts(active);
           setJournals(page.journals);
+          setDrafts(draftPage.drafts);
           setNext(page.next);
           setLines(old => old.map((line, index) => ({ ...line, accountId: line.accountId || active[index % Math.max(1, active.length)]?.id || '' })));
         }
@@ -67,34 +74,45 @@ export function JournalsScreen({ organization }: { organization: Organization })
     setLines(current => current.map((line, lineIndex) => lineIndex === index ? { ...line, ...update } : line));
   }
 
-  async function post(event: FormEvent) {
+  async function saveDraft(event: FormEvent) {
     event.preventDefault();
     setError(''); setNotice('');
     if (!description.trim() || lines.length < 2) { setError('Add a description and at least two lines.'); return; }
     if (lines.some(line => !line.accountId || parsePaise(line.amount) === null)) {
       setError('Choose an active account and enter a positive amount with up to two decimal places on every line.'); return;
     }
-    if (!Number.isSafeInteger(totals.debit) || !Number.isSafeInteger(totals.credit)) { setError('Journal totals exceed the supported amount.'); return; }
-    if (totals.debit !== totals.credit) { setError('Debits and credits must balance before posting.'); return; }
-    setConfirmPost(true);
-  }
-
-  async function confirmAndPost() {
     setBusy(true); setError('');
     try {
-      const result = await api.postJournal(organization.id, {
-        idempotencyKey: `manual:${crypto.randomUUID()}`,
+      const data = {
         description: description.trim(),
         lines: lines.map(line => ({
           accountId: line.accountId,
           debitPaise: line.side === 'debit' ? parsePaise(line.amount)! : 0,
           creditPaise: line.side === 'credit' ? parsePaise(line.amount)! : 0,
         })),
-      });
-      setNotice(result.replayed ? 'This journal was already posted.' : 'Journal posted and recorded in the audit trail.');
+      };
+      if (editingDraftId) {
+        await api.updateJournalDraft(organization.id, editingDraftId, data);
+        setNotice('Journal draft changes saved.');
+      } else {
+        const result = await api.createJournalDraft(organization.id, { ...data, idempotencyKey: draftIdempotencyKey });
+        setNotice(result.replayed ? 'This journal draft was already saved.' : 'Journal draft saved. It has not been posted.');
+        setDraftIdempotencyKey(`journal-draft:${crypto.randomUUID()}`);
+      }
       setDescription(''); setLines(initialLines.map((line, index) => ({ ...line, accountId: accounts[index]?.id ?? '' })));
-      setConfirmPost(false); setRevision(value => value + 1);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Journal could not be posted.'); setConfirmPost(false); }
+      setEditingDraftId(''); setRevision(value => value + 1);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Journal draft could not be saved.'); }
+    finally { setBusy(false); }
+  }
+
+  async function confirmAndPostDraft() {
+    if (!postingDraft) return;
+    setBusy(true); setError('');
+    try {
+      const result = await api.postJournalDraft(organization.id, postingDraft.id);
+      setNotice(result.replayed ? 'This journal draft was already posted.' : 'Journal posted and recorded in the audit trail.');
+      setPostingDraft(null); setRevision(value => value + 1);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Journal could not be posted.'); setPostingDraft(null); }
     finally { setBusy(false); }
   }
 
@@ -122,9 +140,9 @@ export function JournalsScreen({ organization }: { organization: Organization })
     <Typography variant="h5">Journal entries</Typography>
     {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
     {notice && <Alert severity="success" onClose={() => setNotice('')}>{notice}</Alert>}
-    {canPost && <Paper component="form" variant="outlined" onSubmit={post} sx={{ p: { xs: 2, md: 3 } }}>
+    {canPost && <Paper component="form" variant="outlined" onSubmit={saveDraft} sx={{ p: { xs: 2, md: 3 } }}>
       <Stack spacing={2}>
-        <Typography variant="h6">Manual journal</Typography>
+        <Typography variant="h6">{editingDraftId ? 'Edit journal draft' : 'New manual journal draft'}</Typography>
         <TextField required label="Description" value={description} onChange={event => setDescription(event.target.value)} inputProps={{ maxLength: 500 }} />
         {lines.map((line, index) => <Stack key={index} direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }}>
           <Typography sx={{ minWidth: 72 }}>Line {index + 1}</Typography>
@@ -140,10 +158,33 @@ export function JournalsScreen({ organization }: { organization: Organization })
         <Stack direction="row" flexWrap="wrap" gap={1} alignItems="center">
           <Typography>Debits {formatPaise(totals.debit)} · Credits {formatPaise(totals.credit)}</Typography>
           <Button onClick={() => setLines(current => [...current, { accountId: accounts[0]?.id ?? '', side: 'debit', amount: '' }])}>Add line</Button>
-          <Button type="submit" variant="contained" disabled={busy || loading || !accounts.length}>Review journal</Button>
+          <Button type="submit" variant="contained" disabled={busy || loading || !accounts.length}>{editingDraftId ? 'Save draft changes' : 'Save journal draft'}</Button>
+          {editingDraftId && <Button type="button" disabled={busy} onClick={() => { setEditingDraftId(''); setDescription(''); setLines(initialLines); }}>Cancel edit</Button>}
         </Stack>
       </Stack>
     </Paper>}
+    <Typography variant="h6">Saved journal drafts</Typography>
+    {!drafts.length && !loading && <Typography>No saved journal drafts.</Typography>}
+    {drafts.map(draft => {
+      const debit = draft.lines.reduce((total, line) => total + line.debitPaise, 0);
+      const credit = draft.lines.reduce((total, line) => total + line.creditPaise, 0);
+      return <Paper key={draft.id} variant="outlined" sx={{ p: 2 }}>
+        <Stack spacing={1}>
+          <Typography variant="subtitle1" fontWeight={700}>{draft.description}</Typography>
+          <Typography color="text.secondary">Draft · Debits {formatPaise(debit)} · Credits {formatPaise(credit)}{debit === credit ? ' · Balanced' : ' · Out of balance'}</Typography>
+          <Stack direction="row" flexWrap="wrap" gap={1}>
+            <Button disabled={busy} onClick={() => {
+              setEditingDraftId(draft.id); setDescription(draft.description);
+              setLines(draft.lines.map(line => ({ accountId: line.accountId,
+                side: line.debitPaise > 0 ? 'debit' : 'credit',
+                amount: amountInput(line.debitPaise > 0 ? line.debitPaise : line.creditPaise),
+              })));
+            }}>Edit draft</Button>
+            <Button disabled={busy || debit !== credit || debit === 0} variant="contained" onClick={() => setPostingDraft(draft)}>Review and post</Button>
+          </Stack>
+        </Stack>
+      </Paper>;
+    })}
     <Typography variant="h6">Posted journals</Typography>
     {loading ? <Typography role="status">Loading journals…</Typography> : !journals.length && <Typography>No posted journals yet.</Typography>}
     {journals.map(journal => {
@@ -170,14 +211,14 @@ export function JournalsScreen({ organization }: { organization: Organization })
       try { const page = await api.journals(organization.id, next); setJournals(current => [...current, ...page.journals]); setNext(page.next); }
       catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to load more journals.'); }
     }}>Load more journals</Button>}
-    <Dialog open={confirmPost} onClose={() => { if (!busy) setConfirmPost(false); }}>
+    <Dialog open={!!postingDraft} onClose={() => { if (!busy) setPostingDraft(null); }}>
       <DialogTitle>Confirm journal posting</DialogTitle>
       <DialogContent><Stack spacing={1} sx={{ pt: 1 }}>
-        <Typography>Post “{description.trim()}” to the ledger?</Typography>
-        <Typography>Debits {formatPaise(totals.debit)} · Credits {formatPaise(totals.credit)}</Typography>
+        <Typography>Post “{postingDraft?.description}” to the ledger?</Typography>
+        <Typography>Debits {formatPaise(postingDraft?.lines.reduce((total, line) => total + line.debitPaise, 0) ?? 0)} · Credits {formatPaise(postingDraft?.lines.reduce((total, line) => total + line.creditPaise, 0) ?? 0)}</Typography>
         <Typography color="text.secondary">Posted journals cannot be edited. Corrections require a reversal.</Typography>
       </Stack></DialogContent>
-      <DialogActions><Button disabled={busy} onClick={() => setConfirmPost(false)}>Cancel</Button><Button disabled={busy} variant="contained" onClick={() => void confirmAndPost()}>Confirm and post</Button></DialogActions>
+      <DialogActions><Button disabled={busy} onClick={() => setPostingDraft(null)}>Cancel</Button><Button disabled={busy} variant="contained" onClick={() => void confirmAndPostDraft()}>Confirm and post</Button></DialogActions>
     </Dialog>
     <Dialog open={!!reverseId} onClose={() => { if (!busy) setReverseId(''); }}>
       <DialogTitle>Reverse journal</DialogTitle>

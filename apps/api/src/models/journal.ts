@@ -16,6 +16,7 @@ const journalSchema = new Schema({
   lines: { type: [lineSchema], required: true },
   postedAt: { type: Date, required: true, immutable: true },
   reversalOf: { type: Schema.Types.ObjectId, ref: 'Journal', immutable: true },
+  sourceDraftId: { type: Schema.Types.ObjectId, ref: 'JournalDraft', immutable: true },
 }, { timestamps: true, strict: 'throw', versionKey: false });
 
 // Application-level append-only protection for posted journals.
@@ -38,6 +39,7 @@ journalSchema.pre('findOneAndDelete', rejectJournalMutation);
 journalSchema.pre('bulkWrite', rejectJournalMutation);
 journalSchema.index({ organizationId: 1, idempotencyKey: 1 }, { unique: true });
 journalSchema.index({ organizationId: 1, postedAt: -1 });
+journalSchema.index({ organizationId: 1, sourceDraftId: 1 }, { unique: true, partialFilterExpression: { sourceDraftId: { $type: 'objectId' } } });
 // One reversal per original journal, scoped to its organization.
 // The partial filter excludes normal journals without reversalOf.
 journalSchema.index(
