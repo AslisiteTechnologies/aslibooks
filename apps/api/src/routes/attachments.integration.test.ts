@@ -45,6 +45,9 @@ describe.skipIf(!enabled)('private source attachments', () => {
     expect(uploaded.body.sha256).toMatch(/^[a-f\d]{64}$/);
     await request(app).post(path).set({ ...fileHeaders, ...owner }).send(pdf).expect(200, { ...uploaded.body, replayed: true });
     await request(app).post(path).set({ ...fileHeaders, ...owner }).send(Buffer.from('%PDF-1.7 different')).expect(409);
+    await request(app).post(path).set({ ...fileHeaders, ...owner, 'x-resource-id': String(otherJournalId), 'idempotency-key': `foreign-attachment-${org}` })
+      .send(pdf).expect(404);
+    expect(await AttachmentModel.countDocuments({ organizationId: org })).toBe(1);
     const listed = await request(app).get(path).query({ resourceType: 'journal', resourceId: String(journalId) }).set({ 'x-fixture-actor': 'attachment-viewer' }).expect(200);
     expect(listed.body.attachments).toHaveLength(1);
     const downloaded = await request(app).get(`${path}/${uploaded.body.id}/content`).set({ 'x-fixture-actor': 'attachment-owner' }).buffer(true)

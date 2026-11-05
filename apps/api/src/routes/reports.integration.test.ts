@@ -28,6 +28,8 @@ describe.skipIf(!enabled)('ledger and trial balance reports', () => {
     res.status(500).json({ error: String(error) });
   });
   const org = new Types.ObjectId();
+  const foreignOrg = new Types.ObjectId();
+  const foreignAccount = new Types.ObjectId();
   const cash = new Types.ObjectId();
   const equity = new Types.ObjectId();
   const income = new Types.ObjectId();
@@ -44,10 +46,12 @@ describe.skipIf(!enabled)('ledger and trial balance reports', () => {
       AuditEventModel.init(), FiscalPeriodModel.init(),
       InvoiceModel.init(), BillModel.init(),
     ]);
-    await OrganizationModel.create({ _id: org, name: 'Reports integration', slug: `reports-${suffix}` });
+    await OrganizationModel.create([{ _id: org, name: 'Reports integration', slug: `reports-${suffix}` },
+      { _id: foreignOrg, name: 'Foreign reports integration', slug: `reports-foreign-${foreignOrg}` }]);
     await MembershipModel.create([
       { organizationId: org, authUserId: 'reports-owner', role: 'owner' },
       { organizationId: org, authUserId: 'reports-viewer', role: 'viewer' },
+      { organizationId: foreignOrg, authUserId: 'reports-foreign-owner', role: 'owner' },
     ]);
     await AccountModel.create([
       { _id: cash, organizationId: org, code: '1000', name: 'Cash', type: 'asset' },
@@ -56,6 +60,7 @@ describe.skipIf(!enabled)('ledger and trial balance reports', () => {
       { _id: expense, organizationId: org, code: `RX-${suffix}`, name: 'Rent expense', type: 'expense' },
       { _id: receivables, organizationId: org, code: '1100', name: 'Accounts receivable', type: 'asset' },
       { _id: payables, organizationId: org, code: '2000', name: 'Accounts payable', type: 'liability' },
+      { _id: foreignAccount, organizationId: foreignOrg, code: '1000', name: 'Foreign cash', type: 'asset' },
     ]);
     const post = (key: string, description: string, lines: Array<{ accountId: Types.ObjectId; debitPaise: number; creditPaise: number }>) =>
       postAuthorizedJournal('reports-owner', {
@@ -85,6 +90,7 @@ describe.skipIf(!enabled)('ledger and trial balance reports', () => {
 
   it('returns a balanced trial balance and paginated general ledger with correct cumulative balances', async () => {
     await request(app).get(`${path}/trial-balance`).expect(401);
+    await request(app).get(`/orgs/${foreignOrg}/reports/trial-balance`).set('x-fixture-actor', 'reports-owner').expect(403);
     await request(app).get(`${path}/trial-balance?asOf=not-a-date`).set('x-fixture-actor', 'reports-viewer').expect(400);
     const trial = await request(app).get(`${path}/trial-balance`).set('x-fixture-actor', 'reports-viewer').expect(200);
     expect(trial.body.balanced).toBe(true);
@@ -118,7 +124,7 @@ describe.skipIf(!enabled)('ledger and trial balance reports', () => {
       cursor = page.body.next;
     }
     expect(running).toEqual([10000, 13500, 12300, 12550, 12450]);
-    await request(app).get(`${path}/general-ledger?accountId=${new Types.ObjectId()}`).set('x-fixture-actor', 'reports-viewer').expect(404);
+    await request(app).get(`${path}/general-ledger?accountId=${foreignAccount}`).set('x-fixture-actor', 'reports-viewer').expect(404);
   });
 
   it('reconciles receivable and payable control ledgers to outstanding documents and enforces read access', async () => {
@@ -149,8 +155,9 @@ describe.skipIf(!enabled)('ledger and trial balance reports', () => {
     await AuditEventModel.deleteMany({ organizationId: org });
     await FiscalPeriodModel.deleteMany({ organizationId: org });
     await AccountModel.deleteMany({ organizationId: org });
-    await MembershipModel.deleteMany({ organizationId: org });
-    await OrganizationModel.deleteOne({ _id: org });
+    await AccountModel.deleteMany({ organizationId: foreignOrg });
+    await MembershipModel.deleteMany({ organizationId: { $in: [org, foreignOrg] } });
+    await OrganizationModel.deleteMany({ _id: { $in: [org, foreignOrg] } });
     await mongoose.disconnect();
   });
 });

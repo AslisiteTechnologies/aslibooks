@@ -27,6 +27,7 @@ describe.skipIf(!enabled)('contacts API', () => {
   });
   const org = new Types.ObjectId();
   const foreign = new Types.ObjectId();
+  const foreignContactId = new Types.ObjectId();
   const path = '/orgs/' + org + '/contacts';
   const foreignPath = '/orgs/' + foreign + '/contacts';
   const owner = { 'x-fixture-actor': 'contact-owner' };
@@ -39,6 +40,7 @@ describe.skipIf(!enabled)('contacts API', () => {
       { organizationId: org, authUserId: 'contact-paused', role: 'accountant', status: 'suspended' },
       { organizationId: foreign, authUserId: 'contact-foreign', role: 'accountant' },
     ]);
+    await ContactModel.create({ _id: foreignContactId, organizationId: foreign, displayName: 'Foreign ledger contact', roles: ['customer'] });
   });
   it('validates session roles, actor fields, identifiers and tenant scope', async () => {
     const input = { displayName: 'Harbor Textiles', roles: ['customer', 'vendor'], email: 'ap@harbor.example' };
@@ -55,6 +57,8 @@ describe.skipIf(!enabled)('contacts API', () => {
     await request(app).get(foreignPath).set(owner).expect(403);
     await request(app).patch(foreignPath + '/' + created.body.id).set('x-fixture-actor', 'contact-foreign')
       .send({ displayName: 'Taken over' }).expect(404);
+    await request(app).get(path + '/' + foreignContactId).set(owner).expect(404);
+    await request(app).get(path + '/' + foreignContactId + '/ledger').set(owner).expect(404);
     await request(app).get(path + '?after=nope').set(owner).expect(400);
   });
   it('edits, searches, filters, and audits contacts', async () => {
