@@ -65,4 +65,6 @@ refundSchema.pre('findOneAndReplace', rejectRefundMutation); refundSchema.pre('d
 refundSchema.pre('deleteMany', rejectRefundMutation); refundSchema.pre('findOneAndDelete', rejectRefundMutation); refundSchema.pre('bulkWrite', rejectRefundMutation);
 refundSchema.index({ organizationId: 1, idempotencyKey: 1 }, { unique: true });
 refundSchema.index({ organizationId: 1, advanceId: 1, refundedAt: -1 });
+refundSchema.index({ organizationId: 1, customerId: 1, refundedAt: -1, _id: -1 });
 export const CustomerAdvanceRefundModel = mongoose.models.CustomerAdvanceRefund || mongoose.model('CustomerAdvanceRefund', refundSchema);
+
