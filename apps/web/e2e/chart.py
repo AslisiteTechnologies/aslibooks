@@ -461,10 +461,22 @@ def test_chart():
             expect(page.get_by_text("Net profit", exact=True)).to_be_visible()
             expect(page.get_by_text("₹34.66", exact=True)).to_be_visible()
             expect(page.get_by_role("heading", name="Recent ledger activity")).to_be_visible()
+            gst_products_route = "**/api/organizations/*/products*"
+            def gst_product_page(route):
+                if "after=" in route.request.url:
+                    body = '{"products":[{"_id":"000000000000000000000002","code":"GST-PAGE-2","name":"GST pagination second page","unit":"unit","unitPricePaise":200,"taxCategory":"not_configured","active":true}],"next":null}'
+                else:
+                    body = '{"products":[{"_id":"000000000000000000000001","code":"GST-PAGE-1","name":"GST pagination first page","unit":"unit","unitPricePaise":100,"taxCategory":"not_configured","active":true}],"next":"000000000000000000000001"}'
+                route.fulfill(status=200, content_type="application/json", body=body)
+            page.route(gst_products_route, gst_product_page)
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="GST", exact=True).click()
             expect(page.get_by_role("heading", name="GST setup review")).to_be_visible()
             expect(page.get_by_text("does not certify GST compliance", exact=False)).to_be_visible()
+            expect(page.get_by_text("Checked 2 active catalog items", exact=False)).to_be_visible()
+            expect(page.get_by_text("GST pagination first page", exact=True)).to_be_visible()
+            expect(page.get_by_text("GST pagination second page", exact=True)).to_be_visible()
+            page.unroute(gst_products_route, gst_product_page)
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Period close", exact=True).click()
             expect(page.get_by_role("heading", name="Fiscal period close")).to_be_visible()
