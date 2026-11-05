@@ -88,7 +88,7 @@ def test_chart():
             page.get_by_role("button", name="Products", exact=True).click()
             page.get_by_label("Code", exact=False).first.fill("E2E-SERVICE")
             page.get_by_label("Name", exact=False).first.fill("Consulting service")
-            page.locator("input[maxlength=\"24\"]").fill("hour")
+            page.get_by_label("Unit", exact=False).last.fill("hour")
             page.get_by_label("Unit price (₹)").fill("50.00")
             page.get_by_role("button", name="Save service").click()
             expect(page.get_by_text("E2E-SERVICE · Consulting service")).to_be_visible()

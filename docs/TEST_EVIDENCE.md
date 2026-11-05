@@ -123,4 +123,5 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 - Product selector follow-up: run #15 timed out on exact Code matching even though the broad match had found both Code and HSN/SAC. The required-field label caused the exact locator mismatch; Code now uses the first broad label match, which is first in the product form. Rerun pending.
 - Product unit selector follow-up: runs #17/#18 passed product Code, then selected numeric Unit price for the Unit substring locator. The unit input now selects the textbox role, separating it from the number spinbutton. Rerun pending.
 - Product Unit follow-up: run #19/#20 passed Code but the textbox role locator timed out on Unit. The product input has a unique `maxlength=24`, now used as the selector. Rerun pending.
+- Product Unit selector follow-up: runs #21/#22 found no rendered `maxlength=24` input. Prior accessible-label matching showed Unit price precedes Unit, so E2E now selects the last broad Unit label match. Exact run pending.
 
