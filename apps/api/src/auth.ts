@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth';
 import { mongodbAdapter } from 'better-auth/adapters/mongodb';
 import { MongoClient } from 'mongodb';
 import { getEmailProviderConfig, sendTransactionalEmail } from './email.js';
+import { configuredTrustedOrigins } from './security/trustedOrigins.js';
 
 let client: MongoClient | undefined;
 
@@ -39,7 +40,7 @@ export async function createAuth() {
         },
       },
     } : {}),
-    trustedOrigins: (process.env.WEB_ORIGIN || 'http://localhost:5173').split(','),
+    trustedOrigins: configuredTrustedOrigins(),
   });
 }
 

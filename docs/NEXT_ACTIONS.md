@@ -8,7 +8,7 @@ Preserve the original workspace edits; never stage the owner-supplied vision fil
 
 ## Current implementation task
 
-Tenant-switch coverage and acceptance matrix commit `eec78a3d1f237f51e036a43f158735898c34b820` passed CI #423/#424, MongoDB #360/#361 and Browser #143/#144. The full audit is clean with patched minimatch 11.0.4; the 390px browser flow now checks a second tenant shows no first-tenant ledger activity. A complete role-permission truth table is locally verified across all 28 role/permission combinations; full replica-set workspace tests now pass 132/132 (126 API, 5 accounting, 1 web). Next publish this role matrix and its evidence, then close remaining route-by-route tenant/role gaps and release-operation blockers.
+Remote head `06ea15b994d2ebc0aa6a7f06f35d7232997efeef` passed CI #425/#426, MongoDB #362/#363 and Browser #145/#146. Local full replica-set tests pass 135/135 after adding an explicit trusted-Origin guard for organization business writes (129 API across 32 files, five accounting, one web); production build, frozen offline install and full `pnpm audit` pass. Local 390px Playwright is running. Next publish the trusted-origin guard with its tests and evidence, verify all six workflows on that exact SHA, then continue the route-by-route tenant authorization audit and MVP work.
 
 ## Exact verification commands
 

@@ -9,6 +9,7 @@ import { emailDeliveryEnabled } from './email.js';
 import { createAuthRateLimiter, createMongoAuthRateLimitStore } from './security/authRateLimit.js';
 import mongoose from 'mongoose';
 import { healthRouter } from './routes/health.js';
+import { configuredTrustedOrigins, requireTrustedOrigin } from './security/trustedOrigins.js';
 
 async function start() {
   const auth = await createAuth();
@@ -18,14 +19,14 @@ async function start() {
 
   const app = express();
   app.disable('x-powered-by');
-  const origins = (process.env.WEB_ORIGIN || 'http://localhost:5173').split(',');
+  const origins = configuredTrustedOrigins();
   app.use(cors({ origin: origins, credentials: true }));
   app.get('/api/public/config', (_req, res) => res.json({ emailVerificationRequired: emailDeliveryEnabled() }));
   app.use('/api/auth', createAuthRateLimiter({ store: authRateLimitStore }));
   app.all('/api/auth/*splat', toNodeHandler(auth));
   app.use(express.json({ limit: '100kb' }));
   app.use('/health', healthRouter(() => mongoose.connection.readyState === 1));
-  app.use('/api/organizations', organizationRouter(async (headers) => {
+  app.use('/api/organizations', requireTrustedOrigin(origins), organizationRouter(async (headers) => {
     const session = await auth.api.getSession({ headers });
     return session?.user ? { id: session.user.id } : null;
   }));

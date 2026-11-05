@@ -199,3 +199,8 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 
 ## Complete role-permission policy matrix (local verification passed, exact-SHA pending)
 - Expanded `authorization.test.ts` to test all four roles against organization read/manage and ledger read/post, plus suspended, missing and unknown roles: 28 cases passed. Existing MongoDB authorized posting tests also prove suspended users cannot create or replay journals/reversals; route integrations exercise viewer denials across financial writes. Full workspace replica-set suite passed 132/132 (126 API across 31 files, 5 accounting, 1 web); ESLint and `git diff --check` passed. Exact-SHA CI/MongoDB/Browser verification pending.
+
+
+## Trusted browser origins (local verification, exact-SHA workflows pending)
+- `configuredTrustedOrigins()` trims configured `WEB_ORIGIN` entries and supplies the same list to CORS and Better Auth. Organization mutation routes reject untrusted and `null` Origin headers before handler execution while allowing exact trusted origins, origin-less API clients, and safe reads.
+- Focused trusted-origin tests passed 3/3. The full MongoDB replica-set workspace suite passed 135/135 (129 API across 32 files, five accounting, one web); typecheck, ESLint, frozen offline install, production build, full dependency audit and `git diff --check` passed. Exact-SHA workflows and the rerun 390px browser journey are pending.

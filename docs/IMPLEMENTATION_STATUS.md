@@ -26,3 +26,6 @@ Checkpoint update: per-contact reconciliation commit `0c6fb67e20b3484b7939880b06
 
 The minimatch 11.0.4 override and refreshed project handoff docs are verified locally: full audit reports no known vulnerabilities; after the override, 113 workspace tests, frozen install, typecheck, lint and production build pass. Exact-SHA workflows for this final security override are pending. Production readiness remains unestablished.
 
+
+
+Checkpoint update: expanded role-permission truth table commit `06ea15b994d2ebc0aa6a7f06f35d7232997efeef` passed CI #425/#426, MongoDB #362/#363 and Browser #145/#146. Latest local workspace tests pass 135/135 (129 API across 32 files, five accounting, one web); frozen install, typecheck, lint, production build, full dependency audit and diff check pass. An explicit Origin allowlist guard for unsafe organization business writes is implemented locally with focused tests; exact-SHA workflows are pending. The full local 390px browser journey is being rerun. Production readiness remains unestablished.

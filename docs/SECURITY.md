@@ -17,3 +17,8 @@ Attachment storage uses private MongoDB GridFS and is accessible only through te
 Review cookie lifetime and HTTPS flags, allowed origins, CSRF on business routes, distributed abuse limits, sensitive exception logging and dependency advisories before release. Separate credentials by environment. Keep secrets and financial payloads out of logs and support tickets.
 
 Restore an encrypted backup into a separate isolated database with restricted credentials. Compare tenant counts, journal/audit linkage, unique indexes, trial balance and sample reports as of the restore point. Record elapsed recovery time and data loss against owner-approved recovery objectives. Rehearse before production cutover.
+
+
+## Browser request origin checks
+
+Organization business write routes reject unsafe browser requests whose `Origin` header is absent from the normalized `WEB_ORIGIN` allowlist, including opaque `null` origins. Safe GET/HEAD/OPTIONS requests and origin-less non-browser API clients remain supported; authentication retains its own trusted-origin configuration. This check reduces cross-site request forgery exposure for cookie-authenticated writes but does not replace secure cookie settings, HTTPS, session controls or route authorization. Focused allowlist/block/allow tests pass locally; exact-SHA CI verification is pending.
