@@ -8,7 +8,7 @@ Preserve the original workspace edits; never stage the owner-supplied vision fil
 
 ## Current implementation task
 
-Verify exact-SHA CI, MongoDB and browser workflows for contact fixture correction, treating E2E #53/#54 as invalid evidence. Complete the contact ledger API with allocated advance and refund events, cursor pagination, integration fixtures and a responsive contact statement view; then reconcile ledgers to reports.
+Verify exact-SHA CI, MongoDB and browser workflows for contact fixture correction, treating E2E #53/#54 as invalid evidence. Fix and publish the contact statement cross-tenant test (expected 403), rerun CI/MongoDB/browser at exact SHA, then complete allocated advance and refund events, cursor pagination, financial fixtures and a responsive statement view; reconcile statements to reports.
 
 ## Exact verification commands
 
