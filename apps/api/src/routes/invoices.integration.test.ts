@@ -54,6 +54,7 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
     ]);
     await MembershipModel.create([
       { organizationId, authUserId: 'invoice-owner', role: 'owner' },
+      { organizationId, authUserId: 'invoice-accountant', role: 'accountant' },
       { organizationId, authUserId: 'invoice-viewer', role: 'viewer' },
       { organizationId: peerId, authUserId: 'invoice-peer', role: 'owner' },
     ]);
@@ -115,9 +116,10 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
       .send({ customerId: String(customerId), lines: [{ productId: String(serviceId), quantity: 3 }] }).expect(200);
 
     const issuePayload = { idempotencyKey: 'invoice-issue-0001' };
+    await request(app).post(`${path}/${draftId}/issue`).set({ 'x-fixture-actor': 'invoice-viewer' }).send(issuePayload).expect(403);
     const issueAttempts = await Promise.all([
-      request(app).post(`${path}/${draftId}/issue`).set(owner).send(issuePayload),
-      request(app).post(`${path}/${draftId}/issue`).set(owner).send(issuePayload),
+      request(app).post(`${path}/${draftId}/issue`).set({ 'x-fixture-actor': 'invoice-accountant' }).send(issuePayload),
+      request(app).post(`${path}/${draftId}/issue`).set({ 'x-fixture-actor': 'invoice-accountant' }).send(issuePayload),
     ]);
     expect(issueAttempts.map(response => response.status).sort()).toEqual([200, 201]);
     expect(issueAttempts[0].body.id).toBe(issueAttempts[1].body.id);
@@ -132,7 +134,7 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
       ]);
     expect(await AuditEventModel.countDocuments({ organizationId, action: 'invoice.issued' })).toBe(1);
     expect(await InvoiceSequenceModel.countDocuments({ organizationId })).toBe(1);
-    const replay = await request(app).post(`${path}/${draftId}/issue`).set(owner).send({ idempotencyKey: 'invoice-issue-0001' }).expect(200);
+    const replay = await request(app).post(`${path}/${draftId}/issue`).set({ 'x-fixture-actor': 'invoice-accountant' }).send({ idempotencyKey: 'invoice-issue-0001' }).expect(200);
     expect(replay.body).toMatchObject({ replayed: true, journalId: issued.body.journalId, invoiceNumber: issued.body.invoiceNumber });
     await request(app).post(`${path}/${draftId}/issue`).set(owner).send({ idempotencyKey: 'invoice-issue-0002' }).expect(409);
     const creditPath = `${path}/${draftId}/credit-notes`;

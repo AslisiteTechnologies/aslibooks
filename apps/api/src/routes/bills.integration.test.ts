@@ -28,7 +28,8 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     await mongoose.connect(uri!, { dbName });
     await Promise.all([AccountModel.init(), AuditEventModel.init(), BillModel.init(), VendorCreditModel.init(), ContactModel.init(), FiscalPeriodModel.init(), JournalModel.init(), MembershipModel.init(), OrganizationModel.init(), VendorPaymentModel.init()]);
     await OrganizationModel.create([{ _id: organizationId, name: 'Bill fixture', slug: `bill-${organizationId}` }, { _id: peerId, name: 'Bill peer', slug: `bill-peer-${peerId}` }]);
-    await MembershipModel.create([{ organizationId, authUserId: 'bill-owner', role: 'owner' }, { organizationId, authUserId: 'bill-viewer', role: 'viewer' }, { organizationId: peerId, authUserId: 'bill-peer', role: 'owner' }]);
+    await MembershipModel.create([{ organizationId, authUserId: 'bill-owner', role: 'owner' }, { organizationId, authUserId: 'bill-accountant', role: 'accountant' },
+      { organizationId, authUserId: 'bill-viewer', role: 'viewer' }, { organizationId: peerId, authUserId: 'bill-peer', role: 'owner' }]);
     await ContactModel.create([{ _id: vendorId, organizationId, displayName: 'Vendor One', roles: ['vendor'] }, { _id: peerVendorId, organizationId: peerId, displayName: 'Peer Vendor', roles: ['vendor'] }]);
     await AccountModel.create([{ _id: expenseId, organizationId, code: '5000', name: 'Office supplies', type: 'expense' },
       { _id: payableId, organizationId, code: '2000', name: 'Accounts payable', type: 'liability' },
@@ -53,11 +54,12 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     await request(app).patch(`/orgs/${peerId}/bills/${draftId}`).set({ 'x-fixture-actor': 'bill-peer' })
       .send({ ...payload, vendorId: String(peerVendorId), expenseAccountId: String(peerExpenseId) }).expect(404);
     expect(await BillModel.findById(draftId)).toMatchObject({ organizationId, status: 'draft', description: 'Paper and stationery' });
-    await request(app).post(`${path}/${draftId}/post`).set(owner).send({ idempotencyKey: 'bill-post-0001' }).expect(201);
+    await request(app).post(`${path}/${draftId}/post`).set({ 'x-fixture-actor': 'bill-viewer' }).send({ idempotencyKey: 'bill-post-0001' }).expect(403);
+    await request(app).post(`${path}/${draftId}/post`).set({ 'x-fixture-actor': 'bill-accountant' }).send({ idempotencyKey: 'bill-post-0001' }).expect(201);
     const bill = await BillModel.findById(draftId).lean<{ journalId: Types.ObjectId; status: string; amountPaise: number } | null>(); expect(bill).toMatchObject({ status: 'posted', amountPaise: 12345 });
     const journal = await JournalModel.findOne({ _id: bill!.journalId }).lean<{ lines: Array<{ accountId: Types.ObjectId; debitPaise: number; creditPaise: number }> }>();
     expect(journal!.lines.map(line => [String(line.accountId), line.debitPaise, line.creditPaise])).toEqual([[String(expenseId), 12345, 0], [String(payableId), 0, 12345]]);
-    await request(app).post(`${path}/${draftId}/post`).set(owner).send({ idempotencyKey: 'bill-post-0001' }).expect(200).expect(response => expect(response.body.replayed).toBe(true));
+    await request(app).post(`${path}/${draftId}/post`).set({ 'x-fixture-actor': 'bill-accountant' }).send({ idempotencyKey: 'bill-post-0001' }).expect(200).expect(response => expect(response.body.replayed).toBe(true));
     await request(app).post(`${path}/${draftId}/post`).set(owner).send({ idempotencyKey: 'bill-post-0002' }).expect(409);
     await request(app).patch(`${path}/${draftId}`).set(owner).send(payload).expect(404);
     await request(app).get(`/orgs/${peerId}/bills`).set({ 'x-fixture-actor': 'bill-peer' }).expect(200).expect(response => expect(response.body.bills).toHaveLength(0));

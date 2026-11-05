@@ -208,3 +208,22 @@ git diff --check
 ```
 
 Release blockers needing external owner/expert work: qualified accounting/GST policy review, staged/production credentials and deployment approval, DB grants/backup restoration/monitoring, email delivery provider, attachment malware and retention decisions, and final accessibility/security review. PR #1 stays Draft and production remains undeployed.
+
+## Active task: publish accountant financial-posting coverage, then close the route-role matrix
+1. Publish `apps/api/src/routes/invoices.integration.test.ts`, `apps/api/src/routes/bills.integration.test.ts`, `apps/api/src/routes/receipts.integration.test.ts`, and updated progress documents on top of remote `69b3450af81a3a7535916680b0fea34dd17d2797`.
+2. Verify exact-SHA CI, MongoDB, and Browser workflows.
+3. Continue route-by-route verification of the role matrix and exported data boundaries. Reconcile remaining matrix gaps against mounted routes before claiming acceptance.
+
+PowerShell validation from repository root:
+```powershell
+$env:MONGODB_TEST_URI='mongodb://127.0.0.1:37491/?replicaSet=testset'
+$env:MONGODB_TEST_DB_NAME='aslibooks_test_accountant_full'
+pnpm test
+pnpm typecheck
+pnpm lint
+pnpm build
+pnpm audit --audit-level=high
+git diff --check
+```
+
+External release gates remain: qualified accounting/GST policy review; authorized staging/production access and deployment approval; DB least-privilege grants, restore/monitoring; email delivery; attachment malware/retention; final accessibility/security review. Keep PR #1 Draft, do not touch `main`, and do not deploy production.

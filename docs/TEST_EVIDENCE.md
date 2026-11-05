@@ -317,3 +317,7 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 ## Role coverage: attachments, settings, fiscal periods (local verification passed; hosted checks pending)
 - Accountant source attachment uploads are allowed; viewer upload remains denied while viewer listing/download is allowed. Viewer organization rename and viewer fiscal-period close are denied; the existing accountant close denial is also asserted.
 - Focused suites pass 3/3. Full workspace passes 142/142; typecheck/lint/build/high-severity audit/diff checks pass. Parent `ca8ae17336f5a831d4d12ddaa69f5e20a6d4ad29` passed CI #478, MongoDB #415 and Browser #198.
+
+## Accountant financial posting coverage (local verification passed; hosted checks pending)
+- An accountant issues an invoice and replays it idempotently while a viewer issue attempt returns 403; an accountant posts a vendor bill while a viewer post attempt returns 403; an accountant records/replays a receipt while viewer receipt creation is denied.
+- Focused invoice/bill/receipt suites pass 8/8. Full workspace passes 142/142; typecheck/lint/build/high-severity audit/diff pass. Parent `69b3450af81a3a7535916680b0fea34dd17d2797` passed CI #480, MongoDB #417 and Browser #200.

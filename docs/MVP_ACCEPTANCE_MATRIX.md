@@ -60,3 +60,5 @@ Viewer denial now has direct route integration evidence for bank statement impor
 The accounting permission matrix has positive accountant-write evidence and negative viewer-write evidence for statement import, matching, and reconciliation. This extends criterion 2 but does not close the full route-by-route role matrix or role-update race scenarios.
 
 Additional role assertions now cover source attachment read/write separation, organization settings writes, and fiscal period closing for viewers/accountants. Criterion 2 remains partial until all route permissions and racing role changes are independently covered.
+
+Core invoice issuance, bill posting, and receipt recording now demonstrate accountant allow and viewer deny behavior at route level, alongside idempotent retries. Criterion 2 remains partial for unreviewed routes and role-change races.
