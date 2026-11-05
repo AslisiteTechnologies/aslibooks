@@ -14,15 +14,20 @@ describe.skipIf(!enabled)('organization settings API', () => {
   const app = express(); app.use(express.json());
   app.use('/orgs', organizationRouter(async headers => { const id = headers.get('x-fixture-actor'); return id ? { id } : null; }));
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => { res.status(500).json({ error: String(error) }); });
-  const organizationId = new Types.ObjectId(); const path = `/orgs/${organizationId}/settings`;
+  const organizationId = new Types.ObjectId(); const foreignOrganizationId = new Types.ObjectId();
+  const path = `/orgs/${organizationId}/settings`; const foreignPath = `/orgs/${foreignOrganizationId}/settings`;
   beforeAll(async () => {
     await mongoose.connect(uri!, { dbName });
     await Promise.all([AuditEventModel.init(), FiscalPeriodModel.init(), MembershipModel.init(), OrganizationModel.init()]);
-    await OrganizationModel.create({ _id: organizationId, name: 'Settings fixture', slug: `settings-${organizationId}` });
+    await OrganizationModel.create([{ _id: organizationId, name: 'Settings fixture', slug: `settings-${organizationId}` },
+      { _id: foreignOrganizationId, name: 'Foreign settings fixture', slug: `settings-foreign-${foreignOrganizationId}` }]);
     await MembershipModel.create([{ organizationId, authUserId: 'settings-owner', role: 'owner' }, { organizationId, authUserId: 'settings-admin', role: 'admin' },
       { organizationId, authUserId: 'settings-accountant', role: 'accountant' }, { organizationId, authUserId: 'settings-viewer', role: 'viewer' }]);
   });
   it('validates manager authorization and locks fiscal year changes after accounting begins', async () => {
+    await request(app).get(foreignPath).set({ 'x-fixture-actor': 'settings-owner' }).expect(403);
+    await request(app).patch(foreignPath).set({ 'x-fixture-actor': 'settings-owner' }).send({ name: 'Cross-tenant write' }).expect(403);
+    expect(await OrganizationModel.findById(foreignOrganizationId).lean()).toMatchObject({ name: 'Foreign settings fixture' });
     await request(app).get(path).set({ 'x-fixture-actor': 'settings-viewer' }).expect(200).expect(response => expect(response.body.settings.fiscalYearStartMonth).toBe(4));
     await request(app).patch(path).set({ 'x-fixture-actor': 'settings-accountant' }).send({ name: 'Nope' }).expect(403);
     await request(app).patch(path).set({ 'x-fixture-actor': 'settings-owner' }).send({ gstin: 'not-a-gstin' }).expect(400);
@@ -33,5 +38,6 @@ describe.skipIf(!enabled)('organization settings API', () => {
     await request(app).patch(path).set({ 'x-fixture-actor': 'settings-admin' }).send({ name: 'Allowed rename' }).expect(200);
     expect(await AuditEventModel.countDocuments({ organizationId, action: 'organization.settings_updated' })).toBe(2);
   });
-  afterAll(async () => { await mongoose.disconnect(); });
+  afterAll(async () => { await AuditEventModel.deleteMany({ organizationId }); await FiscalPeriodModel.deleteMany({ organizationId });
+    await MembershipModel.deleteMany({ organizationId }); await OrganizationModel.deleteMany({ _id: { $in: [organizationId, foreignOrganizationId] } }); await mongoose.disconnect(); });
 });

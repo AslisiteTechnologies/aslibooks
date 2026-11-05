@@ -17,14 +17,17 @@ const enabled = !!uri && !!dbName && /^aslibooks_test_[a-z0-9_]+$/i.test(dbName)
 describe.skipIf(!enabled)('cash and bank transfers', () => {
   const app = express(); app.use(express.json());
   app.use('/orgs', organizationRouter(async headers => { const id = headers.get('x-fixture-actor'); return id ? { id } : null; }));
-  const org = new Types.ObjectId(); const cash = new Types.ObjectId(); const bank = new Types.ObjectId(); const path = `/orgs/${org}/transfers`;
+  const org = new Types.ObjectId(); const foreignOrg = new Types.ObjectId();
+  const cash = new Types.ObjectId(); const bank = new Types.ObjectId(); const foreignCash = new Types.ObjectId(); const path = `/orgs/${org}/transfers`;
   beforeAll(async () => {
     await mongoose.connect(uri!, { dbName: dbName! });
     await Promise.all([OrganizationModel.init(), MembershipModel.init(), AccountModel.init(), JournalModel.init(), AuditEventModel.init(), FiscalPeriodModel.init(), CashTransferModel.init()]);
-    await OrganizationModel.create({ _id: org, name: 'Transfer test', slug: `transfer-${org}` });
+    await OrganizationModel.create([{ _id: org, name: 'Transfer test', slug: `transfer-${org}` },
+      { _id: foreignOrg, name: 'Foreign transfer test', slug: `transfer-foreign-${foreignOrg}` }]);
     await MembershipModel.create([{ organizationId: org, authUserId: 'transfer-owner', role: 'owner' }, { organizationId: org, authUserId: 'transfer-viewer', role: 'viewer' }]);
     await AccountModel.create([{ _id: cash, organizationId: org, code: '1000', name: 'Cash', type: 'asset', system: true },
       { _id: bank, organizationId: org, code: '1010', name: 'Bank', type: 'asset', system: true }]);
+    await AccountModel.create({ _id: foreignCash, organizationId: foreignOrg, code: '1000', name: 'Foreign cash', type: 'asset', system: true });
   });
   it('posts an atomic balanced transfer once, supports safe replay and fences access', async () => {
     const owner = { 'x-fixture-actor': 'transfer-owner' };
@@ -32,6 +35,9 @@ describe.skipIf(!enabled)('cash and bank transfers', () => {
     await request(app).post(path).send(payload).expect(401);
     await request(app).post(path).set({ 'x-fixture-actor': 'transfer-viewer' }).send(payload).expect(403);
     await request(app).post(path).set(owner).send({ ...payload, fromAccountId: String(bank) }).expect(400);
+    await request(app).post(path).set(owner).send({ ...payload, idempotencyKey: `foreign-transfer-from-${org}`, fromAccountId: String(foreignCash) }).expect(422);
+    await request(app).post(path).set(owner).send({ ...payload, idempotencyKey: `foreign-transfer-to-${org}`, toAccountId: String(foreignCash) }).expect(422);
+    expect(await CashTransferModel.countDocuments({ organizationId: org })).toBe(0);
     const posted = await request(app).post(path).set(owner).send(payload).expect(201);
     expect(posted.body.replayed).toBe(false);
     const journal = await JournalModel.findById(posted.body.journalId).lean<{ lines: Array<{ accountId: Types.ObjectId; debitPaise: number; creditPaise: number }> } | null>();
@@ -53,6 +59,7 @@ describe.skipIf(!enabled)('cash and bank transfers', () => {
     await JournalModel.collection.deleteMany({ organizationId: org });
     await AuditEventModel.deleteMany({ organizationId: org }); await CashTransferModel.collection.deleteMany({ organizationId: org });
     await FiscalPeriodModel.deleteMany({ organizationId: org }); await AccountModel.deleteMany({ organizationId: org });
-    await MembershipModel.deleteMany({ organizationId: org }); await OrganizationModel.deleteOne({ _id: org }); await mongoose.disconnect();
+    await MembershipModel.deleteMany({ organizationId: org }); await AccountModel.deleteMany({ organizationId: foreignOrg });
+    await OrganizationModel.deleteMany({ _id: { $in: [org, foreignOrg] } }); await mongoose.disconnect();
   });
 });

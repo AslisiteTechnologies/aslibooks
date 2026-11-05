@@ -28,7 +28,7 @@ describe.skipIf(!enabled)('fiscal period close controls', () => {
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     res.status(500).json({ error: String(error) });
   });
-  const org = new Types.ObjectId();
+  const org = new Types.ObjectId(); const foreignOrg = new Types.ObjectId(); const foreignPeriodId = new Types.ObjectId();
   const debit = new Types.ObjectId();
   const credit = new Types.ObjectId();
   const path = `/orgs/${org}/fiscal-periods`;
@@ -40,7 +40,10 @@ describe.skipIf(!enabled)('fiscal period close controls', () => {
       OrganizationModel.init(), MembershipModel.init(), AccountModel.init(), JournalModel.init(),
       AuditEventModel.init(), FiscalPeriodModel.init(),
     ]);
-    await OrganizationModel.create({ _id: org, name: 'Period controls', slug: `period-${suffix}` });
+    await OrganizationModel.create([{ _id: org, name: 'Period controls', slug: `period-${suffix}` },
+      { _id: foreignOrg, name: 'Foreign period controls', slug: `period-foreign-${foreignOrg}` }]);
+    await FiscalPeriodModel.create({ _id: foreignPeriodId, organizationId: foreignOrg,
+      startDate: '2026-04-01', endDateExclusive: '2027-04-01', status: 'open' });
     await MembershipModel.create([
       { organizationId: org, authUserId: 'period-owner', role: 'owner' },
       { organizationId: org, authUserId: 'period-accountant', role: 'accountant' },
@@ -65,6 +68,11 @@ describe.skipIf(!enabled)('fiscal period close controls', () => {
     expect(listed.body.periods).toHaveLength(1);
     expect(listed.body.periods[0]).toMatchObject({ status: 'open', startDate: expect.stringMatching(/^\d{4}-04-01$/) });
     const periodId = listed.body.periods[0].id as string;
+    expect(listed.body.periods.map((period: { id: string }) => period.id)).not.toContain(String(foreignPeriodId));
+    await request(app).get(`${path}/${foreignPeriodId}/close-checklist`).set('x-fixture-actor', 'period-owner').expect(404);
+    await request(app).post(`${path}/${foreignPeriodId}/close`).set('x-fixture-actor', 'period-owner')
+      .send({ confirmChecklist: true }).expect(404);
+    expect(await FiscalPeriodModel.findById(foreignPeriodId)).toMatchObject({ status: 'open' });
     await InvoiceModel.create({ organizationId: org, customerId: new Types.ObjectId(), customerName: 'Close review customer', lines: [], totalPaise: 100 });
     await BillModel.create({ organizationId: org, vendorId: new Types.ObjectId(), vendorName: 'Close review vendor', vendorReference: `close-${suffix}`, expenseAccountId: debit, expenseAccountName: 'Cash', description: 'Pending draft', amountPaise: 100 });
     const bankTransaction = await BankTransactionModel.create({ organizationId: org, accountId: debit, fingerprint: suffix, transactionDate: listed.body.periods[0].startDate, amountPaise: 100, description: 'Needs reconciliation', importedBy: 'period-accountant' });
@@ -101,9 +109,10 @@ describe.skipIf(!enabled)('fiscal period close controls', () => {
     await BankTransactionModel.collection.deleteMany(filter);
     await AuditEventModel.deleteMany(filter);
     await FiscalPeriodModel.deleteMany(filter);
+    await FiscalPeriodModel.collection.deleteMany({ organizationId: foreignOrg });
     await AccountModel.deleteMany(filter);
     await MembershipModel.deleteMany(filter);
-    await OrganizationModel.deleteOne({ _id: org });
+    await OrganizationModel.deleteMany({ _id: { $in: [org, foreignOrg] } });
     await mongoose.disconnect();
   });
 });

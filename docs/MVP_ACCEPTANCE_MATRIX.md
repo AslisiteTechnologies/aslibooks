@@ -30,3 +30,7 @@ This matrix maps the acceptance tests in `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.m
 ## Tenant-isolation audit follow-up
 - Customer and vendor advance test fixtures now seed persisted resources owned by a second organization and assert cross-tenant allocation/refund attempts return 404 and foreign IDs are absent from lists. Focused tests pass locally and the full workspace suite passes 136/136. The exact-SHA workflow for this test commit is pending.
 - Criterion 1 remains partial. Continue reviewing every mounted `/orgs/:organizationId/...` route, object reference, attachment, and export; verify foreign IDs against actual records and assert no response or financial side effect leaks.
+
+Additional tenant-isolation coverage under implementation: real foreign fiscal period IDs are hidden from lists and denied for close-checklist/close; settings routes deny a nonmember; foreign bill IDs cannot be mutated or used in payment allocations. Focused tests pass, full suite pending. Criterion 1 remains partial.
+
+Tenant/object-reference extension (local verified; exact-SHA pending): in addition to customer/vendor advance IDs, tests now cover real foreign fiscal periods and vendor bills, nonmember organization settings access, vendor-payment allocations referencing a foreign bill, and transfer attempts using foreign cash/bank accounts. Full workspace suite passes 136/136; criterion 1 remains partial until remaining routes/exports are audited.

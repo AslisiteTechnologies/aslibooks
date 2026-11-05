@@ -21,7 +21,7 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => { res.status(500).json({ error: String(error) }); });
   const organizationId = new Types.ObjectId(); const peerId = new Types.ObjectId();
   const vendorId = new Types.ObjectId(); const peerVendorId = new Types.ObjectId();
-  const expenseId = new Types.ObjectId(); const payableId = new Types.ObjectId();
+  const expenseId = new Types.ObjectId(); const peerExpenseId = new Types.ObjectId(); const payableId = new Types.ObjectId();
   const owner = { 'x-fixture-actor': 'bill-owner' }; const path = `/orgs/${organizationId}/bills`;
   let draftId = '';
   beforeAll(async () => {
@@ -30,7 +30,9 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     await OrganizationModel.create([{ _id: organizationId, name: 'Bill fixture', slug: `bill-${organizationId}` }, { _id: peerId, name: 'Bill peer', slug: `bill-peer-${peerId}` }]);
     await MembershipModel.create([{ organizationId, authUserId: 'bill-owner', role: 'owner' }, { organizationId, authUserId: 'bill-viewer', role: 'viewer' }, { organizationId: peerId, authUserId: 'bill-peer', role: 'owner' }]);
     await ContactModel.create([{ _id: vendorId, organizationId, displayName: 'Vendor One', roles: ['vendor'] }, { _id: peerVendorId, organizationId: peerId, displayName: 'Peer Vendor', roles: ['vendor'] }]);
-    await AccountModel.create([{ _id: expenseId, organizationId, code: '5000', name: 'Office supplies', type: 'expense' }, { _id: payableId, organizationId, code: '2000', name: 'Accounts payable', type: 'liability' }]);
+    await AccountModel.create([{ _id: expenseId, organizationId, code: '5000', name: 'Office supplies', type: 'expense' },
+      { _id: payableId, organizationId, code: '2000', name: 'Accounts payable', type: 'liability' },
+      { _id: peerExpenseId, organizationId: peerId, code: '5000', name: 'Peer office supplies', type: 'expense' }]);
   });
   it('creates drafts without posting, validates tenant and roles, then posts atomically and idempotently', async () => {
     const payload = { idempotencyKey: 'bill-draft-key-100', vendorId: String(vendorId), vendorReference: 'INV-100', expenseAccountId: String(expenseId), description: 'Paper and stationery', amountPaise: 12345, dueDate: '2026-11-30' };
@@ -45,6 +47,9 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     expect(await BillModel.countDocuments({ organizationId, draftIdempotencyKey: payload.idempotencyKey })).toBe(1);
     expect(await AuditEventModel.countDocuments({ organizationId, action: 'bill.draft_created' })).toBe(1);
     expect(await JournalModel.countDocuments({ organizationId })).toBe(0);
+    await request(app).patch(`/orgs/${peerId}/bills/${draftId}`).set({ 'x-fixture-actor': 'bill-peer' })
+      .send({ ...payload, vendorId: String(peerVendorId), expenseAccountId: String(peerExpenseId) }).expect(404);
+    expect(await BillModel.findById(draftId)).toMatchObject({ organizationId, status: 'draft', description: 'Paper and stationery' });
     await request(app).post(`${path}/${draftId}/post`).set(owner).send({ idempotencyKey: 'bill-post-0001' }).expect(201);
     const bill = await BillModel.findById(draftId).lean<{ journalId: Types.ObjectId; status: string; amountPaise: number } | null>(); expect(bill).toMatchObject({ status: 'posted', amountPaise: 12345 });
     const journal = await JournalModel.findOne({ _id: bill!.journalId }).lean<{ lines: Array<{ accountId: Types.ObjectId; debitPaise: number; creditPaise: number }> }>();
@@ -86,6 +91,9 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     expect(await BillModel.findById(draft.body.id)).toMatchObject({ status: 'partially_paid', amountPaidPaise: 2000 });
     await request(app).post(`${paymentPath}/vendor-payments`).set(owner).send(first).expect(200).expect(response => expect(response.body.replayed).toBe(true));
     await request(app).post(`${paymentPath}/vendor-payments`).set(owner).send({ ...first, allocations: [{ billId: draft.body.id, amountPaise: 2001 }] }).expect(409);
+    await request(app).post(`${paymentPath}/vendor-payments`).set(owner).send({ ...first, idempotencyKey: 'vendor-payment-foreign-bill', allocations: [{ billId: draftId, amountPaise: 1 }] }).expect(404);
+    expect(await VendorPaymentModel.countDocuments({ organizationId: paymentOrg })).toBe(1);
+    expect(await BillModel.findById(draftId)).toMatchObject({ amountPaidPaise: 0 });
     await request(app).post(`${paymentPath}/vendor-payments`).set(owner).send({ ...first, idempotencyKey: 'vendor-payment-overpay', allocations: [{ billId: draft.body.id, amountPaise: 3001 }] }).expect(409);
     const competingFinals = await Promise.all([
       request(app).post(`${paymentPath}/vendor-payments`).set(owner).send({ ...first, idempotencyKey: 'vendor-payment-final-race-a', allocations: [{ billId: draft.body.id, amountPaise: 3000 }] }),

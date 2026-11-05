@@ -261,3 +261,14 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 ## Customer/vendor advance tenant isolation regression (local verification, exact-SHA workflows pending)
 - Added foreign-organization customer and vendor advance records to replica-set integration fixtures. Current-tenant requests to allocate/refund these resources return 404, and list responses omit the foreign IDs. Focused suites passed 2/2.
 - Full workspace `pnpm test` passed 136/136 (130 API tests in 32 files, five accounting, one web). `pnpm typecheck`, `pnpm lint`, `pnpm audit --audit-level=high`, and `git diff --check` passed. Exact-SHA workflows for this test-only follow-up are pending publication.
+
+## Expanded route-object tenant boundary tests (local verification; exact-SHA pending)
+- Fiscal-period APIs now seed a real period under another organization, verify it is absent from the current organization list, return 404 for cross-tenant checklist/close requests, and leave it open.
+- Organization settings tests verify a user who owns organization A receives 403 for reads and writes against organization B and that B remains unchanged.
+- Vendor bill/payment tests verify a peer owner cannot mutate a real draft belonging to another organization, and a vendor payment allocation referencing a real foreign bill returns 404 with no additional payment and no change to the foreign bill.
+- Focused fiscal-period, settings, and bills tests passed (6/6). Typecheck, lint, and diff checks passed. The full workspace run is in progress; exact-SHA workflows are pending publication.
+
+## Extended tenant/object-reference regression suite (local verified; exact-SHA workflows pending)
+- Cross-tenant reads/writes now have direct cases for foreign customer/vendor advances, fiscal periods, organization settings, vendor bills, vendor-payment bill allocations, and cash-transfer accounts. Tests verify 404/403/422 rejection as appropriate, foreign documents remain unchanged, and rejected requests create no transfer/payment side effects.
+- The full workspace `pnpm test` passed 136/136 (130 API in 32 files, five accounting, one web). Focused suites for fiscal periods, settings, and bills passed 6/6. `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm audit --audit-level=high`, and `git diff --check` all passed.
+- Previous security test commit `ddc8bf1c068c182ecfc5991411fd66e76dda03a1` passed exact-SHA CI #450, MongoDB #387, and Browser #170. Workflows for this extension are pending.
