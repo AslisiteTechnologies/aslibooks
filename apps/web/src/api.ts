@@ -41,6 +41,8 @@ export type ControlReconciliation = { asOf: string; receivables: { accountName: 
 export type BankTransaction = { id: string; transactionDate: string; amountPaise: number; description: string; status: 'unmatched' | 'matched' | 'reconciled'; journalId: string | null };
 export type BankReconciliation = { id: string; periodStart: string; periodEnd: string; openingBalancePaise: number; closingBalancePaise: number; ledgerBalancePaise: number; transactionCount: number };
 export type DashboardResult = { from: string; to: string; revenuePaise: number; expensesPaise: number; netProfitPaise: number; cashPaise: number; receivablesPaise: number; payablesPaise: number; recentActivity: Array<{ id: string; description: string; postedAt: string; lineCount: number }> };
+export type OrganizationMember = { id: string; name: string; email: string; role: string; status: 'active' | 'invited' | 'suspended'; isSelf: boolean };
+export type OrganizationInvitation = { id: string; organizationId: string; organizationName: string; organizationSlug: string; role: string };
 
 async function jsonRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
@@ -143,6 +145,11 @@ export const api = {
   matchBankTransaction: (org: string, transactionId: string, journalId: string) => jsonRequest<{ matched: true }>(`/api/organizations/${org}/bank-statements/${transactionId}/match`, { method: 'POST', body: JSON.stringify({ journalId }) }),
   reconcileBankStatement: (org: string, input: { accountId: string; periodStart: string; periodEnd: string; openingBalancePaise: number; closingBalancePaise: number }) => jsonRequest<{ id: string; replayed: boolean; transactionCount: number }>(`/api/organizations/${org}/bank-statements/reconcile`, { method: 'POST', body: JSON.stringify(input) }),
   dashboard: (org: string, from: string, to: string) => jsonRequest<DashboardResult>(`/api/organizations/${org}/reports/dashboard?${new URLSearchParams({ from, to })}`),
+  members: (org: string) => jsonRequest<{ members: OrganizationMember[] }>(`/api/organizations/${org}/members`),
+  inviteMember: (org: string, email: string, role: 'admin' | 'accountant' | 'viewer') => jsonRequest<{ id: string; status: 'invited' }>(`/api/organizations/${org}/members`, { method: 'POST', body: JSON.stringify({ email, role }) }),
+  updateMember: (org: string, memberId: string, input: { role: string } | { status: 'active' | 'suspended' }) => jsonRequest<{ updated: true }>(`/api/organizations/${org}/members/${memberId}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  invitations: () => jsonRequest<{ invitations: OrganizationInvitation[] }>('/api/organizations/invitations'),
+  acceptInvitation: (org: string, invitationId: string) => jsonRequest<{ accepted: true; organizationId: string }>(`/api/organizations/${org}/invitations/${invitationId}/accept`, { method: 'POST', body: '{}' }),
   session: () => jsonRequest<SessionResponse>('/api/auth/get-session'),
   signIn: (email: string, password: string) => jsonRequest<unknown>('/api/auth/sign-in/email', {
     method: 'POST', body: JSON.stringify({ email, password }),
@@ -156,3 +163,4 @@ export const api = {
     method: 'POST', body: JSON.stringify({ name, slug }),
   }),
 };
+

@@ -2,58 +2,41 @@
 
 ## Current checkpoint
 
-Branch `develop/phase-1-foundation`. CSV export commit `cfd8655ed740250a9edd318faeb8d5ec5ba424b6` passed CI #220 and MongoDB #157. Banking commit `1a820651d08ed1d0c56926e0a3635db05cb76420` passed CI #222 and MongoDB #159. Dashboard commit `73e6a0cfeecd3a2cc355485dc739124429d0e43c` passed CI #224 but MongoDB #161 failed one assertion: the test’s Cash account had a non-starter code and was excluded from the 1000/1010 cash KPI. The fixture is corrected locally. Contact detail/edit API and UI improvements are also local. Typecheck/lint/build pass. Local Mongo is unavailable, so exact database and revised browser verification await the next commit’s Actions; do not count the failed dashboard test as passed. Preserve untracked `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`; never stage it.
+Branch `develop/phase-1-foundation`. Last published head `2b3ebf4a5f2490ea274ff64ef770beaf284ea597` has green CI #226 and MongoDB #163. The dashboard cash-fixture correction and contacts details/edit API tests passed in those workflows. This working tree adds member invitations, acceptance, role changes, suspension/reactivation, the Team UI, and DB integration coverage; none of this team work is committed or covered by CI yet. Local `pnpm typecheck`, `pnpm lint`, `pnpm build`, and `pnpm test` passed. The local test run reported 21 passing unit tests and 67 MongoDB integration tests skipped (no local replica set). Do not count the skipped tests as passing. Browser assertions for dashboard and contact edit remain unexecuted.
 
-## Next implementation task after contact details
+Preserve untracked `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`; do not stage it. Invitations currently require an existing verified Better Auth account, but email verification delivery is not configured. The app also does not send invitation notification emails. Keep the verified-email guard; implement/verify a configurable provider as an operational prerequisite rather than weakening identity checks.
 
-Continue GST-ready structures without compliance claims, AI draft/review (never autonomous posting), tenant/security review and release hardening. Keep tax-free posting until reviewed GST mechanics exist.
+## Current implementation task
 
-## Local verification commands
+Finish and publish team/membership management. Run Actions on the exact new commit, inspect both workflows and fix any failures. Then add GST-ready product and invoice data structures (HSN/SAC, place-of-supply and explicit tax treatment snapshots) with deterministic validation/calculation tests, but keep tax-bearing invoice posting disabled until qualified accounting review supplies the supported rates and rules. Update the responsive forms and clear unsupported scenarios.
 
-For a disposable replica set, run API integration suites serially because parallel MongoDB startup can time out test setup:
-
-```powershell
-$env:MONGODB_TEST_URI='mongodb://127.0.0.1:37491/?replicaSet=aslibooksLocal'
-$env:MONGODB_TEST_DB_NAME='aslibooks_test_<unique_name>'
-pnpm --filter @aslibooks/api test --maxWorkers=1 src/routes/reports.integration.test.ts
-pnpm --filter @aslibooks/api test --maxWorkers=1
-pnpm --filter @aslibooks/accounting test
-pnpm typecheck
-pnpm lint
-pnpm build
-git diff --check
-```
-
-Playwright uses `$env:PYTHONPATH="$env:TEMP\aslibooks-playwright-runtime"` and `$env:PLAYWRIGHT_BROWSERS_PATH="$env:TEMP\codex-aslibooks-browsers"`, then runs `python apps/web/e2e/chart.py`.
-
-Publish only verified changes to `develop/phase-1-foundation`; use the connected GitHub workflow because direct `git push` timed out previously. Inspect the branch head before each ref update and never force. Check CI and MongoDB results on the exact commit SHA. Never stage the owner-supplied master document.
-
-## Exact next verification commands
+## Exact verification commands
 
 ```powershell
-$env:MONGODB_TEST_URI='mongodb://127.0.0.1:37491/?replicaSet=aslibooksLocal'
-$env:MONGODB_TEST_DB_NAME='aslibooks_test_<unique_name>'
-pnpm --filter @aslibooks/api test --maxWorkers=1 src/routes/reports.integration.test.ts
-pnpm --filter @aslibooks/api test --maxWorkers=1 src/routes/contacts.integration.test.ts
-pnpm --filter @aslibooks/api test --maxWorkers=1
-pnpm --filter @aslibooks/accounting test
 pnpm typecheck
 pnpm lint
+pnpm test
 pnpm build
 git diff --check
-$env:PYTHONPATH="$env:TEMP\aslibooks-playwright-runtime"
-$env:PLAYWRIGHT_BROWSERS_PATH="$env:TEMP\codex-aslibooks-browsers"
-& "$env:USERPROFILE\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe" apps/web/e2e/chart.py
+$env:MONGODB_TEST_URI='mongodb://127.0.0.1:37491/?replicaSet=aslibooksLocal'
+$env:MONGODB_TEST_DB_NAME='aslibooks_test_<unique_name>'
+pnpm --filter @aslibooks/api test --maxWorkers=1 src/routes/memberships.integration.test.ts
+pnpm --filter @aslibooks/api test --maxWorkers=1
+$env:PYTHONPATH="$env:TEMP\\aslibooks-playwright-runtime"
+$env:PLAYWRIGHT_BROWSERS_PATH="$env:TEMP\\codex-aslibooks-browsers"
+& "$env:USERPROFILE\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe" apps/web/e2e/chart.py
 ```
+
+If local Mongo is still unavailable, use the MongoDB integration Actions run as the database test evidence, and record the browser E2E as not run rather than passing. Do not wait on CI without progressing independent work.
 
 ## Remaining MVP work
 
-- Execute the added dashboard and contact-edit browser assertions when the local API/test replica is available.
-- Richer invoice/credit-note print templates and complete responsive E2E coverage.
-- Reviewed GST structures/calculations only after qualified review.
-- Optional AI drafts/explanations with explicit approval.
-- Tenant/role/security review, full responsive E2E coverage, deployment, backups/restores, monitoring and release readiness.
+- Complete invitations lifecycle including configurable verified-email delivery and notification provider, without exposing secrets.
+- Execute contact/dashboard/team browser flows at desktop and narrow viewport; test auth expiry and failure paths.
+- GST-ready data structures and deterministic calculation tests; no compliance claim or tax posting until reviewed policy exists.
+- Fiscal close checklist/reopening policy, attachments metadata, transfers/refunds/advances and complete report exports.
+- Constrained AI explanation/draft extraction with explicit human approval, optional provider and no posting path.
+- Tenant/role threat review, rate limits, verified-email/recovery/session-expiry UX, least-privilege runtime DB setup, staging/backup/restore/monitoring guide and release checklist.
 
-Do not deploy production, merge to `main`, use live customer data, purchase subscriptions or claim legal/tax compliance.
+Never stage the owner-supplied vision file. Publish only to `develop/phase-1-foundation`, inspect the current remote head before each expected-SHA update, never force push. Keep PR #1 draft, do not merge `main`, and do not deploy production.
 
-After dashboard/contact verification, commit only explicit report, contact, UI, test and documentation paths, publish using a non-forced expected-head ref update through GitHub, and verify CI/MongoDB on the exact resulting SHA before selecting GST-ready structures. Do not include the owner-supplied vision document.

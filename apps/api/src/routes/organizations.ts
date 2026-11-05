@@ -16,6 +16,7 @@ import { vendorPaymentRouter } from './vendorPayments.js';
 import { openingBalanceRouter } from './openingBalances.js';
 import { organizationSettingsRouter } from './organizationSettings.js';
 import { bankStatementRouter } from './bankStatements.js';
+import { memberRouter, invitationRouter } from './memberships.js';
 
 type AuthUser = { id: string };
 export function organizationRouter(resolveUser: (headers: Headers) => Promise<AuthUser | null>): Router {
@@ -74,6 +75,9 @@ export function organizationRouter(resolveUser: (headers: Headers) => Promise<Au
     } catch (error) { next(error); }
   });
 
+  router.get('/invitations', requireUser, invitationRouter().list);
+  router.post('/:organizationId/invitations/:membershipId/accept', requireUser, invitationRouter().accept);
+
   router.use('/:organizationId/accounts', requireUser, accountRouter());
   router.use('/:organizationId/contacts', requireUser, contactRouter());
   router.use('/:organizationId/products', requireUser, productRouter());
@@ -86,6 +90,8 @@ export function organizationRouter(resolveUser: (headers: Headers) => Promise<Au
   router.use('/:organizationId/vendor-payments', requireUser, vendorPaymentRouter());
   router.use('/:organizationId/opening-balances', requireUser, openingBalanceRouter());
   router.use('/:organizationId/settings', requireUser, organizationSettingsRouter());
+  router.use('/:organizationId/members', requireUser, memberRouter());
   router.use('/:organizationId/bank-statements', requireUser, bankStatementRouter());
   return router;
 }
+
