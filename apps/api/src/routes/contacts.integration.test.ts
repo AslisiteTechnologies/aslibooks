@@ -70,6 +70,10 @@ describe.skipIf(!enabled)('contacts API', () => {
     await request(app).patch(path + '/' + id).set(owner).send({ displayName: 'Coastal Supply', phone: '+91 9999999999', address: 'New address' }).expect(200);
     const filtered = await request(app).get(path + '?q=Coastal&role=vendor').set(owner).expect(200);
     expect(filtered.body.contacts[0]).toMatchObject({ displayName: 'Coastal Supply', phone: '+91 9999999999', address: 'New address', gstin: '22AAAAA0000A1Z5' });
+    const ledger = await request(app).get(path + '/' + id + '/ledger').set(owner).expect(200);
+    expect(ledger.body).toMatchObject({ contact: { id, displayName: 'Coastal Supply' }, currency: 'INR', rows: [], balancePaise: 0, payablePaise: 0 });
+    await request(app).get(path + '/' + id + '/ledger?role=invalid').set(owner).expect(400);
+    await request(app).get(foreignPath + '/' + id + '/ledger').set(owner).expect(404);
     const defaultPage = await request(app).get(path).set(owner).expect(200);
     expect(defaultPage.body.contacts.length).toBeGreaterThan(1);
     expect(defaultPage.body.next).toBeNull();
