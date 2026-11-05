@@ -57,10 +57,11 @@ describe.skipIf(!enabled)('vendor advances', () => {
     expect(await VendorAdvanceAllocationModel.countDocuments({ organizationId: org })).toBe(2);
     expect(await AuditEventModel.countDocuments({ organizationId: org, action: 'vendor_advance.paid' })).toBe(1);
     expect(await AuditEventModel.countDocuments({ organizationId: org, action: 'vendor_advance.allocated' })).toBe(2);
-    const journals = await JournalModel.find({ organizationId: org }).lean<{ lines: Array<{ accountId: Types.ObjectId; debitPaise: number; creditPaise: number }> }[]>();
-    expect(journals[0].lines.map(line => [String(line.accountId), line.debitPaise, line.creditPaise]))
+    const advanceJournal = await JournalModel.findById(advanceResponse.body.journalId).lean<{ lines: Array<{ accountId: Types.ObjectId; debitPaise: number; creditPaise: number }> } | null>();
+    const allocationJournal = await JournalModel.findById(first.body.journalId).lean<{ lines: Array<{ accountId: Types.ObjectId; debitPaise: number; creditPaise: number }> } | null>();
+    expect(advanceJournal?.lines.map(line => [String(line.accountId), line.debitPaise, line.creditPaise]))
       .toEqual([[String(prepayment), 12000, 0], [String(cash), 0, 12000]]);
-    expect(journals[2].lines.map(line => [String(line.accountId), line.debitPaise, line.creditPaise]))
+    expect(allocationJournal?.lines.map(line => [String(line.accountId), line.debitPaise, line.creditPaise]))
       .toEqual([[String(payables), 6000, 0], [String(prepayment), 0, 6000]]);
   });
   afterAll(async () => {
