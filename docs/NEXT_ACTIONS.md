@@ -2,11 +2,11 @@
 
 ## Current checkpoint
 
-Development branch head `e04c71ff1580a40abb1f7b2f7bd802198115f298`. Vendor advance CI #252 passed. MongoDB #189 exercised the vendor advance workflow and found its journal assertions relied on nondeterministic query order. Assertions now query by the response journal IDs; commit and rerun are pending. The owner-supplied vision document must remain unstaged.
+Development branch head `8cf81e8bc0d07cbbd99d64b3662a97e6adb674fc`. Vendor advance journal assertion correction passed CI #254 and MongoDB integration #191. Customer advance refunds are implemented locally and undergoing verification. Preserve the owner-supplied vision document in the original workspace; it must remain unstaged.
 
 ## Current implementation task
 
-Publish and verify the journal assertion correction. Vendor advances use asset control account 1400, same-vendor bill allocation, bill settlement updates, idempotency, audit and atomic journals, with responsive review/confirmation UI. Then add refunds or secure attachments, browser coverage and release hardening. AI needs optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
+Verify customer advance refunds end to end. The API now restricts refunds to the unallocated balance, posts Dr customer-advance liability 2210 / Cr cash or bank atomically, and records idempotency and audit facts; the responsive UI uses explicit review and confirmation. Run the customer-advance MongoDB integration, full suite, typecheck, lint and build, then publish and verify CI/MongoDB workflows. After that, implement secure attachments metadata/storage policy or resume release hardening. AI needs optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
 ## Exact verification commands
 
 ```powershell
@@ -34,7 +34,7 @@ If local Mongo is unavailable, use exact-commit MongoDB Actions evidence. Do not
 - GST: validated HSN/SAC/rate inputs, expert-reviewed applicability and rate tables, journal mappings, tax-aware credits/purchases and proper printable tax documents. Keep unsupported cases blocked and avoid compliance claims.
 - Production email-provider credentials and sender-domain verification; live delivery and Better Auth end-to-end verification.
 - Attachments metadata and secure storage policy; fiscal period correction/reopen policy.
-- Transfers, advances, cash refunds, attachments, constrained AI assistance, and release hardening.
+- Transfers and customer/vendor advances are implemented; cash refund of an unallocated customer advance is in progress. Attachments and release hardening remain.
 - Constrained AI explanation/draft extraction with explicit human approval and no direct posting capability.
 - Tenant/role threat review, rate limits, session expiry UX, least-privilege runtime database role, staging/backup/restore/monitoring guide, desktop/mobile browser E2E and release checklist.
 

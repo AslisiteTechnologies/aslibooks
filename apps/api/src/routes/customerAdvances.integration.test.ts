@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AccountModel } from '../models/account.js';
 import { AuditEventModel } from '../models/auditEvent.js';
 import { ContactModel } from '../models/contact.js';
-import { CustomerAdvanceAllocationModel, CustomerAdvanceModel } from '../models/customerAdvance.js';
+import { CustomerAdvanceAllocationModel, CustomerAdvanceModel, CustomerAdvanceRefundModel } from '../models/customerAdvance.js';
 import { FiscalPeriodModel } from '../models/fiscalPeriod.js';
 import { InvoiceModel } from '../models/invoice.js';
 import { JournalModel } from '../models/journal.js';
@@ -25,7 +25,7 @@ describe.skipIf(!enabled)('customer advances', () => {
   const path = `/orgs/${org}/customer-advances`; const owner = { 'x-fixture-actor': 'advance-owner' };
   beforeAll(async () => {
     await mongoose.connect(uri!, { dbName: dbName! });
-    await Promise.all([AccountModel.init(), AuditEventModel.init(), ContactModel.init(), CustomerAdvanceModel.init(), CustomerAdvanceAllocationModel.init(), FiscalPeriodModel.init(), InvoiceModel.init(), JournalModel.init(), MembershipModel.init(), OrganizationModel.init(), ProductModel.init()]);
+    await Promise.all([AccountModel.init(), AuditEventModel.init(), ContactModel.init(), CustomerAdvanceModel.init(), CustomerAdvanceAllocationModel.init(), CustomerAdvanceRefundModel.init(), FiscalPeriodModel.init(), InvoiceModel.init(), JournalModel.init(), MembershipModel.init(), OrganizationModel.init(), ProductModel.init()]);
     await OrganizationModel.create({ _id: org, name: 'Advance fixture', slug: `advance-${org}` });
     await MembershipModel.create([{ organizationId: org, authUserId: 'advance-owner', role: 'owner' }, { organizationId: org, authUserId: 'advance-viewer', role: 'viewer' }]);
     await ContactModel.create([{ _id: customer, organizationId: org, displayName: 'Advance Customer', roles: ['customer'] }, { _id: peerCustomer, organizationId: org, displayName: 'Other Customer', roles: ['customer'] }]);
@@ -64,21 +64,32 @@ describe.skipIf(!enabled)('customer advances', () => {
     const nextDraft = await request(app).post(`/orgs/${org}/invoices`).set(owner).send({ customerId: String(customer), lines: [{ productId: String(product), quantity: 1 }] }).expect(201);
     const nextInvoice = await request(app).post(`/orgs/${org}/invoices/${nextDraft.body.id}/issue`).set(owner).send({ idempotencyKey: `advance-next-invoice-${org}` }).expect(201);
     await request(app).post(`${path}/${advanceId}/allocations`).set(owner).send({ idempotencyKey: `advance-insufficient-${org}`, invoiceId: nextInvoice.body.id, amountPaise: 2001 }).expect(409);
+    const refundPayload = { idempotencyKey: `advance-refund-${org}`, cashAccountId: String(cash), amountPaise: 1000 };
+    await request(app).post(`${path}/${advanceId}/refunds`).send(refundPayload).expect(401);
+    await request(app).post(`${path}/${advanceId}/refunds`).set({ 'x-fixture-actor': 'advance-viewer' }).send(refundPayload).expect(403);
+    const refund = await request(app).post(`${path}/${advanceId}/refunds`).set(owner).send(refundPayload).expect(201);
+    await request(app).post(`${path}/${advanceId}/refunds`).set(owner).send(refundPayload).expect(200, { ...refund.body, replayed: true });
+    await request(app).post(`${path}/${advanceId}/refunds`).set(owner).send({ ...refundPayload, amountPaise: 999 }).expect(409);
+    await request(app).post(`${path}/${advanceId}/refunds`).set(owner).send({ ...refundPayload, idempotencyKey: `advance-refund-overdraw-${org}`, amountPaise: 1001 }).expect(409);
     const listed = await request(app).get(path).set({ 'x-fixture-actor': 'advance-viewer' }).expect(200);
-    expect(listed.body.advances[0]).toMatchObject({ availablePaise: 2000, allocatedPaise: 10000 });
-    expect(await JournalModel.countDocuments({ organizationId: org })).toBe(6);
+    expect(listed.body.advances[0]).toMatchObject({ availablePaise: 1000, allocatedPaise: 10000, refundedPaise: 1000 });
+    expect(await JournalModel.countDocuments({ organizationId: org })).toBe(7);
     expect(await CustomerAdvanceAllocationModel.countDocuments({ organizationId: org })).toBe(2);
     expect(await AuditEventModel.countDocuments({ organizationId: org, action: 'customer_advance.received' })).toBe(1);
     expect(await AuditEventModel.countDocuments({ organizationId: org, action: 'customer_advance.allocated' })).toBe(2);
+    expect(await AuditEventModel.countDocuments({ organizationId: org, action: 'customer_advance.refunded' })).toBe(1);
     expect(second.body.replayed).toBe(false);
     const lastJournal = await JournalModel.findById(second.body.journalId).lean<{ lines: Array<{ accountId: Types.ObjectId; debitPaise: number; creditPaise: number }> } | null>();
     expect(lastJournal?.lines.map(line => [String(line.accountId), line.debitPaise, line.creditPaise]))
       .toEqual([[String(liability), 4000, 0], [String(ar), 0, 4000]]);
+    const refundJournal = await JournalModel.findById(refund.body.journalId).lean<{ lines: Array<{ accountId: Types.ObjectId; debitPaise: number; creditPaise: number }> } | null>();
+    expect(refundJournal?.lines.map(line => [String(line.accountId), line.debitPaise, line.creditPaise]))
+      .toEqual([[String(liability), 1000, 0], [String(cash), 0, 1000]]);
   });
   afterAll(async () => {
     if (!enabled) return;
     await JournalModel.collection.deleteMany({ organizationId: org }); await InvoiceModel.collection.deleteMany({ organizationId: org });
-    await CustomerAdvanceAllocationModel.collection.deleteMany({ organizationId: org }); await CustomerAdvanceModel.collection.deleteMany({ organizationId: org });
+    await CustomerAdvanceAllocationModel.collection.deleteMany({ organizationId: org }); await CustomerAdvanceRefundModel.collection.deleteMany({ organizationId: org }); await CustomerAdvanceModel.collection.deleteMany({ organizationId: org });
     await AuditEventModel.deleteMany({ organizationId: org }); await FiscalPeriodModel.deleteMany({ organizationId: org });
     await ProductModel.deleteMany({ organizationId: org }); await ContactModel.deleteMany({ organizationId: org });
     await AccountModel.deleteMany({ organizationId: org }); await MembershipModel.deleteMany({ organizationId: org });

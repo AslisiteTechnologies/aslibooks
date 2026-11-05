@@ -28,6 +28,7 @@ export function ReceiptsScreen({ organization }: { organization: Organization })
   const [advanceCustomerId, setAdvanceCustomerId] = useState(''); const [advanceAmount, setAdvanceAmount] = useState(''); const [advanceConfirm, setAdvanceConfirm] = useState(false);
   const [advanceId, setAdvanceId] = useState(''); const [allocationInvoiceId, setAllocationInvoiceId] = useState(''); const [allocationAmount, setAllocationAmount] = useState(''); const [allocationConfirm, setAllocationConfirm] = useState(false);
   const [advanceKey, setAdvanceKey] = useState(''); const [allocationKey, setAllocationKey] = useState('');
+  const [refundAdvanceId, setRefundAdvanceId] = useState(''); const [refundAmount, setRefundAmount] = useState(''); const [refundKey, setRefundKey] = useState(''); const [refundConfirm, setRefundConfirm] = useState(false);
   const canWrite = ['owner', 'admin', 'accountant'].includes(organization.role);
   const outstandingInvoices = useMemo(() => invoices.filter(invoice =>
     ['issued', 'partially_paid', 'partially_credited'].includes(invoice.status) && invoice.totalPaise > invoice.amountPaidPaise + (invoice.amountCreditedPaise ?? 0),
@@ -39,6 +40,7 @@ export function ReceiptsScreen({ organization }: { organization: Organization })
   const advanceInvoices = outstandingInvoices.filter(invoice => invoice.customerId === selectedAdvance?.customerId);
   const selectedAllocationInvoice = advanceInvoices.find(invoice => invoice.id === allocationInvoiceId);
   const parsedAdvanceAmount = parsePaise(advanceAmount); const parsedAllocationAmount = parsePaise(allocationAmount);
+  const selectedRefundAdvance = advances.find(row => row.id === refundAdvanceId); const parsedRefundAmount = parsePaise(refundAmount);
 
   useEffect(() => {
     let active = true;
@@ -110,9 +112,18 @@ export function ReceiptsScreen({ organization }: { organization: Organization })
     finally { setSaving(false); }
   }
 
+  async function refundAdvance() {
+    if (!selectedRefundAdvance || !cashAccountId || parsedRefundAmount === null || parsedRefundAmount > selectedRefundAdvance.availablePaise) return;
+    const key = refundKey || `advance-refund:${crypto.randomUUID()}`; setRefundKey(key); setSaving(true); setError(''); setNotice('');
+    try { await api.refundCustomerAdvance(organization.id, selectedRefundAdvance.id, { idempotencyKey: key, cashAccountId, amountPaise: parsedRefundAmount });
+      setNotice(`${formatMoney(parsedRefundAmount)} refunded from ${selectedRefundAdvance.customerName}’s advance.`); setRefundConfirm(false); setRefundKey(''); setRefundAmount(''); setRevision(value => value + 1);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Customer advance refund could not be recorded.'); }
+    finally { setSaving(false); }
+  }
+
   return <Stack spacing={2}>
     <Typography variant="h5">Customer receipts</Typography>
-    <Alert severity="info">Receipts and customer advances post to the ledger. Advances are held in customer-advances account 2210 until you allocate them to an invoice. Cash refunds are not supported.</Alert>
+    <Alert severity="info">Receipts and customer advances post to the ledger. Advances are held in customer-advances account 2210 until allocated to an invoice or refunded.</Alert>
     {canWrite && <Paper variant="outlined" sx={{ p: 2 }}>
       <Stack component="form" spacing={2} onSubmit={review}>
         <Typography variant="h6">Record a customer payment</Typography>
@@ -146,7 +157,20 @@ export function ReceiptsScreen({ organization }: { organization: Organization })
           <TextField required label="Amount received (₹)" value={advanceAmount} onChange={event => { setAdvanceAmount(event.target.value); setAdvanceKey(''); }} inputProps={{ inputMode: 'decimal' }} />
           <Button variant="contained" disabled={saving || loading || !advanceCustomerId || !cashAccountId || !parsedAdvanceAmount} onClick={() => setAdvanceConfirm(true)}>Review advance</Button>
         </Stack>
-        {!!advances.length && <><Typography variant="subtitle1">Customer advances</Typography>{advances.map(row => <Typography key={row.id}>{row.customerName} · received {formatMoney(row.amountPaise)} · available {formatMoney(row.availablePaise)} · {new Date(row.receivedAt).toLocaleDateString('en-IN')}</Typography>)}</>}
+        {!!advances.length && <><Typography variant="subtitle1">Customer advances</Typography>{advances.map(row => <Typography key={row.id}>{row.customerName} · received {formatMoney(row.amountPaise)} · allocated {formatMoney(row.allocatedPaise)} · refunded {formatMoney(row.refundedPaise)} · available {formatMoney(row.availablePaise)} · {new Date(row.receivedAt).toLocaleDateString('en-IN')}</Typography>)}</>}
+        {!!advances.some(row => row.availablePaise > 0) && <>
+          <Typography variant="subtitle1">Refund an unallocated advance</Typography>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+            <TextField select label="Advance" value={refundAdvanceId} onChange={event => { setRefundAdvanceId(event.target.value); setRefundKey(''); }}>
+              {advances.filter(row => row.availablePaise > 0).map(row => <MenuItem key={row.id} value={row.id}>{row.customerName} · available {formatMoney(row.availablePaise)}</MenuItem>)}
+            </TextField>
+            <TextField select label="Refund from" value={cashAccountId} onChange={event => setCashAccountId(event.target.value)}>
+              {accounts.filter(account => account.active && ['1000', '1010'].includes(account.code)).map(account => <MenuItem key={account.id} value={account.id}>{account.code} · {account.name}</MenuItem>)}
+            </TextField>
+            <TextField label="Refund amount (₹)" value={refundAmount} onChange={event => { setRefundAmount(event.target.value); setRefundKey(''); }} inputProps={{ inputMode: 'decimal' }} />
+            <Button variant="outlined" disabled={saving || !selectedRefundAdvance || !parsedRefundAmount || parsedRefundAmount > (selectedRefundAdvance?.availablePaise ?? 0)} onClick={() => setRefundConfirm(true)}>Review refund</Button>
+          </Stack>
+        </>}
         {!!advances.some(row => row.availablePaise > 0) && <>
           <Typography variant="subtitle1">Allocate an advance to an invoice</Typography>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
@@ -188,6 +212,10 @@ export function ReceiptsScreen({ organization }: { organization: Organization })
     <Dialog open={allocationConfirm} onClose={() => { if (!saving) setAllocationConfirm(false); }}>
       <DialogTitle>Confirm advance allocation</DialogTitle><DialogContent><DialogContentText>{formatMoney(parsedAllocationAmount ?? 0)} from {selectedAdvance?.customerName} allocated to {selectedAllocationInvoice?.invoiceNumber}. This reduces the advance liability and the customer receivable in a balanced journal.</DialogContentText></DialogContent>
       <DialogActions><Button disabled={saving} onClick={() => setAllocationConfirm(false)}>Back</Button><Button disabled={saving} variant="contained" onClick={() => void allocateAdvance()}>Confirm allocation</Button></DialogActions>
+    </Dialog>
+    <Dialog open={refundConfirm} onClose={() => { if (!saving) setRefundConfirm(false); }}>
+      <DialogTitle>Confirm customer advance refund</DialogTitle><DialogContent><DialogContentText>{formatMoney(parsedRefundAmount ?? 0)} refunded to {selectedRefundAdvance?.customerName}. This debits customer-advances liability 2210 and credits the selected cash/bank account. The amount must remain unallocated and the refund will be audited.</DialogContentText></DialogContent>
+      <DialogActions><Button disabled={saving} onClick={() => setRefundConfirm(false)}>Back</Button><Button disabled={saving} variant="contained" onClick={() => void refundAdvance()}>Confirm refund</Button></DialogActions>
     </Dialog>
   </Stack>;
 }

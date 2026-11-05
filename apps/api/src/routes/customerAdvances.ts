@@ -6,7 +6,7 @@ import { PostingError } from '../accounting/postJournal.js';
 import { AccountModel, markPostingAccounts } from '../models/account.js';
 import { AuditEventModel } from '../models/auditEvent.js';
 import { ContactModel } from '../models/contact.js';
-import { CustomerAdvanceAllocationModel, CustomerAdvanceModel } from '../models/customerAdvance.js';
+import { CustomerAdvanceAllocationModel, CustomerAdvanceModel, CustomerAdvanceRefundModel } from '../models/customerAdvance.js';
 import { InvoiceModel } from '../models/invoice.js';
 import { JournalModel } from '../models/journal.js';
 import { fenceLedgerPermission, hasPermission } from '../security/authorization.js';
@@ -15,6 +15,8 @@ const objectId = z.string().regex(/^[a-f\d]{24}$/i);
 const advanceInput = z.strictObject({ idempotencyKey: z.string().regex(/^[a-zA-Z0-9:_-]{8,128}$/), customerId: objectId,
   cashAccountId: objectId, amountPaise: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER) });
 const allocationInput = z.strictObject({ idempotencyKey: z.string().regex(/^[a-zA-Z0-9:_-]{8,128}$/), invoiceId: objectId,
+  amountPaise: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER) });
+const refundInput = z.strictObject({ idempotencyKey: z.string().regex(/^[a-zA-Z0-9:_-]{8,128}$/), cashAccountId: objectId,
   amountPaise: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER) });
 class AdvanceError extends Error { constructor(readonly status: number, message: string) { super(message); } }
 
@@ -30,7 +32,8 @@ export function customerAdvanceRouter() {
     if (!await hasPermission(authUserId, String(organizationId), 'ledger:read')) { res.status(403).json({ error: 'Advance access denied' }); return; }
     const advances = await CustomerAdvanceModel.find({ organizationId }).sort({ receivedAt: -1, _id: -1 }).limit(50).lean();
     res.json({ advances: advances.map(row => ({ id: String(row._id), customerId: String(row.customerId), customerName: row.customerName,
-      amountPaise: row.amountPaise, allocatedPaise: row.allocatedPaise, availablePaise: row.amountPaise - row.allocatedPaise,
+      amountPaise: row.amountPaise, allocatedPaise: row.allocatedPaise,
+      refundedPaise: row.refundedPaise ?? 0, availablePaise: row.amountPaise - row.allocatedPaise - (row.refundedPaise ?? 0),
       receivedAt: row.receivedAt, journalId: String(row.journalId) })) });
   });
   router.post('/', async (req, res) => {
@@ -68,6 +71,48 @@ export function customerAdvanceRouter() {
         await AuditEventModel.create([{ organizationId, actorAuthUserId: authUserId, action: 'journal.posted', resourceType: 'journal', resourceId: String(journal._id) },
           { organizationId, actorAuthUserId: authUserId, action: 'customer_advance.received', resourceType: 'customer_advance', resourceId: String(advanceId) }], { session, ordered: true });
         return { id: String(advanceId), journalId: String(journal._id), replayed: false };
+      });
+      res.status(result.replayed ? 200 : 201).json(result);
+    } catch (error) { sendAdvanceError(res, error); }
+  });
+  router.post('/:advanceId/refunds', async (req, res) => {
+    const { organizationId, authUserId } = res.locals;
+    if (!req.is('application/json')) { res.status(415).json({ error: 'Send JSON refund data' }); return; }
+    if (!Types.ObjectId.isValid(req.params.advanceId)) { res.status(400).json({ error: 'Invalid advance ID' }); return; }
+    const parsed = refundInput.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: 'Provide a valid cash/bank account, idempotency key and positive refund amount' }); return; }
+    try {
+      const result = await mongoose.connection.transaction(async session => {
+        if (!await fenceLedgerPermission(authUserId, String(organizationId), session)) throw new AdvanceError(403, 'Refunding customer advances requires posting permission');
+        const existing = await CustomerAdvanceRefundModel.findOne({ organizationId, idempotencyKey: parsed.data.idempotencyKey }).session(session);
+        if (existing) {
+          if (String(existing.advanceId) !== req.params.advanceId.toLowerCase() || String(existing.cashAccountId) !== parsed.data.cashAccountId.toLowerCase() || existing.amountPaise !== parsed.data.amountPaise)
+            throw new AdvanceError(409, 'Refund idempotency key was already used with different details');
+          return { id: String(existing._id), journalId: String(existing.journalId), replayed: true };
+        }
+        const [advance, cash] = await Promise.all([
+          CustomerAdvanceModel.findOne({ _id: req.params.advanceId, organizationId }).session(session),
+          AccountModel.findOne({ _id: parsed.data.cashAccountId, organizationId, active: true, type: 'asset', code: { $in: ['1000', '1010'] } }).session(session),
+        ]);
+        if (!advance) throw new AdvanceError(404, 'Customer advance not found');
+        if (!cash) throw new AdvanceError(422, 'Choose an active cash/bank account (1000 or 1010)');
+        const refunded = advance.refundedPaise ?? 0;
+        if (parsed.data.amountPaise > advance.amountPaise - advance.allocatedPaise - refunded)
+          throw new AdvanceError(409, 'Refund exceeds the unallocated customer advance balance');
+        const lines = [{ accountId: String(advance.liabilityAccountId), debitPaise: parsed.data.amountPaise, creditPaise: 0 },
+          { accountId: String(cash._id), debitPaise: 0, creditPaise: parsed.data.amountPaise }];
+        if (!await markPostingAccounts(organizationId, lines, session)) throw new AdvanceError(422, 'Refund accounts became unavailable');
+        await assertPostingPeriodOpen(organizationId, session);
+        const refundedAt = new Date(); const refundId = new Types.ObjectId();
+        const [journal] = await JournalModel.create([{ organizationId, idempotencyKey: `customer-advance-refund:${parsed.data.idempotencyKey}`, currency: 'INR',
+          description: `Customer advance refund ${advance._id}`, postedAt: refundedAt,
+          lines: [{ accountId: advance.liabilityAccountId, debitPaise: parsed.data.amountPaise, creditPaise: 0 }, { accountId: cash._id, debitPaise: 0, creditPaise: parsed.data.amountPaise }] }], { session });
+        await CustomerAdvanceRefundModel.create([{ _id: refundId, organizationId, advanceId: advance._id, customerId: advance.customerId,
+          idempotencyKey: parsed.data.idempotencyKey, cashAccountId: cash._id, amountPaise: parsed.data.amountPaise, refundedAt, journalId: journal._id }], { session });
+        advance.refundedPaise = refunded + parsed.data.amountPaise; await advance.save({ session });
+        await AuditEventModel.create([{ organizationId, actorAuthUserId: authUserId, action: 'journal.posted', resourceType: 'journal', resourceId: String(journal._id) },
+          { organizationId, actorAuthUserId: authUserId, action: 'customer_advance.refunded', resourceType: 'customer_advance_refund', resourceId: String(refundId) }], { session, ordered: true });
+        return { id: String(refundId), journalId: String(journal._id), replayed: false };
       });
       res.status(result.replayed ? 200 : 201).json(result);
     } catch (error) { sendAdvanceError(res, error); }
