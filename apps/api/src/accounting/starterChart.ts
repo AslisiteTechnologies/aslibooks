@@ -14,6 +14,7 @@ export const starterChart: ReadonlyArray<StarterAccount> = [
   { code: '2110', name: 'Output SGST payable', type: 'liability' },
   { code: '2120', name: 'Output IGST payable', type: 'liability' },
   { code: '2200', name: 'Other current liabilities', type: 'liability' },
+  { code: '2210', name: 'Customer advances', type: 'liability' },
   { code: '3000', name: 'Owner capital', type: 'equity' },
   { code: '3100', name: 'Retained earnings', type: 'equity' },
   { code: '4000', name: 'Sales income', type: 'income' },

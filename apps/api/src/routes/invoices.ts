@@ -71,7 +71,7 @@ const listInvoices: RequestHandler = async (req, res) => {
   if (!parsed.success) { res.status(400).json({ error: 'Invalid invoice cursor' }); return; }
   const limit = Math.min(Number(parsed.data.limit) || 50, 100);
   const rows = await InvoiceModel.find({ organizationId, ...(parsed.data.after ? { _id: { $lt: new Types.ObjectId(parsed.data.after) } } : {}) })
-    .sort({ _id: -1 }).limit(limit + 1).select('customerName status totalPaise amountPaidPaise amountCreditedPaise invoiceNumber dueDate issuedAt createdAt lines.hsnSacCode lines.taxCategory taxTreatment taxableSubtotalPaise cgstPaise sgstPaise igstPaise totalTaxPaise').lean();
+    .sort({ _id: -1 }).limit(limit + 1).select('customerId customerName status totalPaise amountPaidPaise amountCreditedPaise invoiceNumber dueDate issuedAt createdAt lines.hsnSacCode lines.taxCategory taxTreatment taxableSubtotalPaise cgstPaise sgstPaise igstPaise totalTaxPaise').lean();
   const today = indiaDateString(new Date());
   const invoices = rows.slice(0, limit).map(invoice => ({ ...invoice,
     amountCreditedPaise: invoice.amountCreditedPaise ?? 0,

@@ -2,11 +2,11 @@
 
 ## Current checkpoint
 
-Development branch head `da4b153d448dea25cd8752747cfe966e1fd950e3`. Optional AI report explanations passed CI #244 and MongoDB #181. The internal cash/bank transfer workflow is under implementation and awaits local checks, commit, and exact-commit CI. The owner-supplied vision document must remain unstaged.
+Development branch head `74e2eb165355ba7beb266c5f068c62cde9f444ee`. AI report explanations passed CI #244/MongoDB #181; internal cash/bank transfers passed CI #246/MongoDB #183. Customer advance receipt and allocation workflow is in implementation and requires CI-backed integration verification. The owner-supplied vision document must remain unstaged.
 
 ## Current implementation task
 
-Internal transfer: server-timestamped, current-period cash/bank movement, balanced journal and immutable transfer record, idempotency, audit, tenant/role fences, list and responsive entry UI. Integration test is only exercised in CI because there is no local MongoDB test replica. Then implement customer/vendor advances or refunds, secure attachments, browser coverage and release hardening. AI needs optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
+Customer advances: liability account 2210, received-cash journal, same-customer invoice allocation, transactionally updated available balance, invoice payment state update, audit, idempotency, and review dialogs. Verify via MongoDB CI; local database integration tests are skipped without a replica set. Next implement vendor advances/refunds or attachments, browser coverage and release hardening. AI needs optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
 ## Exact verification commands
 
 ```powershell
@@ -19,6 +19,7 @@ git diff --check
 $env:MONGODB_TEST_URI='mongodb://127.0.0.1:37491/?replicaSet=aslibooksLocal'
 $env:MONGODB_TEST_DB_NAME='aslibooks_test_<unique_name>'
 pnpm --filter @aslibooks/api test --maxWorkers=1 src/routes/transfers.integration.test.ts
+pnpm --filter @aslibooks/api test --maxWorkers=1 src/routes/customerAdvances.integration.test.ts src/routes/accounts.integration.test.ts
 pnpm --filter @aslibooks/api test --maxWorkers=1 src/routes/products.integration.test.ts src/routes/invoices.integration.test.ts
 pnpm --filter @aslibooks/api test --maxWorkers=1
 $env:PYTHONPATH="$env:TEMP\\aslibooks-playwright-runtime"

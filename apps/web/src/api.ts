@@ -12,9 +12,10 @@ export type ContactInput = { displayName: string; roles: Array<'customer' | 'ven
 export type Contact = ContactInput & { _id: string; active: boolean };
 export type TaxCategory = 'not_configured' | 'taxable' | 'exempt' | 'nil_rated' | 'non_gst';
 export type Product = { _id: string; code: string; name: string; description?: string; unitPricePaise: number; hsnSacCode?: string; taxCategory: TaxCategory; gstRateBasisPoints?: number; active: boolean };
-export type Invoice = { id: string; customerName: string; status: 'draft' | 'issued' | 'partially_paid' | 'paid' | 'partially_credited' | 'credited'; totalPaise: number; amountPaidPaise: number; amountCreditedPaise?: number; taxTreatment?: 'none' | 'exclusive' | 'inclusive'; taxableSubtotalPaise?: number; cgstPaise?: number; sgstPaise?: number; igstPaise?: number; totalTaxPaise?: number; gstReviewRequired?: boolean; invoiceNumber?: string; dueDate?: string; overdue?: boolean; issuedAt?: string; createdAt: string };
+export type Invoice = { id: string; customerId: string; customerName: string; status: 'draft' | 'issued' | 'partially_paid' | 'paid' | 'partially_credited' | 'credited'; totalPaise: number; amountPaidPaise: number; amountCreditedPaise?: number; taxTreatment?: 'none' | 'exclusive' | 'inclusive'; taxableSubtotalPaise?: number; cgstPaise?: number; sgstPaise?: number; igstPaise?: number; totalTaxPaise?: number; gstReviewRequired?: boolean; invoiceNumber?: string; dueDate?: string; overdue?: boolean; issuedAt?: string; createdAt: string };
 export type InvoiceDocument = Invoice & { lines: Array<{ name: string; quantity: number; unitPricePaise: number; lineTotalPaise: number; hsnSacCode?: string; taxCategory?: TaxCategory; gstRateBasisPoints?: number; taxablePaise?: number; cgstPaise?: number; sgstPaise?: number; igstPaise?: number }> };
 export type Receipt = { id: string; customerName: string; amountPaise: number; receivedAt: string; journalId: string; allocations: Array<{ invoiceId: string; invoiceNumber: string; amountPaise: number }> };
+export type CustomerAdvance = { id: string; customerId: string; customerName: string; amountPaise: number; allocatedPaise: number; availablePaise: number; receivedAt: string; journalId: string };
 export type Bill = { id: string; vendorName: string; vendorReference: string; expenseAccountName: string; description: string; status: 'draft' | 'posted' | 'partially_paid' | 'paid' | 'partially_credited' | 'credited'; amountPaise: number; amountPaidPaise: number; amountCreditedPaise?: number; dueDate?: string; overdue?: boolean; journalId?: string };
 export type VendorPayment = { id: string; vendorName: string; amountPaise: number; paidAt: string; journalId: string; allocations: Array<{ billId: string; vendorReference: string; amountPaise: number }> };
 export type OpeningBalance = { id: string; asOf: string; totalPaise: number; journalId: string; lines: Array<{ accountId: string; accountCode: string; accountName: string; side: 'debit' | 'credit'; amountPaise: number }> };
@@ -64,8 +65,8 @@ async function jsonRequest<T>(path: string, options: RequestInit = {}): Promise<
 }
 
 export const api = {
-  contacts: (org: string, q = '') => jsonRequest<{ contacts: Contact[]; next: string | null }>(
-    contactsPath(org) + (q ? `?q=${encodeURIComponent(q)}` : ''),
+  contacts: (org: string, q = '', after = '') => jsonRequest<{ contacts: Contact[]; next: string | null }>(
+    contactsPath(org) + `?${new URLSearchParams({ ...(q ? { q } : {}), ...(after ? { after } : {}) })}`,
   ),
   createContact: (org: string, input: ContactInput) =>
     jsonRequest<{ id: string }>(contactsPath(org), { method: 'POST', body: JSON.stringify(input) }),
@@ -91,6 +92,11 @@ export const api = {
     jsonRequest<{ id: string; journalId: string; amountPaise: number; replayed: boolean }>(
       `/api/organizations/${org}/receipts`, { method: 'POST', body: JSON.stringify(input) },
     ),
+  customerAdvances: (org: string) => jsonRequest<{ advances: CustomerAdvance[] }>(`/api/organizations/${org}/customer-advances`),
+  recordCustomerAdvance: (org: string, input: { idempotencyKey: string; customerId: string; cashAccountId: string; amountPaise: number }) =>
+    jsonRequest<{ id: string; journalId: string; replayed: boolean }>(`/api/organizations/${org}/customer-advances`, { method: 'POST', body: JSON.stringify(input) }),
+  allocateCustomerAdvance: (org: string, advanceId: string, input: { idempotencyKey: string; invoiceId: string; amountPaise: number }) =>
+    jsonRequest<{ id: string; journalId: string; replayed: boolean }>(`/api/organizations/${org}/customer-advances/${advanceId}/allocations`, { method: 'POST', body: JSON.stringify(input) }),
   bills: (org: string) => jsonRequest<{ bills: Bill[] }>(`/api/organizations/${org}/bills`),
   createBillDraft: (org: string, input: { vendorId: string; vendorReference: string; expenseAccountId: string; description: string; amountPaise: number; dueDate?: string }) =>
     jsonRequest<{ id: string; status: 'draft' }>(`/api/organizations/${org}/bills`, { method: 'POST', body: JSON.stringify(input) }),
