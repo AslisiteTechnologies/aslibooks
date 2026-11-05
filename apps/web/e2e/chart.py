@@ -378,6 +378,12 @@ def test_chart():
             expect(page.get_by_text("Invoice INV-1", exact=True)).to_be_visible()
             page.get_by_role("button", name="Load more statement entries", exact=True).click()
             expect(page.get_by_text("Customer advance received", exact=True)).to_be_visible()
+            with page.expect_download() as statement_download:
+                page.get_by_role("button", name="Download statement CSV", exact=True).click()
+            statement_bytes = Path(statement_download.value.path()).read_bytes()
+            statement_csv = statement_bytes.decode("utf-8-sig")
+            assert statement_bytes.startswith(b"\xef\xbb\xbf")
+            assert '"Opening balance"' in statement_csv and '"Invoice INV-1"' in statement_csv and '"Customer advance received"' in statement_csv
             page.get_by_role("button", name="Close", exact=True).click()
             page.unroute(contact_list_route)
             page.route("**/api/organizations/**", lambda route: route.fulfill(status=401, content_type="application/json", body='{"error":"Unauthorized"}'), times=1)

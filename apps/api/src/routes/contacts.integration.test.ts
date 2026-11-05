@@ -20,6 +20,9 @@ describe.skipIf(!enabled)('contacts API', () => {
     const actor = headers.get('x-fixture-actor');
     return actor ? { id: actor } : null;
   }));
+  app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    res.status(500).json({ error: error instanceof Error ? error.stack ?? error.message : String(error) });
+  });
   const org = new Types.ObjectId();
   const foreign = new Types.ObjectId();
   const path = '/orgs/' + org + '/contacts';
@@ -80,8 +83,9 @@ describe.skipIf(!enabled)('contacts API', () => {
       allocations: [{ billId: bill._id, vendorReference: bill.vendorReference, amountPaise: 2500 }] }]);
     await VendorCreditModel.create([{ organizationId: org, billId: bill._id, vendorReference: bill.vendorReference, vendorName: bill.vendorName,
       amountPaise: 3000, reason: 'Supplier allowance', idempotencyKey: 'statement-credit-1', journalId: new Types.ObjectId(), issuedAt: new Date('2026-01-03T00:00:00Z') }]);
-    const ledger = await request(app).get(path + '/' + id + '/ledger').set(owner).expect(200);
-    expect(ledger.body).toMatchObject({ contact: { id, displayName: 'Coastal Supply' }, currency: 'INR', balancePaise: 7000, payablePaise: 7000,
+    const ledger = await request(app).get(path + '/' + id + '/ledger').set(owner);
+    if (ledger.status !== 200) throw new Error(`Contact statement failed: ${ledger.body.error}`);
+    expect(ledger.body).toMatchObject({ contact: { id, displayName: 'Coastal Supply' }, currency: 'INR', openingBalancePaise: 0, balancePaise: 7000, payablePaise: 7000,
       rows: [
         { type: 'bill', reference: 'BILL-STATEMENT-1', debitPaise: 12500, creditPaise: 0, balancePaise: 12500 },
         { type: 'payment', reference: 'BILL-STATEMENT-1', debitPaise: 0, creditPaise: 2500, balancePaise: 10000 },

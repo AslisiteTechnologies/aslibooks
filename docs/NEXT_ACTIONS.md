@@ -8,7 +8,7 @@ Preserve the original workspace edits; never stage the owner-supplied vision fil
 
 ## Current implementation task
 
-Statement workflow `ec725b6302dba3d6cd0abc2bd7e01aacc7e948de` passed CI #381, MongoDB #318 and E2E #101. Targeted index commit `d924c1cd0cf4efd0ed214feaf486063d5c0254d2` passed CI #394/#396, MongoDB #331/#333 and E2E #114/#116. Publish and verify statement cursor pagination with the expanded MongoDB fixture and two-page browser flow; then implement statement CSV export and transaction-to-subledger reconciliation.
+Remote statement pagination head `8a3a6e94ab6f42c31e737d768620c23ad5ffe804` passed CI #408 and Browser #128; MongoDB #345 failed. Local diagnosis fixed invalid projection constants and a first-page opening-balance facet that returned all rows. The focused statement replica-set suite passed 2/2; full API replica-set passed 105/105; workspace typecheck, lint, production build and the 390px Playwright flow passed, including full statement CSV download. Publish this correction on top of the latest remote head, inspect exact-SHA CI/MongoDB/E2E, then start transaction-to-subledger reconciliation.
 
 ## Exact verification commands
 
@@ -18,16 +18,17 @@ pnpm typecheck
 pnpm lint
 pnpm build
 git diff --check
-pnpm --filter @aslibooks/api test --maxWorkers=1 src/routes/products.integration.test.ts
+pnpm --filter @aslibooks/api test --maxWorkers=1 src/routes/contacts.integration.test.ts
 $env:PYTHONPATH="$env:TEMP\aslibooks-playwright-runtime"
 $env:PLAYWRIGHT_BROWSERS_PATH="$env:TEMP\codex-aslibooks-browsers"
 & "$env:USERPROFILE\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe" apps/web/e2e/chart.py
 ```
 
-For local integration/browser tests, provision a disposable MongoDB replica set and API/web servers as described by `.github/workflows/e2e.yml` and `docs/integration-testing.md`. Do not point tests at production. If unavailable, rely only on exact-commit GitHub workflow evidence and state which local tests were skipped.
+For local integration/browser tests, use a disposable MongoDB replica set and API/web servers as described by `.github/workflows/e2e.yml` and `docs/integration-testing.md`. In this session, MongoDB ran locally on port 37491 with database names prefixed `aslibooks_test_`; API and Vite ran on ports 4000 and 5176. Do not point tests at production. If local services are unavailable, rely only on exact-commit GitHub workflow evidence and state which local tests were skipped.
 
 ## Remaining MVP work
 
+- Transaction-to-subledger reconciliation for customer/vendor statement totals and their receivable/payable control accounts.
 - Reconcile every master vision acceptance criterion to implemented code and direct test evidence, especially cross-tenant object access and viewer/accountant permissions.
 - Review invoice lifecycle, sales/purchase tax handling and credit/refund boundaries; keep unsupported GST cases blocked pending qualified review.
 - Verify financial reports, aging, customer/vendor ledgers and source journal reconciliation against realistic transaction fixtures.

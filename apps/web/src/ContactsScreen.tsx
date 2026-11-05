@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Alert, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControlLabel, Paper, Stack, TextField, Typography } from '@mui/material';
 import { api, type Contact, type ContactInput, type ContactLedger, type Organization } from './api';
+import { downloadCsv } from './csv';
 
 export function ContactsScreen({ organization }: { organization: Organization }) {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -15,6 +16,7 @@ export function ContactsScreen({ organization }: { organization: Organization })
   const [statementOpen, setStatementOpen] = useState(false);
   const [statementLoading, setStatementLoading] = useState(false);
   const [statementLoadingMore, setStatementLoadingMore] = useState(false);
+  const [exportingStatement, setExportingStatement] = useState(false);
   const [statementRole, setStatementRole] = useState<'customer' | 'vendor'>('customer');
   const [saving, setSaving] = useState(false);
   const [editDraft, setEditDraft] = useState<ContactInput>({ displayName: '', roles: [] });
@@ -91,6 +93,28 @@ export function ContactsScreen({ organization }: { organization: Organization })
     } catch (cause) { if (currentOrganization.current === requestedOrganization) setError(cause instanceof Error ? cause.message : 'Unable to load more statement entries.'); }
     finally { setStatementLoadingMore(false); }
   }
+  async function exportStatement() {
+    if (!statement || exportingStatement) return;
+    const requestedOrganization = organization.id;
+    setExportingStatement(true); setError('');
+    try {
+      let after = '';
+      let firstPage: ContactLedger | undefined;
+      const rows: ContactLedger['rows'] = [];
+      do {
+        const page = await api.contactLedger(requestedOrganization, statement.contact.id, statementRole, after);
+        if (currentOrganization.current !== requestedOrganization) return;
+        firstPage ??= page;
+        rows.push(...page.rows);
+        after = page.next ?? '';
+      } while (after);
+      if (!firstPage) return;
+      downloadCsv(`contact-statement-${statementRole}-${statement.contact.id}.csv`,
+        ['Date', 'Type', 'Reference', 'Description', 'Debit paise', 'Credit paise', 'Running balance paise'],
+        [['', 'Opening balance', '', '', 0, 0, firstPage.openingBalancePaise], ...rows.map(row => [row.date, row.type, row.reference, row.description, row.debitPaise, row.creditPaise, row.balancePaise])]);
+    } catch (cause) { if (currentOrganization.current === requestedOrganization) setError(cause instanceof Error ? cause.message : 'Contact statement CSV could not be prepared.'); }
+    finally { setExportingStatement(false); }
+  }
   const money = (paise: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(paise / 100);
   return <Stack spacing={2}>
     <Typography variant="h5">Customers and vendors</Typography>
@@ -165,7 +189,10 @@ export function ContactsScreen({ organization }: { organization: Organization })
         </Stack>}
         {!statementLoading && error && <Alert severity="error">{error}</Alert>}
       </DialogContent>
-      <DialogActions><Button onClick={() => setStatementOpen(false)}>Close</Button></DialogActions>
+      <DialogActions>
+        {statement && <Button variant="outlined" disabled={exportingStatement || statementLoading} onClick={() => void exportStatement()}>{exportingStatement ? 'Preparing CSV…' : 'Download statement CSV'}</Button>}
+        <Button onClick={() => setStatementOpen(false)}>Close</Button>
+      </DialogActions>
     </Dialog>
   </Stack>;
 }

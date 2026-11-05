@@ -70,7 +70,9 @@ async function sendStatement(
   afterMatch: Record<string, unknown>,
   beforeMatch: Record<string, unknown> | null,
 ) {
-  const beforeStages: PipelineStage.FacetPipelineStage[] = beforeMatch ? [{ $match: beforeMatch }, sumStatement] : [];
+  const beforeStages: PipelineStage.FacetPipelineStage[] = beforeMatch
+    ? [{ $match: beforeMatch }, sumStatement]
+    : [{ $match: { $expr: { $eq: [1, 0] } } }, sumStatement];
   const pageStages: PipelineStage.FacetPipelineStage[] = [
     ...(cursor ? [{ $match: afterMatch } as PipelineStage.Match] : []),
     { $sort: { date: 1, eventId: 1 } }, { $limit: limit + 1 },
@@ -159,7 +161,9 @@ export function contactRouter() {
     const project = (type: string, prefix: string, date: unknown,
       reference: unknown, description: unknown, debit: unknown, credit: unknown): PipelineStage.Project['$project'] => ({
       _id: 0, eventId: { $concat: [prefix, { $toString: '$_id' }] }, date,
-      type: { $literal: type }, reference, description, debitPaise: debit, creditPaise: credit,
+      type: { $literal: type }, reference, description,
+      debitPaise: typeof debit === 'number' ? { $literal: debit } : debit,
+      creditPaise: typeof credit === 'number' ? { $literal: credit } : credit,
     } as PipelineStage.Project['$project']);
     let source: typeof InvoiceModel | typeof BillModel;
     const unions: PipelineStage[] = [];
