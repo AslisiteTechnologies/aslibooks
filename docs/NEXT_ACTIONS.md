@@ -2,11 +2,11 @@
 
 ## Current checkpoint
 
-Development branch head `33ecf1c11ba42eefa83ed2bb5a75c0fd01191ecb`. AI report explanations passed CI #244/MongoDB #181; internal cash/bank transfers passed CI #246/MongoDB #183; customer advances and the starter-chart count correction passed CI #250/MongoDB #187. Vendor advances are the current task. The owner-supplied vision document must remain unstaged.
+Development branch head `e04c71ff1580a40abb1f7b2f7bd802198115f298`. Vendor advance CI #252 passed. MongoDB #189 exercised the vendor advance workflow and found its journal assertions relied on nondeterministic query order. Assertions now query by the response journal IDs; commit and rerun are pending. The owner-supplied vision document must remain unstaged.
 
 ## Current implementation task
 
-Vendor advances use asset control account 1400, same-vendor bill allocation, invoice status updates, idempotency, audit and atomic journals, with responsive review/confirmation UI. Run exact-commit MongoDB integration. Then add refunds or secure attachments, browser coverage and release hardening. AI needs optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
+Publish and verify the journal assertion correction. Vendor advances use asset control account 1400, same-vendor bill allocation, bill settlement updates, idempotency, audit and atomic journals, with responsive review/confirmation UI. Then add refunds or secure attachments, browser coverage and release hardening. AI needs optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
 ## Exact verification commands
 
 ```powershell
