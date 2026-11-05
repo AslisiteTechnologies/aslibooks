@@ -131,7 +131,8 @@ def test_chart():
             page.get_by_role("button", name="Close", exact=True).click()
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Receipts", exact=True).click()
-            amount_field = page.get_by_label("Amount received (₹)", exact=False).last
+            amount_field = page.get_by_label("Amount received (₹)", exact=False).first
+            expect(amount_field).to_be_enabled()
             expect(amount_field).to_have_value("45.00")
             amount_field.fill("20.00")
             page.get_by_role("button", name="Review receipt").click()

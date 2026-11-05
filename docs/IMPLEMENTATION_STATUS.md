@@ -1,6 +1,6 @@
 # Implementation status
 
-Status updated 2026-11-05. Development branch head: `43c8f4f1f309e6a9369860dcd4c2c5ee81ac8478`. CI and MongoDB checks had passed on earlier selector commits. The fresh product/invoice blob commit is published and the remote raw files contain `unit`. CI and MongoDB integration passed. Browser run #30 verified product creation, invoice line unit snapshot/print and issuance, then failed at Receipts because its amount locator matched a disabled and an active field. The locator now selects the active last match; rerun pending. This remains an MVP in active development, not a production-ready release.
+Status updated 2026-11-05. Development branch head: `43c8f4f1f309e6a9369860dcd4c2c5ee81ac8478`. CI and MongoDB checks had passed on earlier selector commits. The fresh product/invoice blob commit is published and the remote raw files contain `unit`. CI and MongoDB integration passed. Browser run #30 verified product creation, invoice line unit snapshot/print and issuance, then failed at Receipts because its amount locator matched a disabled and an active field. Run #31 showed the last match was the separate advance amount; the main payment amount is first and starts disabled during loading. E2E now waits for the first field to enable and verifies 45.00; rerun pending. This remains an MVP in active development, not a production-ready release.
 
 | Area | Status | Verified implementation and remaining gaps |
 | --- | --- | --- |
