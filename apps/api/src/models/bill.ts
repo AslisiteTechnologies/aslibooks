@@ -20,6 +20,7 @@ const billSchema = new Schema({
 }, { timestamps: true, strict: 'throw', versionKey: false });
 
 billSchema.index({ organizationId: 1, createdAt: -1, _id: -1 });
+billSchema.index({ organizationId: 1, vendorId: 1, postedAt: 1, _id: 1 });
 billSchema.index({ organizationId: 1, vendorId: 1, vendorReference: 1 }, { unique: true });
 billSchema.index({ organizationId: 1, postIdempotencyKey: 1 }, { unique: true, partialFilterExpression: { postIdempotencyKey: { $type: 'string' } } });
 billSchema.pre('save', async function () {
@@ -63,3 +64,4 @@ vendorCreditSchema.pre('deleteMany', rejectVendorCreditMutation);
 vendorCreditSchema.pre('findOneAndDelete', rejectVendorCreditMutation);
 vendorCreditSchema.pre('bulkWrite', rejectVendorCreditMutation);
 export const VendorCreditModel = mongoose.models.VendorCredit || mongoose.model('VendorCredit', vendorCreditSchema);
+
