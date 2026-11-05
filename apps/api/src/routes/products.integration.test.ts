@@ -41,7 +41,7 @@ describe.skipIf(!enabled)('product catalog API', () => {
     }
     await request(app).post(path).set(owner).send({ ...item, code: 'GST1', taxCategory: 'taxable' }).expect(400);
     await request(app).post(path).set(owner).send({ ...item, code: 'GST2', taxCategory: 'exempt', gstRateBasisPoints: 1800 }).expect(400);
-    const taxed = await request(app).post(path).set(owner).send({ ...item, code: 'GST3', hsnSacCode: '998314', taxCategory: 'taxable', gstRateBasisPoints: 1800 }).expect(201);
+    const taxed = await request(app).post(path).set(owner).send({ ...item, code: 'GST3', name: 'Configured taxable item', hsnSacCode: '998314', taxCategory: 'taxable', gstRateBasisPoints: 1800 }).expect(201);
     expect(await ProductModel.findById(taxed.body.id)).toMatchObject({ hsnSacCode: '998314', taxCategory: 'taxable', gstRateBasisPoints: 1800 });
     const { body } = await request(app).post(path).set(owner).send(item).expect(201);
     await request(app).post(path).set(owner).send(item).expect(409);

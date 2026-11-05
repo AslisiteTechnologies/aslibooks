@@ -2,13 +2,13 @@
 
 ## Current checkpoint
 
-Branch `develop/phase-1-foundation`. Membership/team commit `406186c2be6b9a6f0312a4a366969649ad6fb67f` passed CI #228 and MongoDB #165. Team membership APIs and invitation lifecycle integration tests therefore passed on the isolated Actions replica set. The local checkout has that feature plus an uncommitted GST data/calculation slice. Preserve and do not stage `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`.
+Branch `develop/phase-1-foundation`. Membership/team commit `406186c2be6b9a6f0312a4a366969649ad6fb67f` passed CI #228 and MongoDB #165. GST commit `76c998302801b78b91795e13bfc8dfd6fb68e94b` passed CI #230; MongoDB #167 exposed one catalog test fixture collision (same name changed the first paged result). The fixture name is fixed locally; publish and rerun the database workflow. Preserve and do not stage `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`.
 
 Latest GST unit test run passed 3/3. Typecheck, lint and build passed after the GST code and before the most recent documentation-only changes. GST product/invoice database integration and browser flows are pending CI. Tax-bearing invoice posting remains blocked. Local MongoDB is unavailable; previously the workspace test run passed 21 unit tests and skipped 67 DB tests, so those skips do not count as passes.
 
 ## Current implementation task
 
-Finish the GST data slice: verify/review the API schemas and transaction boundaries, run the full local unit/typecheck/lint/build suite, publish it on top of `406186c2be6b9a6f0312a4a366969649ad6fb67f`, and inspect both Actions workflows. Fix any failures before moving on. After that, configure Better Auth email verification through an optional server-side provider adapter without weakening verified-email invitations; credentials remain deployment configuration and must not be committed. Then proceed with missing accounting controls and responsive E2E/release work.
+Publish the corrected GST product-fixture test on top of `76c998302801b78b91795e13bfc8dfd6fb68e94b`; verify both workflows, including MongoDB integration, and fix any failures. Then configure Better Auth email verification through an optional server-side provider adapter without weakening verified-email invitations; credentials remain deployment configuration and must not be committed. Proceed afterward with missing accounting controls and responsive E2E/release work.
 
 ## Exact verification commands
 
