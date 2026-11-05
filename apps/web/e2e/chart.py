@@ -299,7 +299,12 @@ def test_chart():
             expect(page.get_by_text("Posted ledger debits equal credits", exact=True)).to_be_visible()
             expect(page.get_by_text("Imported bank entries are reconciled", exact=True)).to_be_visible()
             expect(page.get_by_role("button", name="Review and close period")).to_be_enabled()
-            print("Verified signup, starter chart/opening balances, customer/vendor/service setup and contact editing, invoice/vendor credits and print views, receipts, partial/final bill payments, account lifecycle, manual journals, bank CSV import/matching/reconciliation, date-filtered ledger dashboard, fiscal close review, responsive navigation, CSV export and reconciled reports (INR 34.66 net profit)")
+            page.route("**/api/organizations/**", lambda route: route.fulfill(status=401, content_type="application/json", body='{"error":"Unauthorized"}'), times=1)
+            page.get_by_role("button", name="Open navigation").click()
+            page.get_by_role("button", name="Reports", exact=True).click()
+            expect(page.get_by_text("Your session expired. Sign in again to continue.", exact=True)).to_be_visible()
+            expect(page.get_by_text("Sign in to your workspace", exact=True)).to_be_visible()
+            print("Verified signup, starter chart/opening balances, customer/vendor/service setup and contact editing, invoice/vendor credits and print views, receipts, partial/final bill payments, account lifecycle, manual journals, bank CSV import/matching/reconciliation, date-filtered ledger dashboard, fiscal close review, session-expiry handling, responsive navigation, CSV export and reconciled reports (INR 34.66 net profit)")
         finally:
             browser.close()
 

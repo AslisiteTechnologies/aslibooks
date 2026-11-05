@@ -48,6 +48,17 @@ export function App() {
 
   useEffect(() => { void refreshSession(); }, []);
 
+  useEffect(() => {
+    function handleSessionExpired() {
+      setOrganizations([]);
+      setSelectedId('');
+      setAuthError('Your session expired. Sign in again to continue.');
+      setAuthState('signed-out');
+    }
+    window.addEventListener('aslibooks:session-expired', handleSessionExpired);
+    return () => window.removeEventListener('aslibooks:session-expired', handleSessionExpired);
+  }, []);
+
   if (authState === 'loading') return <Box sx={{ p: 5 }} role="status">Loading Aslibooks…</Box>;
   if (authState === 'signed-out') return <><AuthScreen onAuthenticated={refreshSession} />{authError && <Box role="alert" sx={{ p: 2 }}>{authError}</Box>}</>;
   if (authState === 'onboarding') return <OnboardingScreen onCreated={refreshSession} />;

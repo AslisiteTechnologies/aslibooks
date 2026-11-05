@@ -59,6 +59,9 @@ async function jsonRequest<T>(path: string, options: RequestInit = {}): Promise<
   });
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) {
+    if (response.status === 401 && path.startsWith('/api/organizations')) {
+      window.dispatchEvent(new Event('aslibooks:session-expired'));
+    }
     const error = body as { message?: string; error?: string } | null;
     throw new Error(error?.message || error?.error || 'Request failed');
   }

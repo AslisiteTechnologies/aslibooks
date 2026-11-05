@@ -2,11 +2,11 @@
 
 ## Current checkpoint
 
-Development branch head `eefa36107638bb53bf298892f28a0ea199a0d0c7`. CI #258 and MongoDB integration #195 passed with the customer advance refund integration and corrected vendor advance assertions. Preserve the owner-supplied vision document in the original workspace; it must remain unstaged.
+Development branch head `018ae5c1664fb1d7163f56f42536e8e6643a519e`; CI #266 and MongoDB integration #203 passed after restoring the exact lockfile. A session-expiry E2E assertion is added locally and syntax-checked; full browser run needs local API/database services. Preserve the owner-supplied vision document in the original workspace; it must remain unstaged.
 
 ## Current implementation task
 
-Authentication mutation rate limiting is implemented locally and under full suite/build verification. It returns 429 after 20 POST requests per 15 minutes per process; the in-memory store does not share state across API replicas and must be replaced/configured with a shared store for multi-instance production. After verification, publish and verify exact-commit CI. Then proceed to secure attachments metadata/storage policy and remaining threat-model/release work. AI needs optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
+Verify the session-expiry browser assertion when a local API/database test environment is available. Then proceed to secure source-document attachments, beginning with an isolated storage adapter, tenant-scoped metadata and authorization tests. Do not enable production uploads without configured private storage, retention/size/type rules and download authorization. Authentication POST rate limiting is verified at 20 per 15 minutes per process; the in-memory store does not share state across API replicas and needs a shared store before horizontal production scaling. AI needs optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
 ## Exact verification commands
 
 ```powershell
