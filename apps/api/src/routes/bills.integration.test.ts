@@ -78,7 +78,12 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     await request(app).post(`${paymentPath}/vendor-payments`).set(owner).send(first).expect(200).expect(response => expect(response.body.replayed).toBe(true));
     await request(app).post(`${paymentPath}/vendor-payments`).set(owner).send({ ...first, allocations: [{ billId: draft.body.id, amountPaise: 2001 }] }).expect(409);
     await request(app).post(`${paymentPath}/vendor-payments`).set(owner).send({ ...first, idempotencyKey: 'vendor-payment-overpay', allocations: [{ billId: draft.body.id, amountPaise: 3001 }] }).expect(409);
-    const final = await request(app).post(`${paymentPath}/vendor-payments`).set(owner).send({ ...first, idempotencyKey: 'vendor-payment-final', allocations: [{ billId: draft.body.id, amountPaise: 3000 }] }).expect(201);
+    const competingFinals = await Promise.all([
+      request(app).post(`${paymentPath}/vendor-payments`).set(owner).send({ ...first, idempotencyKey: 'vendor-payment-final-race-a', allocations: [{ billId: draft.body.id, amountPaise: 3000 }] }),
+      request(app).post(`${paymentPath}/vendor-payments`).set(owner).send({ ...first, idempotencyKey: 'vendor-payment-final-race-b', allocations: [{ billId: draft.body.id, amountPaise: 3000 }] }),
+    ]);
+    expect(competingFinals.map(response => response.status).sort()).toEqual([201, 409]);
+    const final = competingFinals.find(response => response.status === 201)!;
     expect(await BillModel.findById(draft.body.id)).toMatchObject({ status: 'paid', amountPaidPaise: 5000 });
     expect(await VendorPaymentModel.countDocuments({ organizationId: paymentOrg })).toBe(2);
     expect(await AuditEventModel.countDocuments({ organizationId: paymentOrg, action: 'vendor_payment.recorded' })).toBe(2);

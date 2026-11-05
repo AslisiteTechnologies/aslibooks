@@ -8,7 +8,7 @@ Preserve the original workspace edits; never stage the owner-supplied vision fil
 
 ## Current implementation task
 
-GST discount arithmetic commit `3c44df44bbe899adf133bc84fe713bf6b1570ed8` passed CI #429/#430, MongoDB #366/#367 and Browser #149/#150. A new customer receipt race proves two distinct requests cannot settle the same remaining balance twice (focused replica-set test 2/2). Trusted-Origin tests now cover unsafe POST/PUT/PATCH/DELETE and `null` origins (3/3). Run the full local workspace suite, publish these test-strengthening changes with refreshed evidence, and verify all six workflows at the resulting SHA. Next add vendor payment and advance-allocation concurrency cases, then broaden retry/network-error tests.
+Receipt concurrency and POST/PUT/PATCH/DELETE Origin guard tests at `048d7d48fbce9c1434c0aa92a3a838d664a4196e` passed CI #431/#432, MongoDB #368/#369 and Browser #151/#152. Vendor payment concurrency now races two distinct requests for the same open payable; focused bills integration passed 4/4, and the full disposable replica-set suite passed 136/136 (130 API, five accounting, one web). Typecheck, lint, build, audit and diff check pass. Publish the vendor race and refreshed evidence, then verify the six workflows. Next cover advance allocation concurrency and retry/network failures.
 
 ## Exact verification commands
 

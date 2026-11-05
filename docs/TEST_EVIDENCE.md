@@ -213,4 +213,9 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 
 ## Competing receipt allocations (local replica-set verification, exact-SHA pending)
 - The customer receipt integration test now races two distinct idempotency keys, each requesting the same remaining 7,000-paise invoice balance. Exactly one returns 201 and the other 409; the invoice is paid once and journal, receipt, and audit counts remain reconciled. Focused receipts integration passed 2/2.
-- Trusted-Origin middleware coverage now blocks untrusted POST, PUT, PATCH, and DELETE before handlers run, as well as opaque `null` origins. Focused origin tests passed 3/3. These latest test-only changes are not yet published.
+- Trusted-Origin middleware coverage now blocks untrusted POST, PUT, PATCH, and DELETE before handlers run, as well as opaque `null` origins. Focused origin tests passed 3/3. The receipt race and all-method Origin tests were published at `048d7d48fbce9c1434c0aa92a3a838d664a4196e`; CI #431/#432, MongoDB #368/#369 and Browser #151/#152 all passed.
+
+
+## Competing vendor payments (local replica-set verification, exact-SHA pending)
+- The bill lifecycle test races two vendor payment requests with distinct keys for the same remaining 3,000-paise payable. Exactly one returns 201 and the other 409; the bill is paid once, with two payment records total (partial plus final) and balanced journal/audit counts. Focused bills integration passed 4/4.
+- With the receipt race and all-method Origin tests, this covers competing customer receipt/vendor payment allocations and unsafe Origin rejection for POST/PUT/PATCH/DELETE. The complete workspace replica-set suite passed 136/136 with the vendor race enabled (130 API, five accounting, one web). Full typecheck, lint, production build, dependency audit and `git diff --check` passed. Vendor race exact-SHA verification is pending publication.

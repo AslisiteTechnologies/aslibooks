@@ -34,3 +34,7 @@ GST calculation checkpoint: a supplied fixed paise discount is now applied to th
 
 
 Checkpoint: GST discount arithmetic commit `3c44df44bbe899adf133bc84fe713bf6b1570ed8` passed CI #429/#430, MongoDB #366/#367 and Browser #149/#150. Local replica-set suite passed 136/136; typecheck, lint, build, full audit and browser journey passed. New local acceptance-10 coverage races two distinct customer receipt requests for the same remaining invoice balance and proves only one succeeds; focused receipt integration passes 2/2. Trusted-origin tests also now exercise POST/PUT/PATCH/DELETE blocks. These latest test-only additions await publication and exact-SHA workflows.
+
+Vendor settlement concurrency follow-up: `bills.integration.test.ts` now races two distinct requests for the remaining payable and verifies exactly one is accepted. Focused bills replica-set test passes 4/4. Together with the customer receipt race, distinct-idempotency allocation concurrency is covered on both sides of the ledger; exact-SHA verification is pending.
+
+The test-hardening commit `048d7d48fbce9c1434c0aa92a3a838d664a4196e` passed CI #431/#432, MongoDB #368/#369 and Browser #151/#152. Its receipt concurrency test and POST/PUT/PATCH/DELETE Origin guard coverage are verified. Latest local full suite still passes 136/136 after adding the vendor payment race test; full typecheck, lint, build, audit and diff check pass. Vendor race exact-SHA workflows are pending publication.
