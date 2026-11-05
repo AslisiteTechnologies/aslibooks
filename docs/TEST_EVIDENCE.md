@@ -69,3 +69,12 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 - `pnpm test`: 28 tests passed; 67 MongoDB-backed integration tests skipped because no local MongoDB replica set is available. Email adapter tests passed 4/4, GST arithmetic tests 3/3, and the web CSV test 1/1.
 - `pnpm typecheck`, `pnpm lint`, `pnpm build`, and `git diff --check` passed on a separate worktree based on the inspected current development branch.
 - Membership invitation delivery is mocked in the MongoDB integration test; that integration test was skipped locally. Exact-commit GitHub workflows must run before this change is considered remotely verified. No real provider credentials or sender domain were used.
+## Email slice remote verification
+
+- Commit `67314132cbfa1a533a3912621a4ba1a04ca470fd`: CI #234 and MongoDB integration #171 both succeeded. Local verification was 28 passed / 67 skipped; email adapter tests passed 4/4. Live provider delivery was not exercised.
+
+## Fiscal close checklist slice (local, before CI)
+
+- `pnpm test`: 28 passed / 67 MongoDB integration tests skipped. The fiscal close integration coverage is included but skipped locally because no MongoDB replica set is available.
+- `pnpm typecheck`, `pnpm lint`, `pnpm build`, and `git diff --check` passed after the API and React close review were added. The browser test script compiled with the bundled Python runtime; the browser flow itself was not run because local API/database services are unavailable.
+- Checklist blocks closing when period journals are unbalanced or imported bank entries remain unreconciled. Draft invoice/bill counts are warnings. Closing requires owner/admin permission and explicit confirmation, then increments the posting fence and writes the existing immutable close audit event in the same transaction. MongoDB concurrency and route assertions require the exact-commit workflow.

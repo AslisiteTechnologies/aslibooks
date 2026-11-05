@@ -17,8 +17,9 @@ const BankingScreen = lazy(() => import('./BankingScreen').then(module => ({ def
 const DashboardScreen = lazy(() => import('./DashboardScreen').then(module => ({ default: module.DashboardScreen })));
 const TeamScreen = lazy(() => import('./TeamScreen').then(module => ({ default: module.TeamScreen })));
 const SettingsScreen = lazy(() => import('./SettingsScreen').then(module => ({ default: module.SettingsScreen })));
+const FiscalPeriodsScreen = lazy(() => import('./FiscalPeriodsScreen').then(module => ({ default: module.FiscalPeriodsScreen })));
 
-const nav = ['Overview', 'Sales', 'Receipts', 'Products', 'Expenses', 'Banking', 'Contacts', 'Team', 'Accounting', 'GST', 'Reports', 'Settings'];
+const nav = ['Overview', 'Sales', 'Receipts', 'Products', 'Expenses', 'Banking', 'Contacts', 'Team', 'Accounting', 'GST', 'Reports', 'Period close', 'Settings'];
 const drawerWidth = 248;
 
 export function App() {
@@ -99,6 +100,7 @@ export function App() {
           section === 'Reports' ? <ReportsScreen key={organization.id} organization={organization} /> :
           section === 'Banking' ? <BankingScreen key={organization.id} organization={organization} /> :
           section === 'Team' ? <TeamScreen key={organization.id} organization={organization} onAccepted={refreshSession} /> :
+          section === 'Period close' ? <FiscalPeriodsScreen key={organization.id} organization={organization} /> :
           section === 'Settings' ? <SettingsScreen key={organization.id} organization={organization} onSaved={() => { void refreshSession(); }} /> :
           <Paper variant="outlined" sx={{ p: { xs: 3, md: 5 } }}>
             <Stack spacing={2} alignItems="flex-start">

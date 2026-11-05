@@ -6,7 +6,7 @@ Development branch head before this email slice: `5bf1e754916ccddde1d9be64014189
 
 ## Current implementation task
 
-Publish the email slice only on top of the inspected development branch head, verify exact-commit CI and MongoDB integration, then continue the next accounting-control milestone. Email provider credentials and sender-domain verification remain deployment prerequisites; no live delivery is claimed. Tax-bearing invoices remain blocked pending expert review.
+The email slice at `67314132cbfa1a533a3912621a4ba1a04ca470fd` passed CI #234 and MongoDB #171. Publish the fiscal-close checklist slice on top of this verified head, verify exact-commit CI/MongoDB, then continue attachment policy, transfers, AI approval, and release hardening. Email provider credentials and sender-domain verification remain deployment prerequisites; no live delivery is claimed. The fiscal-close checklist is implemented locally and needs exact-commit MongoDB workflow verification. Tax-bearing invoices remain blocked pending expert review.
 ## Exact verification commands
 
 ```powershell
@@ -31,7 +31,7 @@ If local Mongo is unavailable, use exact-commit MongoDB Actions evidence. Do not
 
 - GST: validated HSN/SAC/rate inputs, expert-reviewed applicability and rate tables, journal mappings, tax-aware credits/purchases and proper printable tax documents. Keep unsupported cases blocked and avoid compliance claims.
 - Production email-provider credentials and sender-domain verification; live delivery and Better Auth end-to-end verification.
-- Attachments metadata and secure storage policy; fiscal close checklist and period correction/reopen policy.
+- Attachments metadata and secure storage policy; fiscal period correction/reopen policy.
 - Transfers, advances, cash refunds, export coverage and complete ledger export.
 - Constrained AI explanation/draft extraction with explicit human approval and no direct posting capability.
 - Tenant/role threat review, rate limits, session expiry UX, least-privilege runtime database role, staging/backup/restore/monitoring guide, desktop/mobile browser E2E and release checklist.

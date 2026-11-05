@@ -284,7 +284,13 @@ def test_chart():
             expect(page.get_by_text("Net profit", exact=True)).to_be_visible()
             expect(page.get_by_text("₹34.66", exact=True)).to_be_visible()
             expect(page.get_by_role("heading", name="Recent ledger activity")).to_be_visible()
-            print("Verified signup, starter chart/opening balances, customer/vendor/service setup and contact editing, invoice/vendor credits and print views, receipts, partial/final bill payments, account lifecycle, manual journals, bank CSV import/matching/reconciliation, date-filtered ledger dashboard, responsive navigation, CSV export and reconciled reports (INR 34.66 net profit)")
+            page.get_by_role("button", name="Open navigation").click()
+            page.get_by_role("button", name="Period close", exact=True).click()
+            expect(page.get_by_role("heading", name="Fiscal period close")).to_be_visible()
+            expect(page.get_by_text("Posted ledger debits equal credits", exact=True)).to_be_visible()
+            expect(page.get_by_text("Imported bank entries are reconciled", exact=True)).to_be_visible()
+            expect(page.get_by_role("button", name="Review and close period")).to_be_enabled()
+            print("Verified signup, starter chart/opening balances, customer/vendor/service setup and contact editing, invoice/vendor credits and print views, receipts, partial/final bill payments, account lifecycle, manual journals, bank CSV import/matching/reconciliation, date-filtered ledger dashboard, fiscal close review, responsive navigation, CSV export and reconciled reports (INR 34.66 net profit)")
         finally:
             browser.close()
 

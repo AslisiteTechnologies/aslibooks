@@ -44,6 +44,8 @@ export type BankReconciliation = { id: string; periodStart: string; periodEnd: s
 export type DashboardResult = { from: string; to: string; revenuePaise: number; expensesPaise: number; netProfitPaise: number; cashPaise: number; receivablesPaise: number; payablesPaise: number; recentActivity: Array<{ id: string; description: string; postedAt: string; lineCount: number }> };
 export type OrganizationMember = { id: string; name: string; email: string; role: string; status: 'active' | 'invited' | 'suspended'; isSelf: boolean };
 export type OrganizationInvitation = { id: string; organizationId: string; organizationName: string; organizationSlug: string; role: string };
+export type FiscalPeriod = { id: string; startDate: string; endDateExclusive: string; status: 'open' | 'closed'; closedAt?: string };
+export type FiscalCloseChecklist = { periodId: string; startDate: string; endDateExclusive: string; status: 'open' | 'closed'; canClose: boolean; checks: Array<{ id: string; label: string; passed: boolean; blocking: boolean; detail: string; count?: number }> };
 
 async function jsonRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
@@ -155,6 +157,9 @@ export const api = {
   resendVerificationEmail: (email: string) => jsonRequest<unknown>('/api/auth/send-verification-email', { method: 'POST', body: JSON.stringify({ email, callbackURL: window.location.origin }) }),
   requestPasswordReset: (email: string) => jsonRequest<unknown>('/api/auth/request-password-reset', { method: 'POST', body: JSON.stringify({ email, redirectTo: window.location.origin }) }),
   resetPassword: (token: string, newPassword: string) => jsonRequest<unknown>('/api/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, newPassword }) }),
+  fiscalPeriods: (org: string) => jsonRequest<{ periods: FiscalPeriod[] }>(`/api/organizations/${org}/fiscal-periods`),
+  fiscalCloseChecklist: (org: string, periodId: string) => jsonRequest<{ checklist: FiscalCloseChecklist }>(`/api/organizations/${org}/fiscal-periods/${periodId}/close-checklist`),
+  closeFiscalPeriod: (org: string, periodId: string) => jsonRequest<{ status: 'closed'; checklist: FiscalCloseChecklist }>(`/api/organizations/${org}/fiscal-periods/${periodId}/close`, { method: 'POST', body: JSON.stringify({ confirmChecklist: true }) }),
   session: () => jsonRequest<SessionResponse>('/api/auth/get-session'),
   signIn: (email: string, password: string) => jsonRequest<unknown>('/api/auth/sign-in/email', {
     method: 'POST', body: JSON.stringify({ email, password }),
