@@ -39,7 +39,10 @@ describe.skipIf(!enabled)('customer advances', () => {
     const advancePayload = { idempotencyKey: `advance-${org}`, customerId: String(customer), cashAccountId: String(cash), amountPaise: 12000 };
     await request(app).post(path).send(advancePayload).expect(401);
     await request(app).post(path).set({ 'x-fixture-actor': 'advance-viewer' }).send(advancePayload).expect(403);
-    const advanceResponse = await request(app).post(path).set(owner).send(advancePayload).expect(201);
+    const advanceAttempts = await Promise.all([request(app).post(path).set(owner).send(advancePayload), request(app).post(path).set(owner).send(advancePayload)]);
+    expect(advanceAttempts.map(response => response.status).sort()).toEqual([200, 201]);
+    expect(advanceAttempts[0].body.id).toBe(advanceAttempts[1].body.id);
+    const advanceResponse = advanceAttempts.find(response => response.status === 201)!;
     const advanceId = advanceResponse.body.id as string;
     await request(app).post(path).set(owner).send(advancePayload).expect(200, { ...advanceResponse.body, replayed: true });
     await request(app).post(path).set(owner).send({ ...advancePayload, amountPaise: 13000 }).expect(409);
@@ -50,7 +53,10 @@ describe.skipIf(!enabled)('customer advances', () => {
     const draft = await request(app).post(`/orgs/${org}/invoices`).set(owner).send({ idempotencyKey: `advance-invoice-draft-${org}`, customerId: String(customer), lines: [{ productId: String(product), quantity: 1 }] }).expect(201);
     const issued = await request(app).post(`/orgs/${org}/invoices/${draft.body.id}/issue`).set(owner).send({ idempotencyKey: `advance-invoice-${org}` }).expect(201);
     const firstPayload = { idempotencyKey: `advance-allocation-${org}`, invoiceId: issued.body.id, amountPaise: 6000 };
-    const first = await request(app).post(`${path}/${advanceId}/allocations`).set(owner).send(firstPayload).expect(201);
+    const allocationAttempts = await Promise.all([request(app).post(`${path}/${advanceId}/allocations`).set(owner).send(firstPayload), request(app).post(`${path}/${advanceId}/allocations`).set(owner).send(firstPayload)]);
+    expect(allocationAttempts.map(response => response.status).sort()).toEqual([200, 201]);
+    expect(allocationAttempts[0].body.id).toBe(allocationAttempts[1].body.id);
+    const first = allocationAttempts.find(response => response.status === 201)!;
     await request(app).post(`${path}/${advanceId}/allocations`).set(owner).send(firstPayload).expect(200, { ...first.body, replayed: true });
     await request(app).post(`${path}/${advanceId}/allocations`).set(owner).send({ ...firstPayload, amountPaise: 5000 }).expect(409);
     const invoice = await InvoiceModel.findById(issued.body.id);
@@ -72,7 +78,10 @@ describe.skipIf(!enabled)('customer advances', () => {
     const refundPayload = { idempotencyKey: `advance-refund-${org}`, cashAccountId: String(cash), amountPaise: 1000 };
     await request(app).post(`${path}/${advanceId}/refunds`).send(refundPayload).expect(401);
     await request(app).post(`${path}/${advanceId}/refunds`).set({ 'x-fixture-actor': 'advance-viewer' }).send(refundPayload).expect(403);
-    const refund = await request(app).post(`${path}/${advanceId}/refunds`).set(owner).send(refundPayload).expect(201);
+    const refundAttempts = await Promise.all([request(app).post(`${path}/${advanceId}/refunds`).set(owner).send(refundPayload), request(app).post(`${path}/${advanceId}/refunds`).set(owner).send(refundPayload)]);
+    expect(refundAttempts.map(response => response.status).sort()).toEqual([200, 201]);
+    expect(refundAttempts[0].body.id).toBe(refundAttempts[1].body.id);
+    const refund = refundAttempts.find(response => response.status === 201)!;
     await request(app).post(`${path}/${advanceId}/refunds`).set(owner).send(refundPayload).expect(200, { ...refund.body, replayed: true });
     await request(app).post(`${path}/${advanceId}/refunds`).set(owner).send({ ...refundPayload, amountPaise: 999 }).expect(409);
     await request(app).post(`${path}/${advanceId}/refunds`).set(owner).send({ ...refundPayload, idempotencyKey: `advance-refund-overdraw-${org}`, amountPaise: 1001 }).expect(409);

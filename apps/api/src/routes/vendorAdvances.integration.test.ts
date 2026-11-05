@@ -37,13 +37,19 @@ describe.skipIf(!enabled)('vendor advances', () => {
     const payload = { idempotencyKey: `vendor-advance-${org}`, vendorId: String(vendor), cashAccountId: String(cash), amountPaise: 12000 };
     await request(app).post(path).send(payload).expect(401);
     await request(app).post(path).set({ 'x-fixture-actor': 'vendor-advance-viewer' }).send(payload).expect(403);
-    const advanceResponse = await request(app).post(path).set(owner).send(payload).expect(201); const advanceId = advanceResponse.body.id as string;
+    const advanceAttempts = await Promise.all([request(app).post(path).set(owner).send(payload), request(app).post(path).set(owner).send(payload)]);
+    expect(advanceAttempts.map(response => response.status).sort()).toEqual([200, 201]);
+    expect(advanceAttempts[0].body.id).toBe(advanceAttempts[1].body.id);
+    const advanceResponse = advanceAttempts.find(response => response.status === 201)!; const advanceId = advanceResponse.body.id as string;
     await request(app).post(path).set(owner).send(payload).expect(200, { ...advanceResponse.body, replayed: true });
     await request(app).post(path).set(owner).send({ ...payload, amountPaise: 13000 }).expect(409);
     const billDraft = await request(app).post(`/orgs/${org}/bills`).set(owner).send({ idempotencyKey: `bill-advance-draft-${org}`, vendorId: String(vendor), vendorReference: `ADV-${org}`, expenseAccountId: String(expense), description: 'Materials', amountPaise: 10000 }).expect(201);
     const billPosted = await request(app).post(`/orgs/${org}/bills/${billDraft.body.id}/post`).set(owner).send({ idempotencyKey: `vendor-advance-bill-${org}` }).expect(201);
     const allocation = { idempotencyKey: `vendor-advance-allocation-${org}`, billId: billPosted.body.id, amountPaise: 6000 };
-    const first = await request(app).post(`${path}/${advanceId}/allocations`).set(owner).send(allocation).expect(201);
+    const allocationAttempts = await Promise.all([request(app).post(`${path}/${advanceId}/allocations`).set(owner).send(allocation), request(app).post(`${path}/${advanceId}/allocations`).set(owner).send(allocation)]);
+    expect(allocationAttempts.map(response => response.status).sort()).toEqual([200, 201]);
+    expect(allocationAttempts[0].body.id).toBe(allocationAttempts[1].body.id);
+    const first = allocationAttempts.find(response => response.status === 201)!;
     await request(app).post(`${path}/${advanceId}/allocations`).set(owner).send(allocation).expect(200, { ...first.body, replayed: true });
     const updatedBill = await BillModel.findById(billPosted.body.id); expect(updatedBill).toMatchObject({ status: 'partially_paid', amountPaidPaise: 6000 });
     const competingFinals = await Promise.all([

@@ -244,3 +244,7 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 ## Invoice issuance and credit concurrent retries (local verification, exact-SHA pending)
 - Invoice issuance, customer credit notes and vendor credit notes now submit identical same-key requests concurrently in replica-set integration tests. Each operation returns exactly one creation plus one replay with the same transaction ID. Focused invoice/bill tests passed 6/6; full API replica-set suite passed 130/130 serially.
 - Browser E2E commits invoice issuance and vendor credit, drops each first response, then verifies the UI retries with the same key and receives a replay. The full local Playwright workflow passed. Typecheck, lint and diff checks passed. Exact-SHA workflows remain pending publication.
+
+
+## Customer and vendor advance concurrent retries (local verification, exact-SHA pending)
+- Customer advance receipt, allocation and refund, plus vendor advance receipt and allocation tests race identical payloads using the same idempotency key. Each pair returns one create and one replay. Focused replica-set suites pass 2/2; the full serial API suite passes 130/130. Exact-SHA workflow checks for these additional advance cases await publication.
