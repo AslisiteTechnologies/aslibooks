@@ -120,4 +120,5 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 - Contact role selector follow-up: browser runs #9 and #10 passed form fields, then found MUI checkbox labels (`get_by_label("Vendor")`) matching the checkbox and its FormControlLabel wrapper. Role checks are now scoped as form checkboxes. Exact-commit verification pending.
 - Product selector follow-up: browser runs #11/#12 passed contact and vendor creation, then failed because non-exact `Code` also matched `HSN/SAC code`. Product form text fields now use exact form-scoped selectors; rerun pending.
 - Product selector follow-up: run #13 failed after exact product selector scoping timed out because the form ancestor was not reliably discoverable in that mobile navigation state. The exact accessible Name/Code selectors are now used without the ancestor form. Browser rerun pending.
+- Product selector follow-up: run #15 timed out on exact Code matching even though the broad match had found both Code and HSN/SAC. The required-field label caused the exact locator mismatch; Code now uses the first broad label match, which is first in the product form. Rerun pending.
 
