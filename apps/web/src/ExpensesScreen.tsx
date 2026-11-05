@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
 import { api, type Account, type Bill, type Contact, type Organization, type VendorAdvance, type VendorPayment } from './api';
+import { AttachmentsPanel } from './AttachmentsPanel';
 
 const formatMoney = (paise: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(paise / 100);
 export function ExpensesScreen({ organization }: { organization: Organization }) {
@@ -145,7 +146,7 @@ export function ExpensesScreen({ organization }: { organization: Organization })
         <Button onClick={() => { setToPay({ ...bill }); setPaymentAmount(((bill.amountPaise - bill.amountPaidPaise - (bill.amountCreditedPaise ?? 0)) / 100).toFixed(2)); setPayDialogOpen(true); }}>Record payment</Button>
         <Button onClick={() => { setToCredit(bill); setCreditAmount(((bill.amountPaise - bill.amountPaidPaise - (bill.amountCreditedPaise ?? 0)) / 100).toFixed(2)); }}>Issue vendor credit</Button>
       </>}
-    </Stack></Paper>)}
+    </Stack><AttachmentsPanel organizationId={organization.id} resourceType="bill" resourceId={bill.id} canWrite={canWrite} /></Paper>)}
     {payments.map(payment => <Paper key={payment.id} variant="outlined" sx={{ p: 2 }}><Typography>{payment.vendorName} · {formatMoney(payment.amountPaise)} paid · {payment.allocations.map(a => a.vendorReference).join(', ')}</Typography></Paper>)}
     <Dialog open={!!toPost} onClose={() => { if (!saving) setToPost(null); }}><DialogTitle>Post this vendor bill?</DialogTitle><DialogContent><DialogContentText>{toPost && `${toPost.vendorName} · ${toPost.vendorReference} · ${formatMoney(toPost.amountPaise)}. This debits ${toPost.expenseAccountName} and credits accounts payable. Posted bill details cannot be edited; correct mistakes with a reversal.`}</DialogContentText></DialogContent><DialogActions><Button disabled={saving} onClick={() => setToPost(null)}>Keep as draft</Button><Button disabled={saving} variant="contained" onClick={() => { if (toPost) void post(toPost); }}>Confirm and post</Button></DialogActions></Dialog>
     <Dialog open={payDialogOpen} onClose={(_event, reason) => { if (!saving && reason === 'escapeKeyDown') { setPayDialogOpen(false); setToPay(null); } }}><DialogTitle>Record vendor payment</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>

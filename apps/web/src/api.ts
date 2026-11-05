@@ -16,6 +16,7 @@ export type Invoice = { id: string; customerId: string; customerName: string; st
 export type InvoiceDocument = Invoice & { lines: Array<{ name: string; quantity: number; unitPricePaise: number; lineTotalPaise: number; hsnSacCode?: string; taxCategory?: TaxCategory; gstRateBasisPoints?: number; taxablePaise?: number; cgstPaise?: number; sgstPaise?: number; igstPaise?: number }> };
 export type Receipt = { id: string; customerName: string; amountPaise: number; receivedAt: string; journalId: string; allocations: Array<{ invoiceId: string; invoiceNumber: string; amountPaise: number }> };
 export type CustomerAdvance = { id: string; customerId: string; customerName: string; amountPaise: number; allocatedPaise: number; refundedPaise: number; availablePaise: number; receivedAt: string; journalId: string };
+export type Attachment = { id: string; resourceType: 'invoice' | 'bill' | 'journal'; resourceId: string; filename: string; contentType: string; sizeBytes: number; sha256: string; createdAt: string };
 export type Bill = { id: string; vendorId: string; vendorName: string; vendorReference: string; expenseAccountName: string; description: string; status: 'draft' | 'posted' | 'partially_paid' | 'paid' | 'partially_credited' | 'credited'; amountPaise: number; amountPaidPaise: number; amountCreditedPaise?: number; dueDate?: string; overdue?: boolean; journalId?: string };
 export type VendorPayment = { id: string; vendorName: string; amountPaise: number; paidAt: string; journalId: string; allocations: Array<{ billId: string; vendorReference: string; amountPaise: number }> };
 export type VendorAdvance = { id: string; vendorId: string; vendorName: string; amountPaise: number; allocatedPaise: number; availablePaise: number; paidAt: string; journalId: string };
@@ -103,6 +104,21 @@ export const api = {
     jsonRequest<{ id: string; journalId: string; replayed: boolean }>(`/api/organizations/${org}/customer-advances/${advanceId}/allocations`, { method: 'POST', body: JSON.stringify(input) }),
   refundCustomerAdvance: (org: string, advanceId: string, input: { idempotencyKey: string; cashAccountId: string; amountPaise: number }) =>
     jsonRequest<{ id: string; journalId: string; replayed: boolean }>(`/api/organizations/${org}/customer-advances/${advanceId}/refunds`, { method: 'POST', body: JSON.stringify(input) }),
+  attachments: (org: string, resourceType: Attachment['resourceType'], resourceId: string) =>
+    jsonRequest<{ attachments: Attachment[] }>(`/api/organizations/${org}/attachments?${new URLSearchParams({ resourceType, resourceId })}`),
+  uploadAttachment: async (org: string, resourceType: Attachment['resourceType'], resourceId: string, file: File, idempotencyKey: string): Promise<Attachment> => {
+    const response = await fetch(`${API_URL}/api/organizations/${org}/attachments`, {
+      method: 'POST', credentials: 'include', body: file,
+      headers: { 'Content-Type': file.type, 'x-resource-type': resourceType, 'x-resource-id': resourceId, 'x-file-name': encodeURIComponent(file.name), 'idempotency-key': idempotencyKey },
+    });
+    const body = await response.json().catch(() => null) as (Attachment & { error?: string; replayed?: boolean }) | null;
+    if (!response.ok) throw new Error(body?.error || 'Attachment could not be uploaded');
+    return body as Attachment;
+  },
+  downloadAttachment: (org: string, attachmentId: string) => fetch(`${API_URL}/api/organizations/${org}/attachments/${attachmentId}/content`, { credentials: 'include' }).then(async response => {
+    if (!response.ok) { const body = await response.json().catch(() => null) as { error?: string } | null; throw new Error(body?.error || 'Attachment could not be downloaded'); }
+    return response.blob();
+  }),
   bills: (org: string) => jsonRequest<{ bills: Bill[] }>(`/api/organizations/${org}/bills`),
   createBillDraft: (org: string, input: { vendorId: string; vendorReference: string; expenseAccountId: string; description: string; amountPaise: number; dueDate?: string }) =>
     jsonRequest<{ id: string; status: 'draft' }>(`/api/organizations/${org}/bills`, { method: 'POST', body: JSON.stringify(input) }),

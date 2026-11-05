@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
 import { api, type Contact, type Invoice, type InvoiceDocument, type Organization, type Product } from './api';
+import { AttachmentsPanel } from './AttachmentsPanel';
 
 const formatMoney = (paise: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(paise / 100);
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!);
@@ -156,6 +157,7 @@ export function SalesScreen({ organization }: { organization: Organization }) {
         {invoice.status !== 'draft' && <Button onClick={() => void loadInvoiceDocument(invoice)}>Print invoice</Button>}
         {canWrite && ['issued', 'partially_paid', 'partially_credited'].includes(invoice.status) && invoice.totalPaise > invoice.amountPaidPaise + (invoice.amountCreditedPaise ?? 0) && <Button onClick={() => { setToCredit(invoice); setCreditAmount(((invoice.totalPaise - invoice.amountPaidPaise - (invoice.amountCreditedPaise ?? 0)) / 100).toFixed(2)); }}>Issue credit note</Button>}
       </Stack>
+      <AttachmentsPanel organizationId={organization.id} resourceType="invoice" resourceId={invoice.id} canWrite={canWrite} />
     </Paper>)}
     <Dialog open={!!toIssue} onClose={() => { if (!saving) setToIssue(null); }}>
       <DialogTitle>Issue this invoice?</DialogTitle>

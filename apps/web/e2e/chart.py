@@ -104,6 +104,15 @@ def test_chart():
             page.get_by_role("button", name="Review and issue").click()
             page.get_by_role("button", name="Confirm and issue").click()
             expect(page.get_by_text("issued and posted to the ledger.", exact=False)).to_be_visible()
+            page.get_by_role("button", name="Attachments", exact=True).first.click()
+            expect(page.get_by_text("No attachments yet.", exact=True)).to_be_visible()
+            attachment_bytes = b"%PDF-1.7\nAslibooks E2E source document\n%%EOF"
+            page.locator('input[type="file"]').set_input_files({"name": "invoice-source.pdf", "mimeType": "application/pdf", "buffer": attachment_bytes})
+            page.get_by_role("button", name="Upload privately").click()
+            expect(page.get_by_text("invoice-source.pdf uploaded privately.", exact=True)).to_be_visible()
+            with page.expect_download() as attachment_download:
+                page.get_by_role("button", name="Download", exact=True).click()
+            assert Path(attachment_download.value.path()).read_bytes() == attachment_bytes
             page.get_by_role("button", name="Issue credit note").click()
             page.get_by_label("Credit amount (INR)").fill("5.00")
             page.get_by_label("Reason").fill("Scope adjustment")
