@@ -1,7 +1,7 @@
 import express from 'express';
 import mongoose, { Types } from 'mongoose';
 import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AuditEventModel } from '../models/auditEvent.js';
 import { MembershipModel } from '../models/membership.js';
 import { OrganizationModel } from '../models/organization.js';
@@ -45,8 +45,23 @@ describe.skipIf(!enabled)('organization member and invitation workflows', () => 
     await request(app).post(path + '/members').set(owner).send({ email: 'unverified@members.example', role: 'viewer' }).expect(404);
     await request(app).post(path + '/members').set(owner).send({ email: 'invited@members.example', role: 'owner' }).expect(400);
     await request(app).post(path + '/members').set(admin).send({ email: 'invited@members.example', role: 'admin' }).expect(403);
-    const invite = await request(app).post(path + '/members').set(admin).send({ email: 'INVITED@members.example', role: 'accountant' }).expect(201);
-    invitedMembershipId = invite.body.id;
+    const priorKey = process.env.RESEND_API_KEY; const priorFrom = process.env.EMAIL_FROM; const priorOrigin = process.env.WEB_ORIGIN;
+    const sendEmail = vi.fn().mockResolvedValue(new Response('{}', { status: 200 })); vi.stubGlobal('fetch', sendEmail);
+    process.env.RESEND_API_KEY = 'test-only-resend-key'; process.env.EMAIL_FROM = 'Aslibooks <test@example.com>'; process.env.WEB_ORIGIN = 'https://app.example.test';
+    let inviteId: string;
+    try {
+      const invite = await request(app).post(path + '/members').set(admin).send({ email: 'INVITED@members.example', role: 'accountant' }).expect(201);
+      expect(invite.body.notificationSent).toBe(true);
+      inviteId = invite.body.id;
+      expect(sendEmail).toHaveBeenCalledOnce();
+      expect(JSON.parse(sendEmail.mock.calls[0][1].body)).toMatchObject({ to: ['invited@members.example'], from: 'Aslibooks <test@example.com>' });
+    } finally {
+      vi.unstubAllGlobals();
+      if (priorKey === undefined) delete process.env.RESEND_API_KEY; else process.env.RESEND_API_KEY = priorKey;
+      if (priorFrom === undefined) delete process.env.EMAIL_FROM; else process.env.EMAIL_FROM = priorFrom;
+      if (priorOrigin === undefined) delete process.env.WEB_ORIGIN; else process.env.WEB_ORIGIN = priorOrigin;
+    }
+    invitedMembershipId = inviteId;
     await request(app).post(path + '/members').set(owner).send({ email: 'invited@members.example', role: 'viewer' }).expect(409);
     await request(app).get('/orgs/invitations').set({ 'x-fixture-actor': String(invitedId) }).expect(200).then(response => {
       expect(response.body.invitations).toEqual([{ id: invitedMembershipId, organizationId: String(org), organizationName: 'Members route test', organizationSlug: `members-${org}`, role: 'accountant' }]);
@@ -78,4 +93,3 @@ describe.skipIf(!enabled)('organization member and invitation workflows', () => 
     await mongoose.disconnect();
   });
 });
-

@@ -63,3 +63,9 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 - GST foundation commit `76c998302801b78b91795e13bfc8dfd6fb68e94b`: CI #230 succeeded. MongoDB #167 ran 91 tests: 90 passed, including all invoice GST coverage, but one product catalog assertion failed because a newly inserted fixture reused the searched display name and changed which row was returned for `limit=1`. The fixture now has a unique name locally; publish a fix and rerun MongoDB integration before calling this slice verified.
 - GST unit arithmetic tests pass 3/3 for integer-paise inclusive/exclusive amounts, component split, half-up rounding, invalid input and overflow. Latest full local `pnpm test` passes 24 unit tests and skips 67 MongoDB integration tests because local MongoDB is unavailable. Latest typecheck, lint and production build pass; the E2E Python file compiles. GST browser flow has not run in a browser and is not claimed as passed.
 
+
+## Email configuration slice (local, before CI)
+
+- `pnpm test`: 28 tests passed; 67 MongoDB-backed integration tests skipped because no local MongoDB replica set is available. Email adapter tests passed 4/4, GST arithmetic tests 3/3, and the web CSV test 1/1.
+- `pnpm typecheck`, `pnpm lint`, `pnpm build`, and `git diff --check` passed on a separate worktree based on the inspected current development branch.
+- Membership invitation delivery is mocked in the MongoDB integration test; that integration test was skipped locally. Exact-commit GitHub workflows must run before this change is considered remotely verified. No real provider credentials or sender domain were used.

@@ -21,7 +21,11 @@ export function TeamScreen({ organization, onAccepted }: { organization: Organiz
   }, [organization.id, canManage, version]);
   async function invite(event: FormEvent) {
     event.preventDefault();
-    try { await api.inviteMember(organization.id, email, inviteRole); setEmail(''); setNotice('Invitation created. Aslibooks does not send invitation emails yet; share this with the verified user so they can sign in and accept it.'); setVersion(value => value + 1); }
+    try {
+      const result = await api.inviteMember(organization.id, email, inviteRole); setEmail('');
+      setNotice(result.notificationSent ? 'Invitation created and email notification sent. The verified user can sign in and accept it from Team.' : 'Invitation created, but email was not sent. Share this with the verified user so they can sign in and accept it.');
+      setVersion(value => value + 1);
+    }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Invitation could not be created.'); }
   }
   async function update(member: OrganizationMember, input: { role: string } | { status: 'active' | 'suspended' }) {
@@ -41,7 +45,7 @@ export function TeamScreen({ organization, onAccepted }: { organization: Organiz
     </Stack></Paper>}
     {canManage && <>
       <Paper variant="outlined" sx={{ p: 2 }}><Stack component="form" spacing={2} onSubmit={event => { void invite(event); }}>
-        <Typography variant="h6">Invite a registered user</Typography><Typography variant="body2" color="text.secondary">Invitations are available only to users with a verified Aslibooks account. No email notification is sent yet, so share the invitation with the user. They can accept it from their Team screen after signing in.</Typography>
+        <Typography variant="h6">Invite a registered user</Typography><Typography variant="body2" color="text.secondary">Invitations are available only to users with a verified Aslibooks account. An email notification is sent only when transactional email is configured and delivery succeeds; otherwise share the invitation instructions with the user.</Typography>
         <TextField required type="email" label="Verified account email" value={email} onChange={event => setEmail(event.target.value)} />
         <TextField select label="Role" value={inviteRole} onChange={event => setInviteRole(event.target.value as typeof inviteRole)}>
           {organization.role === 'owner' && <MenuItem value="admin">Admin</MenuItem>}<MenuItem value="accountant">Accountant</MenuItem><MenuItem value="viewer">Viewer</MenuItem>
@@ -68,4 +72,3 @@ export function TeamScreen({ organization, onAccepted }: { organization: Organiz
     </>}
   </Stack>;
 }
-

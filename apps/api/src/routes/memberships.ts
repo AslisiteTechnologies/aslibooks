@@ -1,6 +1,7 @@
 import { Router, type RequestHandler } from 'express';
 import mongoose, { Types } from 'mongoose';
 import { z } from 'zod';
+import { emailDeliveryEnabled, sendTransactionalEmail, webApplicationUrl } from '../email.js';
 import { AuditEventModel } from '../models/auditEvent.js';
 import { MembershipModel, membershipRoles } from '../models/membership.js';
 import { OrganizationModel } from '../models/organization.js';
@@ -77,7 +78,7 @@ export function memberRouter() {
     if (!req.is('application/json')) { res.status(415).json({ error: 'Send JSON member invitation data' }); return; }
     const parsed = inviteInput.safeParse(req.body); if (!parsed.success) { res.status(400).json({ error: 'Provide a verified user email and a supported role' }); return; }
     try {
-      const result = await mongoose.connection.transaction(async session => {
+      const invitation = await mongoose.connection.transaction(async session => {
         if (!await fenceOrganizationManagement(authUserId, String(organizationId), session)) throw new MembershipError(403, 'Only owners and admins can invite members');
         const user = await authenticatedUserCollection().findOne({ email: parsed.data.email, emailVerified: true }, { projection: { _id: 1, email: 1 } });
         if (!user) throw new MembershipError(404, 'A registered user with a verified email must accept this invitation');
@@ -88,9 +89,18 @@ export function memberRouter() {
         if (await MembershipModel.exists({ organizationId, authUserId: targetId }).session(session)) throw new MembershipError(409, 'This user already has a membership in the organization');
         const [membership] = await MembershipModel.create([{ organizationId, authUserId: targetId, role: parsed.data.role, status: 'invited' }], { session });
         await AuditEventModel.create([{ organizationId, actorAuthUserId: authUserId, action: 'membership.invited', resourceType: 'membership', resourceId: String(membership._id) }], { session });
-        return String(membership._id);
+        const organization = await OrganizationModel.findById(organizationId).select('name').session(session).lean<{ name: string } | null>();
+        return { id: String(membership._id), organizationName: organization?.name ?? 'your organization' };
       });
-      res.status(201).json({ id: result, status: 'invited' });
+      let notificationSent = false;
+      if (emailDeliveryEnabled()) {
+        try {
+          await sendTransactionalEmail({ to: parsed.data.email, subject: `Invitation to ${invitation.organizationName} on Aslibooks`,
+            text: `${invitation.organizationName} invited you to join an Aslibooks workspace. Sign in at ${webApplicationUrl()} with your verified account and accept the invitation from your Team screen.` });
+          notificationSent = true;
+        } catch { /* The membership remains pending; the owner can share the Team screen instructions manually. */ }
+      }
+      res.status(201).json({ id: invitation.id, status: 'invited', notificationSent });
     } catch (error) {
       if (error instanceof MembershipError) { res.status(error.status).json({ error: error.message }); return; }
       if (error instanceof Error && 'code' in error && error.code === 11000) { res.status(409).json({ error: 'This user already has a membership in the organization' }); return; }
@@ -127,4 +137,3 @@ export function memberRouter() {
   });
   return router;
 }
-

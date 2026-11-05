@@ -1,26 +1,56 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Alert, Box, Button, CircularProgress, Container, Link, Paper, Stack, TextField, Typography } from '@mui/material';
 import { api } from './api';
 
 export function AuthScreen({ onAuthenticated }: { onAuthenticated: () => Promise<void> }) {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [mode, setMode] = useState<'signin' | 'signup' | 'request-reset' | 'reset'>('signin');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [verificationRequired, setVerificationRequired] = useState(false);
+  const [resetToken, setResetToken] = useState('');
+
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get('token');
+    if (token) { setResetToken(token); setMode('reset'); }
+    void api.authConfig().then(config => setVerificationRequired(config.emailVerificationRequired)).catch(() => setVerificationRequired(false));
+  }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError('');
+    setError(''); setNotice('');
     setBusy(true);
     try {
-      if (mode === 'signup') await api.signUp(name, email, password);
-      else await api.signIn(email, password);
+      if (mode === 'signup') {
+        await api.signUp(name, email, password);
+        if (verificationRequired) { setPassword(''); setNotice('Account created. Check your email and verify your address before signing in.'); return; }
+        await onAuthenticated(); return;
+      }
+      if (mode === 'request-reset') {
+        await api.requestPasswordReset(email);
+        setNotice('If an account matches that address, a password reset link will arrive by email.'); return;
+      }
+      if (mode === 'reset') {
+        await api.resetPassword(resetToken, password);
+        window.history.replaceState({}, '', window.location.pathname);
+        setResetToken(''); setPassword(''); setMode('signin'); setNotice('Password changed. Sign in with your new password.'); return;
+      }
+      await api.signIn(email, password);
       await onAuthenticated();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Authentication failed');
     } finally { setBusy(false); }
+  }
+
+  async function resendVerification() {
+    if (!email) { setError('Enter your email address first.'); return; }
+    setBusy(true); setError(''); setNotice('');
+    try { await api.resendVerificationEmail(email); setNotice('If the account needs verification, a new link will arrive by email.'); }
+    catch { setNotice('If the account needs verification, a new link will arrive by email.'); }
+    finally { setBusy(false); }
   }
 
   return <Container maxWidth="sm" sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', py: 5 }}>
@@ -28,19 +58,22 @@ export function AuthScreen({ onAuthenticated }: { onAuthenticated: () => Promise
       <Stack spacing={3}>
         <Box>
           <Typography variant="h4" fontWeight={800}>Aslibooks</Typography>
-          <Typography color="text.secondary">{mode === 'signin' ? 'Sign in to your workspace' : 'Create your account'}</Typography>
+          <Typography color="text.secondary">{mode === 'signin' ? 'Sign in to your workspace' : mode === 'signup' ? 'Create your account' : mode === 'request-reset' ? 'Request a password reset' : 'Choose a new password'}</Typography>
         </Box>
         {error && <Alert severity="error">{error}</Alert>}
+        {notice && <Alert severity="success">{notice}</Alert>}
         <Stack component="form" spacing={2} onSubmit={(event) => { void submit(event); }}>
           {mode === 'signup' && <TextField label="Full name" required autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />}
-          <TextField label="Email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <TextField label="Password" type="password" required inputProps={{ minLength: 8 }} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} value={password} onChange={(e) => setPassword(e.target.value)} />
-          <Button type="submit" variant="contained" size="large" disabled={busy}>{busy ? <CircularProgress size={22} /> : mode === 'signin' ? 'Sign in' : 'Create account'}</Button>
+          {mode !== 'reset' && <TextField label="Email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />}
+          {(mode === 'signin' || mode === 'signup' || mode === 'reset') && <TextField label={mode === 'reset' ? 'New password' : 'Password'} type="password" required inputProps={{ minLength: 8 }} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} value={password} onChange={(e) => setPassword(e.target.value)} />}
+          <Button type="submit" variant="contained" size="large" disabled={busy || (mode === 'reset' && !resetToken)}>{busy ? <CircularProgress size={22} /> : mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Create account' : mode === 'request-reset' ? 'Send reset link' : 'Save new password'}</Button>
         </Stack>
-        <Typography variant="body2">
+        {mode === 'signin' && verificationRequired && <Link component="button" type="button" onClick={() => { setMode('request-reset'); setError(''); setNotice(''); }}>Forgot password?</Link>}
+        {mode === 'signin' && verificationRequired && <Link component="button" type="button" disabled={busy} onClick={() => { void resendVerification(); }}>Resend verification email</Link>}
+        {mode === 'signin' || mode === 'signup' ? <Typography variant="body2">
           {mode === 'signin' ? 'New to Aslibooks? ' : 'Already have an account? '}
-          <Link component="button" type="button" onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); }}>{mode === 'signin' ? 'Create account' : 'Sign in'}</Link>
-        </Typography>
+          <Link component="button" type="button" onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); setNotice(''); }}>{mode === 'signin' ? 'Create account' : 'Sign in'}</Link>
+        </Typography> : <Link component="button" type="button" onClick={() => { setMode('signin'); setError(''); setNotice(''); setPassword(''); setResetToken(''); }}>Back to sign in</Link>}
       </Stack>
     </Paper>
   </Container>;
