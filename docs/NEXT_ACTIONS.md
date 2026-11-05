@@ -8,7 +8,7 @@ Preserve the original workspace edits; never stage the owner-supplied vision fil
 
 ## Current implementation task
 
-Readiness probe commit `d282c5f6f2cd649bcd2eb7e42cd2bfba71d6b76a` passed CI #417/#418, MongoDB #354/#355 and Browser #137/#138. The full audit then found one moderate minimatch issue through ESLint; a tested local override to patched minimatch 11.0.4 clears the complete `pnpm audit`. Readiness local suite passed 113/113, frozen install, typecheck, lint, build, production audit and browser flow passed. Current local docs now accurately describe the financial MVP instead of the obsolete prototype. Next publish the complete audit/readiness/docs slice, verify exact-SHA workflows, then reconcile remaining master acceptance criteria and implement the highest-priority gaps.
+Audit/readiness/docs commit `ea2516e3052e9ac224dd29652714de5a176b62dd` passed CI #421/#422, MongoDB #358/#359 and Browser #141/#142. The full audit is clean with patched minimatch 11.0.4; local replica-set tests pass 113/113, frozen install, typecheck, lint, build and browser flow pass. The README and architecture docs now describe the actual MVP. A two-organization switching/isolation browser case has passed locally and is ready for exact-SHA verification. Next publish that browser coverage and acceptance matrix, then close remaining tenant/role, accounting and release-operation gaps.
 
 ## Exact verification commands
 
@@ -28,7 +28,7 @@ For local integration/browser tests, use a disposable MongoDB replica set and AP
 
 ## Remaining MVP work
 
-- Reconcile every master vision acceptance criterion to implemented code and direct test evidence, especially cross-tenant object access and viewer/accountant permissions.
+- Reconcile every master vision acceptance criterion to implemented code and direct test evidence, especially cross-tenant object access and viewer/accountant permissions (matrix is in `docs/MVP_ACCEPTANCE_MATRIX.md`).
 - Review invoice lifecycle, sales/purchase tax handling and credit/refund boundaries; keep unsupported GST cases blocked pending qualified review.
 - Verify financial reports, aging, customer/vendor ledgers and source journal reconciliation against realistic transaction fixtures.
 - Review AI isolation and explicit human approval; AI must not post.

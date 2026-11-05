@@ -387,12 +387,33 @@ def test_chart():
             assert '"Opening balance"' in statement_csv and '"Invoice INV-1"' in statement_csv and '"Customer advance received"' in statement_csv
             page.get_by_role("button", name="Close", exact=True).click()
             page.unroute(contact_list_route)
+            organizations = page.evaluate("""async () => {
+                const response = await fetch('http://127.0.0.1:4000/api/organizations', { credentials: 'include' });
+                return response.json();
+            }""")
+            first_organization_id = organizations["organizations"][0]["id"]
+            create_organization = page.evaluate("""async ({ name, slug }) => {
+                const response = await fetch('http://127.0.0.1:4000/api/organizations', {
+                    method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, slug }),
+                });
+                return { status: response.status, body: await response.json() };
+            }""", {"name": f"Isolation Check {run}", "slug": f"isolation-check-{run}"})
+            assert create_organization["status"] == 201, create_organization
+            second_organization_id = create_organization["body"]["id"]
+            page.reload()
+            organization_picker = page.get_by_label("Active organization")
+            expect(organization_picker).to_be_visible()
+            organization_picker.select_option(second_organization_id)
+            expect(page.get_by_text("No posted journals in this date range.", exact=True)).to_be_visible()
+            organization_picker.select_option(first_organization_id)
+            expect(organization_picker).to_have_value(first_organization_id)
             page.route("**/api/organizations/**", lambda route: route.fulfill(status=401, content_type="application/json", body='{"error":"Unauthorized"}'), times=1)
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Reports", exact=True).click()
             expect(page.get_by_text("Your session expired. Sign in again to continue.", exact=True)).to_be_visible()
             expect(page.get_by_text("Sign in to your workspace", exact=True)).to_be_visible()
-            print("Verified signup, starter chart/opening balances, customer/vendor/service setup, edit/archive and catalog pagination, invoice/vendor credits and print views, receipts, partial/final bill payments, account lifecycle, manual journals, bank CSV import/matching/reconciliation, date-filtered ledger dashboard, fiscal close review, session-expiry handling, responsive navigation, CSV export and reconciled reports (INR 34.66 net profit)")
+            print("Verified signup, tenant switching/isolation, starter chart/opening balances, customer/vendor/service setup, edit/archive and catalog pagination, invoice/vendor credits and print views, receipts, partial/final bill payments, account lifecycle, manual journals, bank CSV import/matching/reconciliation, date-filtered ledger dashboard, fiscal close review, session-expiry handling, responsive navigation, CSV export and reconciled reports (INR 34.66 net profit)")
         finally:
             browser.close()
 
