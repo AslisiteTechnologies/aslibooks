@@ -2,11 +2,11 @@
 
 ## Current checkpoint
 
-Development branch head `8cf81e8bc0d07cbbd99d64b3662a97e6adb674fc`. Vendor advance journal assertion correction passed CI #254 and MongoDB integration #191. Customer advance refunds are implemented locally and undergoing verification. Preserve the owner-supplied vision document in the original workspace; it must remain unstaged.
+Development branch head `eefa36107638bb53bf298892f28a0ea199a0d0c7`. CI #258 and MongoDB integration #195 passed with the customer advance refund integration and corrected vendor advance assertions. Preserve the owner-supplied vision document in the original workspace; it must remain unstaged.
 
 ## Current implementation task
 
-Verify customer advance refunds end to end. The API now restricts refunds to the unallocated balance, posts Dr customer-advance liability 2210 / Cr cash or bank atomically, and records idempotency and audit facts; the responsive UI uses explicit review and confirmation. Run the customer-advance MongoDB integration, full suite, typecheck, lint and build, then publish and verify CI/MongoDB workflows. After that, implement secure attachments metadata/storage policy or resume release hardening. AI needs optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
+Authentication mutation rate limiting is implemented locally and under full suite/build verification. It returns 429 after 20 POST requests per 15 minutes per process; the in-memory store does not share state across API replicas and must be replaced/configured with a shared store for multi-instance production. After verification, publish and verify exact-commit CI. Then proceed to secure attachments metadata/storage policy and remaining threat-model/release work. AI needs optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
 ## Exact verification commands
 
 ```powershell
