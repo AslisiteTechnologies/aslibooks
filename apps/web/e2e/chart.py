@@ -285,8 +285,18 @@ def test_chart():
             page.get_by_role("button", name="Copy eligible suggestions into editable fields").click()
             expect(page.get_by_text("Suggestions copied into editable fields", exact=False)).to_be_visible()
             assert bill_writes_during_ai == []
-            page.remove_listener("request", track_bill_write)
             page.unroute("**/api/organizations/*/bills/ai-draft-assistance", suggest_bill_fields)
+            def unavailable_bill_assistance(route):
+                route.fulfill(status=503, content_type="application/json", body='{"error":"AI bill assistance is not configured."}')
+            page.route("**/api/organizations/*/bills/ai-draft-assistance", unavailable_bill_assistance)
+            with page.expect_response(lambda response: response.url.endswith("/bills/ai-draft-assistance")) as unavailable_response:
+                page.get_by_role("button", name="Suggest bill fields").click()
+            assert unavailable_response.value.status == 503
+            expect(page.get_by_role("alert").filter(has_text="AI bill assistance is not configured.")).to_be_visible()
+            expect(page.get_by_role("button", name="Save bill draft")).to_be_enabled()
+            assert bill_writes_during_ai == []
+            page.remove_listener("request", track_bill_write)
+            page.unroute("**/api/organizations/*/bills/ai-draft-assistance", unavailable_bill_assistance)
             page.get_by_role("combobox", name="Vendor", exact=True).first.click()
             page.get_by_role("option", name="Test Vendor").click()
             page.get_by_label("Vendor bill reference").fill(f"V-{run}")
@@ -474,8 +484,8 @@ def test_chart():
             expect(page.get_by_role("heading", name="GST setup review")).to_be_visible()
             expect(page.get_by_text("does not certify GST compliance", exact=False)).to_be_visible()
             expect(page.get_by_text("Checked 2 active catalog items", exact=False)).to_be_visible()
-            expect(page.get_by_text("GST pagination first page", exact=True)).to_be_visible()
-            expect(page.get_by_text("GST pagination second page", exact=True)).to_be_visible()
+            expect(page.get_by_text("GST-PAGE-1 · GST pagination first page", exact=True)).to_be_visible()
+            expect(page.get_by_text("GST-PAGE-2 · GST pagination second page", exact=True)).to_be_visible()
             page.unroute(gst_products_route, gst_product_page)
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Period close", exact=True).click()
