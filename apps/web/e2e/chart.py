@@ -256,6 +256,11 @@ def test_chart():
             expect(ai_suggest_button).to_be_disabled()
             page.get_by_role("checkbox", name="I consent to send this text to OpenAI to produce a bill suggestion.").check()
             ai_requests = []
+            bill_writes_during_ai = []
+            def track_bill_write(request):
+                if request.method == "POST" and request.url.rstrip("/").endswith("/bills"):
+                    bill_writes_during_ai.append(request.url)
+            page.on("request", track_bill_write)
             def suggest_bill_fields(route):
                 ai_requests.append(route.request.post_data_json)
                 tax_status = "present" if len(ai_requests) == 1 else "none_seen"
@@ -270,10 +275,13 @@ def test_chart():
             with page.expect_response(lambda response: response.url.endswith("/bills/ai-draft-assistance")) as second_ai_response:
                 ai_suggest_button.click()
             assert second_ai_response.value.status == 200 and len(ai_requests) == 2
+            assert bill_writes_during_ai == []
             expect(page.get_by_role("button", name="Copy eligible suggestions into editable fields")).to_be_enabled()
             expect(page.get_by_role("button", name="Save bill draft")).to_have_count(1)
             page.get_by_role("button", name="Copy eligible suggestions into editable fields").click()
             expect(page.get_by_text("Suggestions copied into editable fields", exact=False)).to_be_visible()
+            assert bill_writes_during_ai == []
+            page.remove_listener("request", track_bill_write)
             page.unroute("**/api/organizations/*/bills/ai-draft-assistance", suggest_bill_fields)
             page.get_by_role("combobox", name="Vendor", exact=True).first.click()
             page.get_by_role("option", name="Test Vendor").click()

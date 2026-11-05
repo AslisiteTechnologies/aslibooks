@@ -72,7 +72,10 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     try {
       const before = { bills: await BillModel.countDocuments({ organizationId }), journals: await JournalModel.countDocuments({ organizationId }), audits: await AuditEventModel.countDocuments({ organizationId }) };
       await request(app).post(`${path}/ai-draft-assistance`).set({ 'x-fixture-actor': 'bill-viewer' }).send({ sourceText: 'Supplier invoice with enough text to parse safely.' }).expect(403);
-      await request(app).post(`${path}/ai-draft-assistance`).set({ 'x-fixture-actor': 'bill-accountant' }).send({ sourceText: 'Supplier invoice with enough text to parse safely.' }).expect(503);
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        await request(app).post(`${path}/ai-draft-assistance`).set({ 'x-fixture-actor': 'bill-accountant' }).send({ sourceText: 'Supplier invoice with enough text to parse safely.' }).expect(503);
+      }
+      await request(app).post(`${path}/ai-draft-assistance`).set({ 'x-fixture-actor': 'bill-accountant' }).send({ sourceText: 'Supplier invoice with enough text to parse safely.' }).expect(429);
       expect(await BillModel.countDocuments({ organizationId })).toBe(before.bills);
       expect(await JournalModel.countDocuments({ organizationId })).toBe(before.journals);
       expect(await AuditEventModel.countDocuments({ organizationId })).toBe(before.audits);

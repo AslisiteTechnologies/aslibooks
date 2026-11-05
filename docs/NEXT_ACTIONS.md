@@ -264,8 +264,8 @@ Route audit: review `docs/ROUTE_SECURITY_MATRIX.md` against the actual current s
 
 Proceed with a review-only AI-assisted vendor-bill extraction workflow: explicit consent, tenant authorization, strict schema and input limits, clear uncertainty/provenance, editable fields, normal bill-draft validation, and no posting action. Then add route and UI tests proving AI output cannot post or persist without human submission.
 
-## Active task — verify and publish AI-assisted bill draft review
-1. Rerun full `pnpm test` against the disposable replica set after the Mongo quota warning fix; then run `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm audit --audit-level=high`, and `git diff --check`.
-2. Check the Python browser test syntax with `python -m py_compile apps/web/e2e/chart.py`; hosted Browser workflow must exercise consent, disabled-without-consent, tax gating, and field copy.
-3. Update implementation evidence with exact local results, commit on the existing development branch, publish using the current GitHub head as the guarded expected SHA, and verify exact-SHA CI/MongoDB/Browser workflows.
-4. Next milestone: close remaining direct role/reference coverage gaps from `docs/ROUTE_SECURITY_MATRIX.md`, then revisit acceptance gaps (GST data structures and UX, accessibility, operational hardening). Do not state that the MVP or production readiness is complete until all acceptance evidence and external release gates are satisfied.
+## Active task — publish strengthened AI bill assistance regression checks
+1. Focused extraction tests pass 3/3; focused MongoDB bill-route suite passes 5/5, including the 20-request hourly quota and 21st-request 429. Full suite passes 146/146; typecheck/lint/build/audit/diff checks pass locally.
+2. Commit and publish the local follow-up to `c503dd38694554597b10e37a19265459385d28cb` using a guarded ref update. Follow-up browser assertion checks there is no bill POST before a human submits the normal draft form.
+3. Verify exact-SHA CI, MongoDB, and Browser workflows. Previous AI workflow SHA `c503dd38694554597b10e37a19265459385d28cb` passed CI #501/#502, MongoDB #436/#437 and Browser #220/#221.
+4. Continue with the remaining route role/reference audit and accessibility checks; keep GST statutory applicability and production operational controls as explicit external gates. Do not state that the MVP or production readiness is complete until the acceptance matrix is fully evidenced and external release gates have owners and results.
