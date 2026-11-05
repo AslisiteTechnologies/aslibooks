@@ -8,7 +8,7 @@ Preserve the original workspace edits; never stage the owner-supplied vision fil
 
 ## Current implementation task
 
-Receipt concurrency and POST/PUT/PATCH/DELETE Origin guard tests at `048d7d48fbce9c1434c0aa92a3a838d664a4196e` passed CI #431/#432, MongoDB #368/#369 and Browser #151/#152. Vendor payment concurrency now races two distinct requests for the same open payable; focused bills integration passed 4/4, and the full disposable replica-set suite passed 136/136 (130 API, five accounting, one web). Typecheck, lint, build, audit and diff check pass. Publish the vendor race and refreshed evidence, then verify the six workflows. Next cover advance allocation concurrency and retry/network failures.
+Vendor payment race commit `af602ef7a9216a85ff08d5f9858b15a3660d8217` passed CI #433/#434, MongoDB #370/#371 and Browser #153/#154. Customer and vendor advance allocation race tests now each prove exactly one request can consume a shared remaining amount (focused suites 2/2); full replica-set workspace tests pass 136/136, with typecheck, lint, build, audit and diff check passing. Publish these advance race checks and refreshed evidence, then verify the exact SHA. Next work on network/retry failure behavior and remaining route-specific tenant/object-access gaps.
 
 ## Exact verification commands
 

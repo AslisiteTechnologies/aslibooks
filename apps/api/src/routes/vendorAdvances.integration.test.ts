@@ -46,7 +46,11 @@ describe.skipIf(!enabled)('vendor advances', () => {
     const first = await request(app).post(`${path}/${advanceId}/allocations`).set(owner).send(allocation).expect(201);
     await request(app).post(`${path}/${advanceId}/allocations`).set(owner).send(allocation).expect(200, { ...first.body, replayed: true });
     const updatedBill = await BillModel.findById(billPosted.body.id); expect(updatedBill).toMatchObject({ status: 'partially_paid', amountPaidPaise: 6000 });
-    await request(app).post(`${path}/${advanceId}/allocations`).set(owner).send({ ...allocation, idempotencyKey: `vendor-advance-allocation-final-${org}`, amountPaise: 4000 }).expect(201);
+    const competingFinals = await Promise.all([
+      request(app).post(`${path}/${advanceId}/allocations`).set(owner).send({ ...allocation, idempotencyKey: `vendor-advance-allocation-final-a-${org}`, amountPaise: 4000 }),
+      request(app).post(`${path}/${advanceId}/allocations`).set(owner).send({ ...allocation, idempotencyKey: `vendor-advance-allocation-final-b-${org}`, amountPaise: 4000 }),
+    ]);
+    expect(competingFinals.map(response => response.status).sort()).toEqual([201, 409]);
     expect(await BillModel.findById(billPosted.body.id)).toMatchObject({ status: 'paid', amountPaidPaise: 10000 });
     const otherBillDraft = await request(app).post(`/orgs/${org}/bills`).set(owner).send({ vendorId: String(otherVendor), vendorReference: `OTHER-${org}`, expenseAccountId: String(expense), description: 'Other materials', amountPaise: 1000 }).expect(201);
     const otherBill = await request(app).post(`/orgs/${org}/bills/${otherBillDraft.body.id}/post`).set(owner).send({ idempotencyKey: `vendor-other-bill-${org}` }).expect(201);

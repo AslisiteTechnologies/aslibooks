@@ -219,3 +219,8 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 ## Competing vendor payments (local replica-set verification, exact-SHA pending)
 - The bill lifecycle test races two vendor payment requests with distinct keys for the same remaining 3,000-paise payable. Exactly one returns 201 and the other 409; the bill is paid once, with two payment records total (partial plus final) and balanced journal/audit counts. Focused bills integration passed 4/4.
 - With the receipt race and all-method Origin tests, this covers competing customer receipt/vendor payment allocations and unsafe Origin rejection for POST/PUT/PATCH/DELETE. The complete workspace replica-set suite passed 136/136 with the vendor race enabled (130 API, five accounting, one web). Full typecheck, lint, production build, dependency audit and `git diff --check` passed. Vendor race exact-SHA verification is pending publication.
+
+
+## Competing customer and vendor advance allocations (local replica-set verification, exact-SHA pending)
+- Customer advance and vendor advance integration tests each race two distinct idempotency keys attempting to consume the same final 4,000-paise availability. Both suites verify exactly one 201 and one 409 while the underlying invoice/bill settles once and allocation/journal totals remain consistent. Focused advance integration passed 2/2.
+- The full workspace replica-set suite passed 136/136 (130 API across 32 files, five accounting, one web); typecheck, ESLint, production build, full dependency audit and `git diff --check` passed. Exact-SHA workflows are pending publication.

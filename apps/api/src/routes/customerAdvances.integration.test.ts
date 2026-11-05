@@ -55,7 +55,12 @@ describe.skipIf(!enabled)('customer advances', () => {
     await request(app).post(`${path}/${advanceId}/allocations`).set(owner).send({ ...firstPayload, amountPaise: 5000 }).expect(409);
     const invoice = await InvoiceModel.findById(issued.body.id);
     expect(invoice).toMatchObject({ status: 'partially_paid', amountPaidPaise: 6000 });
-    const second = await request(app).post(`${path}/${advanceId}/allocations`).set(owner).send({ idempotencyKey: `advance-allocation-final-${org}`, invoiceId: issued.body.id, amountPaise: 4000 }).expect(201);
+    const competingFinals = await Promise.all([
+      request(app).post(`${path}/${advanceId}/allocations`).set(owner).send({ idempotencyKey: `advance-allocation-final-a-${org}`, invoiceId: issued.body.id, amountPaise: 4000 }),
+      request(app).post(`${path}/${advanceId}/allocations`).set(owner).send({ idempotencyKey: `advance-allocation-final-b-${org}`, invoiceId: issued.body.id, amountPaise: 4000 }),
+    ]);
+    expect(competingFinals.map(response => response.status).sort()).toEqual([201, 409]);
+    const second = competingFinals.find(response => response.status === 201)!;
     expect(await InvoiceModel.findById(issued.body.id)).toMatchObject({ status: 'paid', amountPaidPaise: 10000 });
     await request(app).post(`${path}/${advanceId}/allocations`).set(owner).send({ idempotencyKey: `advance-overdraw-${org}`, invoiceId: issued.body.id, amountPaise: 1 }).expect(409);
     const peerDraft = await request(app).post(`/orgs/${org}/invoices`).set(owner).send({ customerId: String(peerCustomer), lines: [{ productId: String(product), quantity: 1 }] }).expect(201);
