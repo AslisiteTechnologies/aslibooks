@@ -73,7 +73,7 @@ describe.skipIf(!enabled)('contacts API', () => {
     const ledger = await request(app).get(path + '/' + id + '/ledger').set(owner).expect(200);
     expect(ledger.body).toMatchObject({ contact: { id, displayName: 'Coastal Supply' }, currency: 'INR', rows: [], balancePaise: 0, payablePaise: 0 });
     await request(app).get(path + '/' + id + '/ledger?role=invalid').set(owner).expect(400);
-    await request(app).get(foreignPath + '/' + id + '/ledger').set(owner).expect(404);
+    await request(app).get(foreignPath + '/' + id + '/ledger').set(owner).expect(403);
     const defaultPage = await request(app).get(path).set(owner).expect(200);
     expect(defaultPage.body.contacts.length).toBeGreaterThan(1);
     expect(defaultPage.body.next).toBeNull();
