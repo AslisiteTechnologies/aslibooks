@@ -2,11 +2,11 @@
 
 ## Current checkpoint
 
-Development branch head before current uncommitted AI slice: `8e6aec05400d4f726336ac7c5f83fe9fdaefab66`. The full paginated ledger CSV export passed CI #242 and MongoDB #179. Earlier email, fiscal close, GST review commits also passed their exact-commit checks. The optional AI report-explanation implementation is in local verification and must be committed and checked in CI before claiming remote completion. The owner-supplied vision document must remain unstaged.
+Development branch head `da4b153d448dea25cd8752747cfe966e1fd950e3`. Optional AI report explanations passed CI #244 and MongoDB #181. The internal cash/bank transfer workflow is under implementation and awaits local checks, commit, and exact-commit CI. The owner-supplied vision document must remain unstaged.
 
 ## Current implementation task
 
-AI report explanation: explicit user consent, allowlisted aggregate payload, Responses API structured schema with validation, provider storage disabled, no tools or posting capability. Configure `OPENAI_API_KEY` and optionally `OPENAI_MODEL` to enable; provider calls need live credential verification. Next, complete transfer/refund/advance workflows and secure attachments, then add browser coverage and continue release hardening. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
+Internal transfer: server-timestamped, current-period cash/bank movement, balanced journal and immutable transfer record, idempotency, audit, tenant/role fences, list and responsive entry UI. Integration test is only exercised in CI because there is no local MongoDB test replica. Then implement customer/vendor advances or refunds, secure attachments, browser coverage and release hardening. AI needs optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
 ## Exact verification commands
 
 ```powershell
@@ -18,6 +18,7 @@ pnpm build
 git diff --check
 $env:MONGODB_TEST_URI='mongodb://127.0.0.1:37491/?replicaSet=aslibooksLocal'
 $env:MONGODB_TEST_DB_NAME='aslibooks_test_<unique_name>'
+pnpm --filter @aslibooks/api test --maxWorkers=1 src/routes/transfers.integration.test.ts
 pnpm --filter @aslibooks/api test --maxWorkers=1 src/routes/products.integration.test.ts src/routes/invoices.integration.test.ts
 pnpm --filter @aslibooks/api test --maxWorkers=1
 $env:PYTHONPATH="$env:TEMP\\aslibooks-playwright-runtime"

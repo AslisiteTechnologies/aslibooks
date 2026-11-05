@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from '@mui/material';
-import { api, type Account, type BankReconciliation, type BankTransaction, type Organization } from './api';
+import { api, type Account, type BankReconciliation, type BankTransaction, type CashTransfer, type Organization } from './api';
 
 function parseCsv(source: string) {
   const text = source.replace(/^\uFEFF/, ''); const rows: string[][] = []; let row: string[] = []; let cell = ''; let quoted = false;
@@ -37,6 +37,7 @@ function money(value: number) { return `${value < 0 ? '−' : ''}₹${(Math.abs(
 export function BankingScreen({ organization }: { organization: Organization }) {
   const [accounts, setAccounts] = useState<Account[]>([]); const [accountId, setAccountId] = useState('');
   const [transactions, setTransactions] = useState<BankTransaction[]>([]); const [reconciliations, setReconciliations] = useState<BankReconciliation[]>([]);
+  const [transfers, setTransfers] = useState<CashTransfer[]>([]); const [fromAccountId, setFromAccountId] = useState(''); const [toAccountId, setToAccountId] = useState(''); const [transferAmount, setTransferAmount] = useState('');
   const [journalIds, setJournalIds] = useState<Record<string, string>>({}); const [periodStart, setPeriodStart] = useState(`${todayIndia().slice(0, 7)}-01`);
   const [periodEnd, setPeriodEnd] = useState(todayIndia()); const [opening, setOpening] = useState('0.00'); const [closing, setClosing] = useState('0.00');
   const [loading, setLoading] = useState(false); const [error, setError] = useState(''); const [notice, setNotice] = useState('');
@@ -44,13 +45,13 @@ export function BankingScreen({ organization }: { organization: Organization }) 
   async function load() {
     setLoading(true); setError('');
     try {
-      const page = await api.bankStatement(organization.id, accountId);
-      setTransactions(page.transactions); setReconciliations(page.reconciliations);
+      const [page, transferPage] = await Promise.all([api.bankStatement(organization.id, accountId), api.transfers(organization.id)]);
+      setTransactions(page.transactions); setReconciliations(page.reconciliations); setTransfers(transferPage.transfers);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Bank activity could not be loaded.'); }
     finally { setLoading(false); }
   }
   useEffect(() => { let current = true; void api.accounts(organization.id).then(result => {
-    if (!current) return; const banks = result.accounts.filter(a => a.active && a.code === '1010' && a.type === 'asset'); setAccounts(result.accounts); setAccountId(id => id && banks.some(a => a.id === id) ? id : banks[0]?.id ?? '');
+    if (!current) return; const banks = result.accounts.filter(a => a.active && a.code === '1010' && a.type === 'asset'); const cashAndBanks = result.accounts.filter(a => a.active && ['1000', '1010'].includes(a.code) && a.type === 'asset'); setAccounts(result.accounts); setAccountId(id => id && banks.some(a => a.id === id) ? id : banks[0]?.id ?? ''); setFromAccountId(id => id && cashAndBanks.some(a => a.id === id) ? id : cashAndBanks[0]?.id ?? ''); setToAccountId(id => id && cashAndBanks.some(a => a.id === id) ? id : cashAndBanks.find(a => a.id !== cashAndBanks[0]?.id)?.id ?? '');
   }).catch(cause => { if (current) setError(cause instanceof Error ? cause.message : 'Accounts could not be loaded.'); }); return () => { current = false; }; }, [organization.id]);
   useEffect(() => { if (accountId) void load(); }, [organization.id, accountId]);
   async function importFile(file?: File) {
@@ -69,9 +70,26 @@ export function BankingScreen({ organization }: { organization: Organization }) 
     try { const result = await api.reconcileBankStatement(organization.id, { accountId, periodStart, periodEnd, openingBalancePaise, closingBalancePaise }); setNotice(`Reconciliation ${result.replayed ? 'already exists' : 'saved'} for ${result.transactionCount} statement lines.`); await load(); }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Reconciliation failed.'); }
   }
+  async function transfer() {
+    const amountPaise = paiseInput(transferAmount);
+    if (!fromAccountId || !toAccountId || fromAccountId === toAccountId || !amountPaise || amountPaise <= 0) { setError('Choose different cash/bank accounts and enter a positive amount.'); return; }
+    try { const result = await api.createTransfer(organization.id, { idempotencyKey: crypto.randomUUID(), fromAccountId, toAccountId, amountPaise }); setNotice(`Transfer ${result.replayed ? 'already recorded' : 'posted'} to the ledger.`); setTransferAmount(''); await load(); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'Transfer could not be recorded.'); }
+  }
   return <Stack spacing={2}>
     {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}{notice && <Alert severity="success" onClose={() => setNotice('')}>{notice}</Alert>}
     {!bankAccounts.length ? <Paper variant="outlined" sx={{ p: 3 }}><Typography>Add the starter chart of accounts to enable bank statement reconciliation.</Typography></Paper> : <>
+      <Paper variant="outlined" sx={{ p: 2 }}><Stack spacing={2}>
+        <Typography variant="h6">Transfer between cash and bank</Typography>
+        <Typography variant="body2" color="text.secondary">Moves value between two cash or bank accounts. This posts a balanced journal without changing income or expenses.</Typography>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+          <TextField select label="From account" value={fromAccountId} onChange={event => setFromAccountId(event.target.value)}>{accounts.filter(a => a.active && ['1000', '1010'].includes(a.code) && a.type === 'asset').map(a => <MenuItem key={a.id} value={a.id}>{a.code} · {a.name}</MenuItem>)}</TextField>
+          <TextField select label="To account" value={toAccountId} onChange={event => setToAccountId(event.target.value)}>{accounts.filter(a => a.active && ['1000', '1010'].includes(a.code) && a.type === 'asset').map(a => <MenuItem key={a.id} value={a.id}>{a.code} · {a.name}</MenuItem>)}</TextField>
+          <TextField label="Amount (₹)" value={transferAmount} onChange={event => setTransferAmount(event.target.value)} inputMode="decimal" />
+          <Button variant="contained" onClick={() => void transfer()} disabled={!fromAccountId || !toAccountId || fromAccountId === toAccountId}>Record transfer</Button>
+        </Stack>
+        {!!transfers.length && <><Typography variant="subtitle1">Recent transfers</Typography>{transfers.map(item => <Typography key={item.id} variant="body2">{new Date(item.transferredAt).toLocaleDateString('en-IN')} · {item.fromAccountName} → {item.toAccountName} · {money(item.amountPaise)} · journal {item.journalId}</Typography>)}</>}
+      </Stack></Paper>
       <Paper variant="outlined" sx={{ p: 2 }}><Stack spacing={2}>
         <Typography variant="h6">Import bank statement</Typography><TextField select label="Bank account" value={accountId} onChange={event => setAccountId(event.target.value)}>{bankAccounts.map(account => <MenuItem key={account.id} value={account.id}>{account.code} · {account.name}</MenuItem>)}</TextField>
         <Typography variant="body2" color="text.secondary">CSV columns: transactionDate,amountPaise,description. Deposits are positive; withdrawals are negative. Importing does not post journals.</Typography>

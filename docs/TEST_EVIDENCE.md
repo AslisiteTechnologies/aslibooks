@@ -89,3 +89,8 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 - Reports now exports every cursor page using the selected account and loaded date range, includes the opening balance, and disables duplicate export attempts. The Playwright flow asserts both the opening balance and later journal description are present in the downloaded CSV.
 - The browser script compiled with bundled Python. This interaction is not locally run because no API/database services are active; full unit/typecheck/lint/build results are being refreshed for this change.
 - GST setup review commit `10c6a1008d745771d475e1cba9c941fd2c7ba57b`: CI #240 and MongoDB integration #177 both passed.
+
+## AI report explanations and cash transfers
+
+- AI explanation slice `da4b153d448dea25cd8752747cfe966e1fd950e3`: AI unit tests passed 3/3; full suite passed 31 with 67 MongoDB tests skipped locally; typecheck, lint and build passed. CI #244 and MongoDB integration #181 passed. No provider credential was available, so no live OpenAI request was made.
+- Internal cash/bank transfer integration was added after that checkpoint. The focused integration test is skipped locally without `MONGODB_TEST_URI` and a replica set; local typecheck, lint and build passed. It has not yet been committed or verified by GitHub Actions.
