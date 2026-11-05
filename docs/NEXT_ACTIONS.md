@@ -94,3 +94,22 @@ git diff --check
 ```
 
 External gates still open: qualified GST/accounting policy review; staging/production credentials and approval; database least-privilege grants, backup/restore rehearsal, monitoring, email deliverability, attachment malware/retention policy; final accessibility/security review. Do not merge to `main` or deploy without explicit authorization.
+
+## Active task: verify printable reports and continue the remaining MVP workflows
+1. Publish the report print/PDF packet, escaping tests, browser assertion, and updated status documents only, on top of remote head `be764d95f827ea588c01073461effca3eab49f2d`.
+2. Check exact-SHA CI, MongoDB integration and Browser workflows; Browser #188 at parent `be764d95f827ea588c01073461effca3eab49f2d` passed and the new SHA must exercise the added popup assertion.
+3. Next audit role and lifecycle behavior for reports/export and invoice print content; add real browser assertions for role denial and print packet behavior where missing, then inspect remaining acceptance gaps.
+
+Validation commands (PowerShell, repository root):
+```powershell
+$env:MONGODB_TEST_URI='mongodb://127.0.0.1:37491/?replicaSet=testset'
+$env:MONGODB_TEST_DB_NAME='aslibooks_test_printable_reports'
+pnpm test
+pnpm typecheck
+pnpm lint
+pnpm build
+pnpm audit --audit-level=high
+git diff --check
+```
+
+External release gates remain: qualified accounting/GST review; staging and production secrets/access plus explicit deployment authorization; database least-privilege grants and restore rehearsal; monitoring and email deliverability; attachment malware scanning/retention policy; final accessibility/security review. Keep PR #1 Draft; do not merge `main` or deploy production without owner authorization.

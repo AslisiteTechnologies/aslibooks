@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Button, Checkbox, FormControlLabel, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
 import { api, type Account, type AgingSummary, type BalanceSheetResult, type ControlReconciliation, type GeneralLedgerResult, type Organization, type ProfitAndLossResult, type TrialBalanceRow } from './api';
 import { downloadCsv } from './csv';
+import { buildPrintableReportHtml, type PrintableReportSection } from './printableReport';
 
 function todayInIndia() {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
@@ -110,8 +111,34 @@ export function ReportsScreen({ organization }: { organization: Organization }) 
     finally { setAiLoading(false); }
   }
 
+  function printReports() {
+    if (!profitLoss || !balanceSheet || !receivables || !payables) return;
+    const agingRows = (label: string, summary: AgingSummary) => [
+      [`${label} · ${summary.documentCount} documents`, money(summary.totalOutstandingPaise)],
+      ...Object.entries(summary.buckets).map(([bucket, values]) => [bucket, money(values.amountPaise)]),
+    ];
+    const sections: PrintableReportSection[] = [
+      { title: 'Trial balance', rows: [...trialBalance.map(row => [`${row.code} · ${row.name}`, `Debit ${money(row.debitBalancePaise)} · Credit ${money(row.creditBalancePaise)}`]), ['Totals', `Debit ${money(trialTotals.debit)} · Credit ${money(trialTotals.credit)} · ${trialTotals.balanced ? 'Balanced' : 'Out of balance'}`]] },
+      { title: 'Profit and loss', rows: [...profitLoss.accounts.map(row => [`${row.code} · ${row.name}`, money(row.balancePaise)]), ['Total income', money(profitLoss.totalIncomePaise)], ['Total expenses', money(profitLoss.totalExpensesPaise)], ['Net profit', money(profitLoss.netProfitPaise)]] },
+      { title: 'Balance sheet', rows: [...balanceSheet.accounts.map(row => [`${row.code} · ${row.name}`, money(row.balancePaise)]), ['Assets', money(balanceSheet.totalAssetsPaise)], ['Liabilities and equity including current earnings', money(balanceSheet.liabilitiesAndEquityPaise)], ['Status', balanceSheet.balanced ? 'Balanced' : 'Out of balance']] },
+      { title: 'Receivables aging', rows: agingRows('Receivables', receivables) },
+      { title: 'Payables aging', rows: agingRows('Payables', payables) },
+    ];
+    if (reconciliation) sections.push({ title: 'Receivable and payable control reconciliation', rows: [
+      ['Accounts receivable', `Ledger ${money(reconciliation.receivables.ledgerBalancePaise)} · Documents ${money(reconciliation.receivables.documentBalancePaise)} · Difference ${money(reconciliation.receivables.differencePaise)} · ${reconciliation.receivables.reconciled ? 'Reconciled' : 'Unreconciled'}`],
+      ['Accounts payable', `Ledger ${money(reconciliation.payables.ledgerBalancePaise)} · Documents ${money(reconciliation.payables.documentBalancePaise)} · Difference ${money(reconciliation.payables.differencePaise)} · ${reconciliation.payables.reconciled ? 'Reconciled' : 'Unreconciled'}`],
+    ] });
+    const popup = window.open('', '_blank');
+    if (!popup) { setError('Allow pop-ups to print or save these reports as PDF.'); return; }
+    popup.opener = null;
+    popup.document.open();
+    popup.document.write(buildPrintableReportHtml(organization.name, asOf, sections));
+    popup.document.close();
+  }
+
   return <Stack spacing={2}>
     <Typography variant="h5">Reports</Typography>
+    <Button variant="outlined" onClick={printReports} disabled={loading || !profitLoss || !balanceSheet || !receivables || !payables}>Print reports / Save as PDF</Button>
     {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
     <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
       <Stack spacing={1.5}>

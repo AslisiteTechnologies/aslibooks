@@ -355,6 +355,15 @@ def test_chart():
             expect(page.get_by_text("Balanced", exact=True)).to_be_visible()
             expect(page.get_by_text("Net profit ₹34.66", exact=False)).to_be_visible()
             expect(page.get_by_text("Balance sheet balances", exact=True)).to_be_visible()
+            with page.expect_popup() as printable_popup:
+                page.get_by_role("button", name="Print reports / Save as PDF").click()
+            printable_page = printable_popup.value
+            expect(printable_page.get_by_role("heading", name="Financial reports")).to_be_visible()
+            expect(printable_page.get_by_role("heading", name="Trial balance")).to_be_visible()
+            expect(printable_page.get_by_role("heading", name="Profit and loss")).to_be_visible()
+            expect(printable_page.get_by_role("heading", name="Balance sheet")).to_be_visible()
+            expect(printable_page.get_by_text("Fixture Shop", exact=False)).to_be_visible()
+            printable_page.close()
             with page.expect_download() as csv_download:
                 page.get_by_role("button", name="Download trial balance CSV").click()
             report_download = csv_download.value
