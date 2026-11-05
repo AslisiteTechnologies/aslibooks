@@ -1,7 +1,7 @@
 import { Router, type RequestHandler } from 'express';
 import mongoose, { Types } from 'mongoose';
 import { z } from 'zod';
-import { AccountModel, accountTypes } from '../models/account.js';
+import { AccountModel, accountGroups, accountGroupsByType, accountTypes, defaultAccountGroup, normalBalance } from '../models/account.js';
 import { AuditEventModel } from '../models/auditEvent.js';
 import { JournalModel } from '../models/journal.js';
 import { fenceLedgerPermission, hasPermission } from '../security/authorization.js';
@@ -10,7 +10,9 @@ import { starterChart } from '../accounting/starterChart.js';
 const name = z.string().trim().min(1).max(160);
 const create = z.strictObject({
   code: z.string().trim().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$/),
-  name, type: z.enum(accountTypes),
+  name, type: z.enum(accountTypes), group: z.enum(accountGroups).optional(),
+}).refine(value => !value.group || (accountGroupsByType[value.type] as readonly string[]).includes(value.group), {
+  message: 'Account group must match account type',
 });
 const edit = z.union([z.strictObject({ name }), z.strictObject({ active: z.literal(false) })]);
 const page = z.strictObject({ after: z.string().regex(/^[a-f\d]{24}$/i).optional() });
@@ -37,9 +39,11 @@ export function accountRouter() {
     if (!query.success) { res.status(400).json({ error: 'Invalid account cursor' }); return; }
     const rows = await AccountModel.find({
       organizationId, ...(query.data.after ? { _id: { $gt: query.data.after } } : {}),
-    }).select('code name type active system').sort({ _id: 1 }).limit(51);
+    }).select('code name type group active system').sort({ _id: 1 }).limit(51);
     const accounts = rows.slice(0, 50).map(a => ({
-      id: String(a._id), code: a.code, name: a.name, type: a.type, active: a.active, system: !!a.system,
+      id: String(a._id), code: a.code, name: a.name, type: a.type,
+      group: a.group ?? defaultAccountGroup(a.type), normalBalance: normalBalance(a.type),
+      active: a.active, system: !!a.system,
     }));
     res.json({ accounts, next: rows.length > 50 ? accounts[49].id : null });
   });
@@ -96,8 +100,9 @@ const writeAccount: RequestHandler = async (req, res, next) => {
         throw new AccountError(403, 'Account changes require posting permission');
       let action: string;
       let resourceId: string;
-      if ('code' in data) {
-        const [account] = await AccountModel.create([{ ...data, organizationId }], { session });
+      if (creating) {
+        const accountData = data as z.infer<typeof create>;
+        const [account] = await AccountModel.create([{ ...accountData, group: accountData.group ?? defaultAccountGroup(accountData.type), organizationId }], { session });
         resourceId = String(account._id);
         action = 'account.created';
       } else {

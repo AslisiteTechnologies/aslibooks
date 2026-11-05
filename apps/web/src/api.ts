@@ -4,8 +4,22 @@ type AuthUser = { id: string; name: string; email: string };
 type SessionResponse = { user: AuthUser } | null;
 export type Organization = { id: string; name: string; slug: string; gstin: string; fiscalYearStartMonth: number; baseCurrency: string; role: string };
 export const accountTypes = ['asset', 'liability', 'equity', 'income', 'expense'] as const;
-export type AccountInput = { name: string; code: string; type: typeof accountTypes[number] };
-export type Account = AccountInput & { id: string; active: boolean; system: boolean };
+export const accountGroups = ['current_asset', 'non_current_asset', 'current_liability', 'non_current_liability', 'equity', 'operating_income', 'other_income', 'cost_of_sales', 'operating_expense', 'other_expense'] as const;
+export const accountGroupsByType: Readonly<Record<typeof accountTypes[number], readonly typeof accountGroups[number][]>> = {
+  asset: ['current_asset', 'non_current_asset'], liability: ['current_liability', 'non_current_liability'], equity: ['equity'],
+  income: ['operating_income', 'other_income'], expense: ['cost_of_sales', 'operating_expense', 'other_expense'],
+};
+export const defaultAccountGroupByType: Readonly<Record<typeof accountTypes[number], typeof accountGroups[number]>> = {
+  asset: 'current_asset', liability: 'current_liability', equity: 'equity',
+  income: 'operating_income', expense: 'operating_expense',
+};
+export const accountGroupLabels: Record<typeof accountGroups[number], string> = {
+  current_asset: 'Current asset', non_current_asset: 'Non-current asset', current_liability: 'Current liability',
+  non_current_liability: 'Non-current liability', equity: 'Equity', operating_income: 'Operating income',
+  other_income: 'Other income', cost_of_sales: 'Cost of sales', operating_expense: 'Operating expense', other_expense: 'Other expense',
+};
+export type AccountInput = { name: string; code: string; type: typeof accountTypes[number]; group: typeof accountGroups[number] };
+export type Account = AccountInput & { id: string; normalBalance: 'debit' | 'credit'; active: boolean; system: boolean };
 const accountsPath = (org: string) => `/api/organizations/${org}/accounts`;
 const contactsPath = (org: string) => `/api/organizations/${org}/contacts`;
 export type ContactInput = { displayName: string; roles: Array<'customer' | 'vendor'>; email?: string; phone?: string; gstin?: string; address?: string };

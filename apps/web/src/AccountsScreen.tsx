@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Alert, Button, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
-import { accountTypes, api, type Account, type AccountInput, type Organization } from './api';
+import { accountGroupLabels, accountGroupsByType, accountTypes, defaultAccountGroupByType, api, type Account, type AccountInput, type Organization } from './api';
 
-const empty: AccountInput = { code: '', name: '', type: 'asset' };
+const empty: AccountInput = { code: '', name: '', type: 'asset', group: 'current_asset' };
 
 export function AccountsScreen({ organization }: { organization: Organization }) {
   const [rows, setRows] = useState<Account[]>([]);
@@ -60,8 +60,15 @@ export function AccountsScreen({ organization }: { organization: Organization })
         <TextField required label="Account name" disabled={saving} value={draft.name} inputProps={{ maxLength: 160 }}
           onChange={e => setDraft({ ...draft, name: e.target.value })} />
         <TextField select label="Account type" disabled={!!editing || saving} value={draft.type}
-          onChange={e => setDraft({ ...draft, type: e.target.value as AccountInput['type'] })}>
+          onChange={e => {
+            const type = e.target.value as AccountInput['type'];
+            setDraft({ ...draft, type, group: defaultAccountGroupByType[type] });
+          }}>
           {accountTypes.map(type => <MenuItem key={type} value={type}>{type}</MenuItem>)}
+        </TextField>
+        <TextField select label="Account group" disabled={!!editing || saving} value={draft.group}
+          onChange={e => setDraft({ ...draft, group: e.target.value as AccountInput['group'] })}>
+          {accountGroupsByType[draft.type].map(group => <MenuItem key={group} value={group}>{accountGroupLabels[group]}</MenuItem>)}
         </TextField>
         <Stack direction="row" spacing={1}>
           <Button type="submit" variant="contained" disabled={saving}>{editing ? 'Save name' : 'Create account'}</Button>
@@ -76,7 +83,7 @@ export function AccountsScreen({ organization }: { organization: Organization })
       : !error && !rows.length && <Typography>No accounts on this page.</Typography>}
     {rows.map(a => <Paper variant="outlined" key={a.id} sx={{ p: 2 }}>
       <Typography variant="h6">{a.code} · {a.name}</Typography>
-      <Typography>{a.type} · {a.active ? 'Active' : 'Archived'}{a.system && ' · System account'}</Typography>
+      <Typography>{accountGroupLabels[a.group]} · {a.type} · Normal balance: {a.normalBalance} · {a.active ? 'Active' : 'Archived'}{a.system && ' · System account'}</Typography>
       {canWrite && a.active && !a.system && <Stack direction="row">
         <Button disabled={saving} onClick={() => { setDraft(a); setEditing(a.id); }}>Rename</Button>
         <Button disabled={saving} onClick={() => { void change(() => api.updateAccount(organization.id, a.id, { active: false }), 'Account archived.'); }}>Archive</Button>

@@ -86,6 +86,18 @@ describe.skipIf(!enabled)('chart of accounts HTTP', () => {
     expect(await AuditEventModel.distinct('action', { organizationId: org, resourceId: id, actorAuthUserId: 'catalog-accountant' }))
       .toEqual(['account.archived', 'account.created', 'account.renamed']);
   });
+  it('classifies new accounts and returns a type-derived normal balance', async () => {
+    await request(app).post(path).set(accountant).send({ ...input, code: 'FIXED', group: 'non_current_asset' }).expect(201);
+    await request(app).post(path).set(accountant).send({ ...input, code: 'BAD-GROUP', group: 'operating_income' }).expect(400);
+    await request(app).post(path).set(accountant).send({ ...input, code: 'RENT', type: 'expense' }).expect(201);
+    const { body } = await request(app).get(path).set(owner).expect(200);
+    expect(body.accounts).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'FIXED', group: 'non_current_asset', normalBalance: 'debit' }),
+      expect.objectContaining({ code: 'RENT', group: 'operating_expense', normalBalance: 'debit' }),
+      expect.objectContaining({ code: '4200', group: 'other_income', normalBalance: 'credit' }),
+    ]));
+    expect(await AccountModel.findOne({ organizationId: org, code: 'BAD-GROUP' })).toBeNull();
+  });
   it('protects system accounts and accounts referenced before the usage flag existed', async () => {
     const sys = await AccountModel.create({ ...input, code: 'CONTROL', organizationId: org, system: true });
     const legacy = await AccountModel.create({ ...input, code: 'LEGACY', organizationId: org });

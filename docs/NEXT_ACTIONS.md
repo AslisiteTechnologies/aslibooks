@@ -270,3 +270,25 @@ Paginated GST readiness commit `15aef1f498405d645843b4a7bd4fc40484aa49c6` passed
 GST pagination E2E commit `be3a907feea119718114be3c0030e891dd9aab87` passed CI #509/#510 and MongoDB #444/#445, but push Browser #229 failed at a locator that omitted the rendered product code; the accessible snapshot confirms both products were visible. The locator is corrected to match `code · name`, and provider-failure fallback coverage is included. Commit this fix on the current branch head and verify exact-SHA CI/MongoDB/Browser. Earlier API header SHA `f8ffcb0e4535cbc0e983b632b5e0cab39b353b1b` passed all six workflows. Full local replica-set suite passes 149/149; typecheck, lint, build, audit and diff checks pass.
 
 Next: continue the remaining route role/reference review and keyboard/accessibility checks of responsive core workflows. GST statutory rates/codes, staging infrastructure, backup/restore, operational grants and production deployment remain unverified expert/owner gates. Do not state MVP or production readiness is complete until all acceptance criteria and external gates are verified.
+
+## Active execution checkpoint — 2026-11-05
+
+Remote branch `develop/phase-1-foundation` is at `2fd6eead14540685bf79ed3de512353905663f29`. Its exact-SHA CI #511/#512, MongoDB integration #446/#447 and Browser #230/#231 all passed. Continue in the clean worktree `D:\aslibooks-phase1`; the stale dirty worktree `D:\aslibooks-publish` is intentionally preserved. Never stage the owner-supplied vision document, merge PR #1, or deploy production.
+
+Current implementation adds account group metadata and type-derived normal balance to the chart API and UI, validates group/type combinations, and extends route and browser regression tests. Verified: focused account replica-set tests 6/6; full replica-set workspace tests 137/137; typecheck, lint, production build, high-severity dependency audit and `git diff --check` pass. Publish to `develop/phase-1-foundation`, wait for all six exact-SHA workflows, record their run numbers, and select the next unfinished acceptance criterion without waiting for a user prompt.
+
+Exact local verification commands (PowerShell, repository root):
+
+```powershell
+$env:MONGODB_TEST_URI='mongodb://127.0.0.1:37491/?replicaSet=testset'
+$env:MONGODB_TEST_DB_NAME='aslibooks_test_account_grouping'
+pnpm --filter @aslibooks/api test -- src/routes/accounts.integration.test.ts
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm build
+pnpm audit --audit-level=high
+git diff --check
+```
+
+The running acceptance matrix remains partial. Qualified GST/accounting review, production credentials, database grants, backup/restore, monitoring, email deliverability, attachment malware/retention, and final security/accessibility review remain external release gates.
