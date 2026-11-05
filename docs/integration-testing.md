@@ -13,7 +13,10 @@ Separate suites cover real Better Auth signup/login, session cookies, logout,
 cross-tenant organization reads, ledger membership fencing, concurrent posting,
 reversals, invoice issue and customer receipt allocation with audit rollback.
 Browser E2E, CSRF, email recovery, session expiry, vendor settlement and broader
-end-to-end financial journeys still require separate evidence.
+end-to-end financial journeys still require separate evidence. The browser test
+is `apps/web/e2e/chart.py`; run it only against disposable local MongoDB/API/web
+services, or use `.github/workflows/e2e.yml`, which provisions isolated services
+for the primary workflow at desktop and narrow mobile widths.
 
 ## CI isolation
 

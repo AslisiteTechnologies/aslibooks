@@ -1,0 +1,80 @@
+name: Browser end-to-end
+on:
+  pull_request:
+  push:
+    branches: [main, develop/phase-1-foundation]
+  workflow_dispatch:
+
+jobs:
+  primary-workflow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      MONGODB_URI: mongodb://127.0.0.1:27017/?replicaSet=rs0
+      MONGODB_DB_NAME: aslibooks_e2e
+      BETTER_AUTH_SECRET: aslibooks-e2e-secret-not-for-production-use-only-32chars
+      BETTER_AUTH_URL: http://127.0.0.1:4000
+      WEB_ORIGIN: http://127.0.0.1:5176
+      VITE_API_URL: http://127.0.0.1:4000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pnpm install --frozen-lockfile
+      - name: Run the primary desktop and mobile browser workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          api_pid=''
+          web_pid=''
+          cleanup() {
+            if [[ -n "$web_pid" ]]; then kill "$web_pid" 2>/dev/null || true; fi
+            if [[ -n "$api_pid" ]]; then kill "$api_pid" 2>/dev/null || true; fi
+            docker rm -f aslibooks-e2e-mongo >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          docker run -d --name aslibooks-e2e-mongo -p 127.0.0.1:27017:27017 mongo:7 --replSet rs0 --bind_ip_all
+          for attempt in $(seq 1 45); do
+            if docker exec aslibooks-e2e-mongo mongosh --quiet --eval 'db.adminCommand({ ping: 1 }).ok' 2>/dev/null | grep -q 1; then break; fi
+            sleep 2
+          done
+          docker exec aslibooks-e2e-mongo mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})'
+          for attempt in $(seq 1 45); do
+            if docker exec aslibooks-e2e-mongo mongosh --quiet --eval 'db.hello().isWritablePrimary' 2>/dev/null | grep -q true; then break; fi
+            sleep 2
+          done
+
+          pnpm --filter @aslibooks/api dev > /tmp/aslibooks-e2e-api.log 2>&1 &
+          api_pid=$!
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:4000/health >/dev/null; then break; fi
+            sleep 2
+          done
+          curl --fail --silent http://127.0.0.1:4000/health
+
+          pnpm --filter @aslibooks/web dev -- --host 127.0.0.1 --port 5176 > /tmp/aslibooks-e2e-web.log 2>&1 &
+          web_pid=$!
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:5176 >/dev/null; then break; fi
+            sleep 2
+          done
+          curl --fail --silent http://127.0.0.1:5176 >/dev/null
+
+          python -m pip install --disable-pip-version-check playwright
+          python -m playwright install --with-deps chromium
+          python apps/web/e2e/chart.py || {
+            echo '--- API log ---'
+            tail -n 200 /tmp/aslibooks-e2e-api.log || true
+            echo '--- Web log ---'
+            tail -n 200 /tmp/aslibooks-e2e-web.log || true
+            exit 1
+          }

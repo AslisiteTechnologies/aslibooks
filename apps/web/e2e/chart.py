@@ -7,7 +7,7 @@ from playwright.sync_api import expect, sync_playwright
 def test_chart():
     run = uuid4().hex[:12]
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch()
+        browser = playwright.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1100, "height": 850})
         try:
             page.goto("http://127.0.0.1:5176")

@@ -6,7 +6,7 @@ Published development branch head `ba92c81d6889dd06520533a500beac2c8186ffa0`; CI
 
 ## Current implementation task
 
-Verify and publish the multi-line sales invoice draft UI. It adds/removes service lines, validates whole-number quantities and safe integer-paise totals, and preserves the tax review block if any line is taxable. Local suite, typecheck, lint, build and Playwright syntax passed; full browser execution is unavailable because this machine has no MongoDB runtime and no API/database service. Run exact-commit CI, then continue with a real browser run on an isolated environment when one is available and prioritize the next unblocked MVP feature. Do not enable production uploads without retention policy approval, MongoDB encryption/backup validation and malware-scanning review. AI needs optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
+Run the new `.github/workflows/e2e.yml` browser workflow against the latest published branch and fix failures. It starts disposable MongoDB/API/web services and runs the existing 390px-inclusive primary workflow; this replaces the unavailable local browser run without claiming success before the exact commit completes. Then continue the next unfinished MVP milestone in dependency order. Do not enable production uploads without retention policy approval, MongoDB encryption/backup validation and malware-scanning review. AI needs optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
 ## Exact verification commands
 
 ```powershell

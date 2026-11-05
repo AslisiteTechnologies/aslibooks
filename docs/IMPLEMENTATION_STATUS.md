@@ -1,6 +1,6 @@
 # Implementation status
 
-Status updated 2026-11-05 in the active implementation branch. Published development head: `f38d1f9765e2ae63e2c17ff11e500b2a044fb0c6`; CI #278 and MongoDB integration #215 passed (all 104 API tests, including corrected HSN/SAC cases). Shared auth rate limiting passed across two stores in MongoDB #211. Current local work adds multi-line invoice draft entry and its Playwright assertion; tests passed 32 with 72 DB tests skipped locally, typecheck, lint, build and Playwright script syntax passed. Browser flow remains unexecuted because no local MongoDB runtime or API/database is available. This remains an MVP in active development, not a production-ready release.
+Status updated 2026-11-05 in the active implementation branch. Published development head: `c920a3b32fc46dc880aa8c24c7a6538438c3e157`; CI #280 and MongoDB integration #217 passed (104 API tests). HSN/SAC syntax correction passed CI #278 and MongoDB #215; shared auth rate limiting passed across two stores in MongoDB #211. Local multi-line invoice draft entry and a new GitHub browser end-to-end workflow are now added; local tests passed 32 with 72 MongoDB tests skipped, typecheck/lint/build and Python syntax passed. The browser workflow has not run yet. This remains an MVP in active development, not a production-ready release.
 
 | Area | Status | Verified implementation and remaining gaps |
 | --- | --- | --- |
