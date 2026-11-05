@@ -254,7 +254,10 @@ def test_chart():
             page.get_by_label("Paste bill text").fill(bill_source)
             ai_suggest_button = page.get_by_role("button", name="Suggest bill fields")
             expect(ai_suggest_button).to_be_disabled()
-            page.get_by_role("checkbox", name="I consent to send this text to OpenAI to produce a bill suggestion.").check()
+            consent_checkbox = page.get_by_role("checkbox", name="I consent to send this text to OpenAI to produce a bill suggestion.")
+            consent_checkbox.focus()
+            consent_checkbox.press("Space")
+            expect(consent_checkbox).to_be_checked()
             ai_requests = []
             bill_writes_during_ai = []
             def track_bill_write(request):
@@ -267,7 +270,8 @@ def test_chart():
                 route.fulfill(status=200, content_type="application/json", body=f'{{"vendorName":"Test Vendor","vendorReference":"AI-42","description":"Monthly office supplies","amountPaise":1234,"dueDate":"2026-11-30","currency":"INR","taxStatus":"{tax_status}","confidence":"high","uncertainties":[]}}')
             page.route("**/api/organizations/*/bills/ai-draft-assistance", suggest_bill_fields)
             with page.expect_response(lambda response: response.url.endswith("/bills/ai-draft-assistance")) as ai_response:
-                ai_suggest_button.click()
+                ai_suggest_button.focus()
+                ai_suggest_button.press("Enter")
             assert ai_response.value.status == 200 and ai_requests == [{"sourceText": bill_source}]
             expect(page.get_by_text("Suggested vendor: Test Vendor · confidence: high")).to_be_visible()
             expect(page.get_by_role("button", name="Copy eligible suggestions into editable fields")).to_be_disabled()

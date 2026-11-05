@@ -10,6 +10,7 @@ import { createAuthRateLimiter, createMongoAuthRateLimitStore } from './security
 import mongoose from 'mongoose';
 import { healthRouter } from './routes/health.js';
 import { configuredTrustedOrigins, requireTrustedOrigin } from './security/trustedOrigins.js';
+import { apiResponseHeaders } from './security/responseHeaders.js';
 
 async function start() {
   const auth = await createAuth();
@@ -19,6 +20,7 @@ async function start() {
 
   const app = express();
   app.disable('x-powered-by');
+  app.use(apiResponseHeaders);
   const origins = configuredTrustedOrigins();
   app.use(cors({ origin: origins, credentials: true }));
   app.get('/api/public/config', (_req, res) => res.json({ emailVerificationRequired: emailDeliveryEnabled() }));

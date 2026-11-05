@@ -22,7 +22,7 @@ This matrix maps the acceptance tests in `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.m
 ## Current verification checkpoint
 
 - Branch: `develop/phase-1-foundation`.
-- Latest exact-SHA verification: AI hardening commit `4b820a7ea34d19c70d20e584eecbb7df4ac910ac` passed CI #503/#504, MongoDB #438/#439 and Browser #222/#223. The local full workspace suite passes 148/148 with typecheck, lint, build, high-severity audit, and diff checks. The GST catalog review now fetches all pages but only checks fields the user entered; statutory validation remains out of scope without qualified review.
+- Latest exact-SHA verification: paginated GST review commit `15aef1f498405d645843b4a7bd4fc40484aa49c6` passed CI #505/#506, MongoDB #440/#441 and Browser #224/#225. The local full workspace suite passes 149/149 with typecheck, lint, build, high-severity audit, and diff checks after API response-header hardening; this follow-up SHA is awaiting hosted checks. The GST catalog review fetches all pages but checks only fields the user entered; statutory validation remains out of scope without qualified review.
 - Previous readiness SHA `d282c5f6f2cd649bcd2eb7e42cd2bfba71d6b76a` passed CI #417/#418, MongoDB #354/#355 and Browser #137/#138.
 - Latest local tests add receipt allocation concurrency and all-method Origin rejection checks. Focused receipts integration passed 2/2 and Origin tests passed 3/3. Exact-SHA workflows are pending publication.
 - No production deployment, merge to `main`, or live provider configuration has occurred.

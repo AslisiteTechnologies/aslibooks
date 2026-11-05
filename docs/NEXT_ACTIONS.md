@@ -264,9 +264,9 @@ Route audit: review `docs/ROUTE_SECURITY_MATRIX.md` against the actual current s
 
 Proceed with a review-only AI-assisted vendor-bill extraction workflow: explicit consent, tenant authorization, strict schema and input limits, clear uncertainty/provenance, editable fields, normal bill-draft validation, and no posting action. Then add route and UI tests proving AI output cannot post or persist without human submission.
 
-## Active task — commit all-catalog GST readiness review
-AI hardening SHA `4b820a7ea34d19c70d20e584eecbb7df4ac910ac` is hosted-green: CI #503/#504, MongoDB #438/#439 and Browser #222/#223. Local quota exhaustion and no-bill-submit regression checks are included.
+## Active task — publish API response hardening and keyboard AI flow
+Paginated GST readiness commit `15aef1f498405d645843b4a7bd4fc40484aa49c6` passed exact-SHA CI #505/#506, MongoDB #440/#441 and Browser #224/#225. The all-page review helper tests pass 5/5 and full suite passes 148/148.
 
-The GST setup review previously read only the first product page. The local fix fetches all cursor pages, prevents repeated-cursor loops, and shows how many active catalog items have been checked. Focused tests pass 5/5 and the full workspace suite passes 148/148; typecheck, lint, build and diff checks pass locally. Publish this follow-up with the updated acceptance/evidence docs and verify exact-SHA CI/MongoDB/Browser workflows.
+Current local changes add non-cacheable API responses, MIME/framing/referrer/permissions/CSP headers, tests across success and 404 responses (focused 1/1), and keyboard interaction in AI consent/suggestion E2E. Full replica-set workspace passes 149/149 (136 API, five accounting, eight web); typecheck, lint, build, high-severity audit and diff checks pass. Publish on the current branch head and verify exact-SHA CI/MongoDB/Browser workflows.
 
-Next: continue the role/reference matrix and run a keyboard/accessibility review of responsive primary workflows. GST statutory rate/code applicability, staging infrastructure, backup/restore, operational grants and production deployment remain unverified owner/expert gates. Do not state the MVP or production readiness is complete until all acceptance evidence is satisfied.
+Next: continue the remaining route role/reference review and keyboard/accessibility checks of responsive core workflows. GST statutory rates/codes, staging infrastructure, backup/restore, operational grants and production deployment remain unverified expert/owner gates. Do not state MVP or production readiness is complete until all acceptance criteria and external gates are verified.
