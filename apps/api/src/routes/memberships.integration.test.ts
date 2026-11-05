@@ -16,7 +16,7 @@ describe.skipIf(!enabled)('organization member and invitation workflows', () => 
   app.use('/orgs', organizationRouter(async headers => { const id = headers.get('x-fixture-actor'); return id ? { id } : null; }));
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => { res.status(500).json({ error: String(error) }); });
   const org = new Types.ObjectId(); const peer = new Types.ObjectId();
-  const ownerId = new Types.ObjectId(); const adminId = new Types.ObjectId(); const accountantId = new Types.ObjectId();
+  const ownerId = new Types.ObjectId(); const adminId = new Types.ObjectId(); const accountantId = new Types.ObjectId(); const viewerId = new Types.ObjectId();
   const invitedId = new Types.ObjectId(); const unverifiedId = new Types.ObjectId();
   const path = `/orgs/${org}`; const owner = { 'x-fixture-actor': ownerId.toHexString() }; const admin = { 'x-fixture-actor': adminId.toHexString() };
   let invitedMembershipId = '';
@@ -28,6 +28,7 @@ describe.skipIf(!enabled)('organization member and invitation workflows', () => 
       { organizationId: org, authUserId: String(ownerId), role: 'owner', status: 'active' },
       { organizationId: org, authUserId: String(adminId), role: 'admin', status: 'active' },
       { organizationId: org, authUserId: String(accountantId), role: 'accountant', status: 'active' },
+      { organizationId: org, authUserId: String(viewerId), role: 'viewer', status: 'active' },
       { organizationId: peer, authUserId: String(invitedId), role: 'owner', status: 'active' },
     ]);
     await mongoose.connection.collection('user').insertMany([
@@ -42,9 +43,11 @@ describe.skipIf(!enabled)('organization member and invitation workflows', () => 
     await request(app).get('/orgs/invitations').expect(401);
     await request(app).get(path + '/members').expect(401);
     await request(app).get(path + '/members').set({ 'x-fixture-actor': String(accountantId) }).expect(403);
+    await request(app).get(path + '/members').set({ 'x-fixture-actor': String(viewerId) }).expect(403);
     await request(app).post(path + '/members').set(owner).send({ email: 'unverified@members.example', role: 'viewer' }).expect(404);
     await request(app).post(path + '/members').set(owner).send({ email: 'invited@members.example', role: 'owner' }).expect(400);
     await request(app).post(path + '/members').set(admin).send({ email: 'invited@members.example', role: 'admin' }).expect(403);
+    await request(app).post(path + '/members').set({ 'x-fixture-actor': String(viewerId) }).send({ email: 'invited@members.example', role: 'viewer' }).expect(403);
     const priorKey = process.env.RESEND_API_KEY; const priorFrom = process.env.EMAIL_FROM; const priorOrigin = process.env.WEB_ORIGIN;
     const sendEmail = vi.fn().mockResolvedValue(new Response('{}', { status: 200 })); vi.stubGlobal('fetch', sendEmail);
     process.env.RESEND_API_KEY = 'test-only-resend-key'; process.env.EMAIL_FROM = 'Aslibooks <test@example.com>'; process.env.WEB_ORIGIN = 'https://app.example.test';
@@ -62,6 +65,7 @@ describe.skipIf(!enabled)('organization member and invitation workflows', () => 
       if (priorOrigin === undefined) delete process.env.WEB_ORIGIN; else process.env.WEB_ORIGIN = priorOrigin;
     }
     invitedMembershipId = inviteId;
+    await request(app).patch(`${path}/members/${invitedMembershipId}`).set({ 'x-fixture-actor': String(viewerId) }).send({ status: 'suspended' }).expect(403);
     await request(app).post(path + '/members').set(owner).send({ email: 'invited@members.example', role: 'viewer' }).expect(409);
     await request(app).get('/orgs/invitations').set({ 'x-fixture-actor': String(invitedId) }).expect(200).then(response => {
       expect(response.body.invitations).toEqual([{ id: invitedMembershipId, organizationId: String(org), organizationName: 'Members route test', organizationSlug: `members-${org}`, role: 'accountant' }]);
