@@ -177,7 +177,7 @@ def test_chart():
             expect(page.get_by_text("Draft invoice · Test Customer")).to_be_visible()
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Expenses", exact=True).click()
-            page.get_by_role("combobox", name="Vendor", exact=True).click()
+            page.get_by_role("combobox", name="Vendor", exact=True).first.click()
             page.get_by_role("option", name="Test Vendor").click()
             page.get_by_label("Vendor bill reference").fill(f"V-{run}")
             page.get_by_label("Expense category").click()
