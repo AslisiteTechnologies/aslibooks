@@ -100,3 +100,5 @@ Vendor payment role coverage (local verification passed; exact-SHA workflows pen
 
 ## Resumed checkpoint (2026-11-05)
 Customer and vendor advance integration tests now exercise accountant permissions and viewer denials for receipt/payment, allocation, and customer refund operations. Focused suites pass 2/2; full workspace suite passes 142/142 against the local replica set. Typecheck, lint, production build, high-severity dependency audit, and diff check pass. Exact-SHA CI/MongoDB/Browser workflows for `2288ae210d22b214efcbdb7213ff582442345d3e` all pass (#484/#421/#204). New advance role-coverage changes are locally verified and are awaiting publication and hosted checks.
+
+Credit-note role coverage now demonstrates accountant issuance and idempotent replay for sales and vendor credits while denying viewers. Local focused and full tests, typecheck, lint, build, dependency audit and diff check pass; exact-SHA hosted workflows for this follow-up are pending publication.

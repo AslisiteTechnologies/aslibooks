@@ -121,7 +121,7 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
   it('issues audited vendor credits against unpaid bills and reconciles later payments to the remaining balance', async () => {
     const creditOrg = new Types.ObjectId(); const creditVendor = new Types.ObjectId(); const creditExpense = new Types.ObjectId(); const creditCash = new Types.ObjectId(); const creditPayable = new Types.ObjectId();
     await OrganizationModel.create({ _id: creditOrg, name: 'Vendor credit fixture', slug: `bill-credit-${creditOrg}` });
-    await MembershipModel.create([{ organizationId: creditOrg, authUserId: 'bill-owner', role: 'owner' }, { organizationId: creditOrg, authUserId: 'bill-viewer', role: 'viewer' }]);
+    await MembershipModel.create([{ organizationId: creditOrg, authUserId: 'bill-owner', role: 'owner' }, { organizationId: creditOrg, authUserId: 'bill-accountant', role: 'accountant' }, { organizationId: creditOrg, authUserId: 'bill-viewer', role: 'viewer' }]);
     await ContactModel.create({ _id: creditVendor, organizationId: creditOrg, displayName: 'Credit Vendor', roles: ['vendor'] });
     await AccountModel.create([{ _id: creditExpense, organizationId: creditOrg, code: '5000', name: 'Expense', type: 'expense' },
       { _id: creditCash, organizationId: creditOrg, code: '1000', name: 'Cash', type: 'asset' },
@@ -134,8 +134,8 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     const input = { idempotencyKey: 'vendor-credit-key-1', amountPaise: 3000, reason: 'Returned items' };
     await request(app).post(`${billPath}/credit-notes`).set({ 'x-fixture-actor': 'bill-viewer' }).send(input).expect(403);
     const creditAttempts = await Promise.all([
-      request(app).post(`${billPath}/credit-notes`).set(owner).send(input),
-      request(app).post(`${billPath}/credit-notes`).set(owner).send(input),
+      request(app).post(`${billPath}/credit-notes`).set({ 'x-fixture-actor': 'bill-accountant' }).send(input),
+      request(app).post(`${billPath}/credit-notes`).set({ 'x-fixture-actor': 'bill-accountant' }).send(input),
     ]);
     expect(creditAttempts.map(response => response.status).sort()).toEqual([200, 201]);
     expect(creditAttempts[0].body.id).toBe(creditAttempts[1].body.id);
@@ -143,9 +143,9 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     const journal = await JournalModel.findById(credit.body.journalId).lean<{ lines: Array<{ accountId: Types.ObjectId; debitPaise: number; creditPaise: number }> }>();
     expect(journal!.lines.map(line => [String(line.accountId), line.debitPaise, line.creditPaise])).toEqual([[String(creditPayable), 3000, 0], [String(creditExpense), 0, 3000]]);
     expect(await BillModel.findById(draft.body.id)).toMatchObject({ status: 'partially_credited', amountPaidPaise: 2000, amountCreditedPaise: 3000 });
-    await request(app).post(`${billPath}/credit-notes`).set(owner).send(input).expect(200).expect(response => expect(response.body).toMatchObject({ replayed: true, journalId: credit.body.journalId }));
-    await request(app).post(`${billPath}/credit-notes`).set(owner).send({ ...input, amountPaise: 3001 }).expect(409);
-    await request(app).post(`${billPath}/credit-notes`).set(owner).send({ ...input, idempotencyKey: 'vendor-credit-key-2', amountPaise: 5001 }).expect(409);
+    await request(app).post(`${billPath}/credit-notes`).set({ 'x-fixture-actor': 'bill-accountant' }).send(input).expect(200).expect(response => expect(response.body).toMatchObject({ replayed: true, journalId: credit.body.journalId }));
+    await request(app).post(`${billPath}/credit-notes`).set({ 'x-fixture-actor': 'bill-accountant' }).send({ ...input, amountPaise: 3001 }).expect(409);
+    await request(app).post(`${billPath}/credit-notes`).set({ 'x-fixture-actor': 'bill-accountant' }).send({ ...input, idempotencyKey: 'vendor-credit-key-2', amountPaise: 5001 }).expect(409);
     await request(app).post(`${creditPath}/vendor-payments`).set(owner).send({ idempotencyKey: 'bill-credit-payment-final', cashAccountId: String(creditCash), allocations: [{ billId: draft.body.id, amountPaise: 5000 }] }).expect(201);
     expect(await BillModel.findById(draft.body.id)).toMatchObject({ status: 'credited', amountPaidPaise: 7000, amountCreditedPaise: 3000 });
     expect(await AuditEventModel.countDocuments({ organizationId: creditOrg, action: 'vendor_credit.issued' })).toBe(1);

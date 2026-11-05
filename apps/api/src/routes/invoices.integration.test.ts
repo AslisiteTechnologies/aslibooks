@@ -141,8 +141,8 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
     const creditBody = { idempotencyKey: 'invoice-credit-0001', amountPaise: 2500, reason: 'Service scope reduced' };
     await request(app).post(creditPath).set({ 'x-fixture-actor': 'invoice-viewer' }).send(creditBody).expect(403);
     const creditAttempts = await Promise.all([
-      request(app).post(creditPath).set(owner).send(creditBody),
-      request(app).post(creditPath).set(owner).send(creditBody),
+      request(app).post(creditPath).set({ 'x-fixture-actor': 'invoice-accountant' }).send(creditBody),
+      request(app).post(creditPath).set({ 'x-fixture-actor': 'invoice-accountant' }).send(creditBody),
     ]);
     expect(creditAttempts.map(response => response.status).sort()).toEqual([200, 201]);
     expect(creditAttempts[0].body.id).toBe(creditAttempts[1].body.id);
@@ -153,9 +153,9 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
       .toEqual([{ accountId: String(incomeId), debitPaise: 2500, creditPaise: 0 }, { accountId: String(arId), debitPaise: 0, creditPaise: 2500 }]);
     expect(await InvoiceModel.findById(draftId)).toMatchObject({ status: 'partially_credited', amountCreditedPaise: 2500 });
     expect(await AuditEventModel.countDocuments({ organizationId, action: 'credit_note.issued' })).toBe(1);
-    expect(await request(app).post(creditPath).set(owner).send(creditBody).expect(200).then(response => response.body)).toMatchObject({ replayed: true, journalId: credit.body.journalId });
-    await request(app).post(creditPath).set(owner).send({ ...creditBody, amountPaise: 3000 }).expect(409);
-    await request(app).post(creditPath).set(owner).send({ ...creditBody, idempotencyKey: 'invoice-credit-0002', amountPaise: 5001 }).expect(409);
+    expect(await request(app).post(creditPath).set({ 'x-fixture-actor': 'invoice-accountant' }).send(creditBody).expect(200).then(response => response.body)).toMatchObject({ replayed: true, journalId: credit.body.journalId });
+    await request(app).post(creditPath).set({ 'x-fixture-actor': 'invoice-accountant' }).send({ ...creditBody, amountPaise: 3000 }).expect(409);
+    await request(app).post(creditPath).set({ 'x-fixture-actor': 'invoice-accountant' }).send({ ...creditBody, idempotencyKey: 'invoice-credit-0002', amountPaise: 5001 }).expect(409);
     await request(app).patch(`${path}/${draftId}`).set(owner)
       .send({ customerId: String(customerId), lines: [{ productId: String(serviceId), quantity: 1 }] }).expect(404);
     await request(app).get(`/orgs/${peerId}/invoices/${draftId}`).set({ 'x-fixture-actor': 'invoice-peer' }).expect(404);
