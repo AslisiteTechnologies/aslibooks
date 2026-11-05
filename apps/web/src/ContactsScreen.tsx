@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Alert, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControlLabel, Paper, Stack, TextField, Typography } from '@mui/material';
-import { api, type Contact, type ContactInput, type Organization } from './api';
+import { api, type Contact, type ContactInput, type ContactLedger, type Organization } from './api';
 
 export function ContactsScreen({ organization }: { organization: Organization }) {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -11,6 +11,9 @@ export function ContactsScreen({ organization }: { organization: Organization })
   const [details, setDetails] = useState({ gstin: '', address: '' });
   const [editing, setEditing] = useState<Contact | null>(null);
   const [archiving, setArchiving] = useState<Contact | null>(null);
+  const [statement, setStatement] = useState<ContactLedger | null>(null);
+  const [statementOpen, setStatementOpen] = useState(false);
+  const [statementLoading, setStatementLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editDraft, setEditDraft] = useState<ContactInput>({ displayName: '', roles: [] });
   const [error, setError] = useState('');
@@ -65,6 +68,13 @@ export function ContactsScreen({ organization }: { organization: Organization })
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to archive contact.'); }
     finally { setSaving(false); }
   }
+  async function openStatement(contact: Contact, role: 'customer' | 'vendor') {
+    setStatementOpen(true); setStatementLoading(true); setStatement(null); setError('');
+    try { setStatement(await api.contactLedger(organization.id, contact._id, role)); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to load contact statement.'); }
+    finally { setStatementLoading(false); }
+  }
+  const money = (paise: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(paise / 100);
   return <Stack spacing={2}>
     <Typography variant="h5">Customers and vendors</Typography>
     <TextField label="Search contacts" value={query} onChange={event => setQuery(event.target.value)} />
@@ -93,6 +103,10 @@ export function ContactsScreen({ organization }: { organization: Organization })
       {contact.phone && <Typography variant="body2">Phone: {contact.phone}</Typography>}
       {contact.gstin && <Typography variant="body2">GSTIN: {contact.gstin}</Typography>}
       {contact.address && <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>Billing address: {contact.address}</Typography>}
+      <Stack direction="row" spacing={1} flexWrap="wrap">
+        {contact.roles.includes('customer') && <Button onClick={() => void openStatement(contact, 'customer')}>Customer statement</Button>}
+        {contact.roles.includes('vendor') && <Button onClick={() => void openStatement(contact, 'vendor')}>Vendor statement</Button>}
+      </Stack>
       {canWrite && <Stack direction="row" spacing={1}>
         <Button onClick={() => beginEdit(contact)}>Edit details</Button>
         <Button color="error" onClick={() => setArchiving(contact)}>Archive contact</Button>
@@ -116,6 +130,24 @@ export function ContactsScreen({ organization }: { organization: Organization })
       <DialogTitle>Archive contact?</DialogTitle>
       <DialogContent><DialogContentText>{archiving?.displayName} will be unavailable for new transactions. Existing invoices, bills, payments and audit history remain available.</DialogContentText></DialogContent>
       <DialogActions><Button disabled={saving} onClick={() => setArchiving(null)}>Cancel</Button><Button color="error" disabled={saving} onClick={() => void archiveContact()}>Confirm archive</Button></DialogActions>
+    </Dialog>
+    <Dialog open={statementOpen} onClose={() => setStatementOpen(false)} fullWidth maxWidth="md">
+      <DialogTitle>{statement?.contact.displayName ?? 'Contact'} statement</DialogTitle>
+      <DialogContent>
+        {statementLoading && <Typography role="status">Loading statement…</Typography>}
+        {!statementLoading && statement && <Stack spacing={1}>
+          <Typography variant="subtitle1">Outstanding balance: {money(statement.balancePaise)}</Typography>
+          {statement.rows.length === 0 && <Typography>No posted transactions.</Typography>}
+          {statement.rows.map(row => <Paper variant="outlined" sx={{ p: 1.5 }} key={row.id}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
+              <Stack><Typography fontWeight={600}>{row.description}</Typography><Typography variant="body2">{new Date(row.date).toLocaleDateString('en-IN')} · {row.reference}</Typography></Stack>
+              <Stack alignItems={{ xs: 'flex-start', sm: 'flex-end' }}><Typography>Debit {money(row.debitPaise)} · Credit {money(row.creditPaise)}</Typography><Typography variant="body2">Balance {money(row.balancePaise)}</Typography></Stack>
+            </Stack>
+          </Paper>)}
+        </Stack>}
+        {!statementLoading && error && <Alert severity="error">{error}</Alert>}
+      </DialogContent>
+      <DialogActions><Button onClick={() => setStatementOpen(false)}>Close</Button></DialogActions>
     </Dialog>
   </Stack>;
 }
