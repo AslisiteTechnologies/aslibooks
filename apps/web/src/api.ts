@@ -10,7 +10,7 @@ const accountsPath = (org: string) => `/api/organizations/${org}/accounts`;
 const contactsPath = (org: string) => `/api/organizations/${org}/contacts`;
 export type ContactInput = { displayName: string; roles: Array<'customer' | 'vendor'>; email?: string; phone?: string; gstin?: string; address?: string };
 export type Contact = ContactInput & { _id: string; active: boolean };
-export type ContactLedger = { contact: { id: string; displayName: string }; currency: 'INR'; rows: Array<{ eventId: string; date: string; type: string; reference: string; description: string; debitPaise: number; creditPaise: number; balancePaise: number }>; balancePaise: number; openingBalancePaise: number; next: string | null; receivablePaise?: number; payablePaise?: number };
+export type ContactLedger = { contact: { id: string; displayName: string }; currency: 'INR'; rows: Array<{ eventId: string; date: string; type: string; reference: string; description: string; debitPaise: number; creditPaise: number; balancePaise: number }>; balancePaise: number; openingBalancePaise: number; next: string | null; subledger?: { openDocumentBalancePaise: number; unallocatedAdvancePaise: number; netBalancePaise: number; differencePaise: number; reconciled: boolean } };
 export type TaxCategory = 'not_configured' | 'taxable' | 'exempt' | 'nil_rated' | 'non_gst';
 export type Product = { _id: string; code: string; name: string; description?: string; unit: string; unitPricePaise: number; hsnSacCode?: string; taxCategory: TaxCategory; gstRateBasisPoints?: number; active: boolean };
 export type Invoice = { id: string; customerId: string; customerName: string; status: 'draft' | 'issued' | 'partially_paid' | 'paid' | 'partially_credited' | 'credited'; totalPaise: number; amountPaidPaise: number; amountCreditedPaise?: number; taxTreatment?: 'none' | 'exclusive' | 'inclusive'; taxableSubtotalPaise?: number; cgstPaise?: number; sgstPaise?: number; igstPaise?: number; totalTaxPaise?: number; gstReviewRequired?: boolean; invoiceNumber?: string; dueDate?: string; overdue?: boolean; issuedAt?: string; createdAt: string };
@@ -217,5 +217,4 @@ export const api = {
     method: 'POST', body: JSON.stringify({ name, slug }),
   }),
 };
-
 

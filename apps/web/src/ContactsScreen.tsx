@@ -178,6 +178,12 @@ export function ContactsScreen({ organization }: { organization: Organization })
         {statementLoading && <Typography role="status">Loading statement…</Typography>}
         {!statementLoading && statement && <Stack spacing={1}>
           <Typography variant="subtitle1">Outstanding balance: {money(statement.balancePaise)}</Typography>
+          {statement.subledger && <Alert severity={statement.subledger.reconciled ? 'success' : 'error'}>
+            <Stack spacing={0.5}>
+              <Typography variant="body2">{statement.subledger.reconciled ? 'Statement and subledger reconcile.' : `Statement differs from subledger by ${money(statement.subledger.differencePaise)}.`}</Typography>
+              <Typography variant="body2">Open documents {money(statement.subledger.openDocumentBalancePaise)} · Unallocated advances {money(statement.subledger.unallocatedAdvancePaise)}</Typography>
+            </Stack>
+          </Alert>}
           {statement.rows.length === 0 && <Typography>No posted transactions.</Typography>}
           {statement.rows.map(row => <Paper variant="outlined" sx={{ p: 1.5 }} key={row.eventId}>
             <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
@@ -196,4 +202,3 @@ export function ContactsScreen({ organization }: { organization: Organization })
     </Dialog>
   </Stack>;
 }
-

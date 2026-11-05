@@ -8,7 +8,7 @@ Preserve the original workspace edits; never stage the owner-supplied vision fil
 
 ## Current implementation task
 
-Remote statement pagination head `8a3a6e94ab6f42c31e737d768620c23ad5ffe804` passed CI #408 and Browser #128; MongoDB #345 failed. Local diagnosis fixed invalid projection constants and a first-page opening-balance facet that returned all rows. The focused statement replica-set suite passed 2/2; full API replica-set passed 105/105; workspace typecheck, lint, production build and the 390px Playwright flow passed, including full statement CSV download. Publish this correction on top of the latest remote head, inspect exact-SHA CI/MongoDB/E2E, then start transaction-to-subledger reconciliation.
+Statement correction and CSV export `d0e3b4fc001c3ed5cd74e897d3c98e24e31838a0` passed CI #409/#410, MongoDB #346/#347, and Browser #129/#130. Per-contact reconciliation is implemented locally: open document balances less unallocated advances are compared to the transaction statement and shown in the UI. After the final snapshot-aggregate implementation, workspace tests passed 111/111 (105 API, 5 accounting, 1 web); typecheck, lint, build, diff check, and 390px Playwright passed. Publish this slice and verify exact-SHA CI/MongoDB/Browser, then remediate the dependency audit findings and continue remaining release/security acceptance criteria.
 
 ## Exact verification commands
 
@@ -28,12 +28,12 @@ For local integration/browser tests, use a disposable MongoDB replica set and AP
 
 ## Remaining MVP work
 
-- Transaction-to-subledger reconciliation for customer/vendor statement totals and their receivable/payable control accounts.
+- Dependency security audit and remediation for test-tooling peer dependencies included in the production audit tree.
 - Reconcile every master vision acceptance criterion to implemented code and direct test evidence, especially cross-tenant object access and viewer/accountant permissions.
 - Review invoice lifecycle, sales/purchase tax handling and credit/refund boundaries; keep unsupported GST cases blocked pending qualified review.
 - Verify financial reports, aging, customer/vendor ledgers and source journal reconciliation against realistic transaction fixtures.
 - Review AI isolation and explicit human approval; AI must not post.
-- Complete threat review, dependency/security audit, least-privilege runtime DB role, backup/restore, monitoring, staging runbook and release checklist.
+- Complete threat review, least-privilege runtime DB role, backup/restore, monitoring, staging runbook and release checklist.
 - Production email credentials/sender verification and live delivery require owner configuration; do not claim verified delivery without it.
 
 ## Restart commands
@@ -47,4 +47,3 @@ Get-Content docs/IMPLEMENTATION_STATUS.md
 Get-Content docs/TEST_EVIDENCE.md -Tail 80
 Get-Content docs/NEXT_ACTIONS.md
 ```
-

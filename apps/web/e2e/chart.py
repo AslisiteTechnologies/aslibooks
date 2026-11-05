@@ -357,9 +357,9 @@ def test_chart():
             def contact_page(route):
                 if "/ledger?" in route.request.url:
                     if "after=" in route.request.url:
-                        body = '{"contact":{"id":"000000000000000000000003","displayName":"Pagination contact one"},"currency":"INR","rows":[{"eventId":"advance-1","date":"2026-01-02T00:00:00.000Z","type":"customer_advance","reference":"ADV-1","description":"Customer advance received","debitPaise":0,"creditPaise":2500,"balancePaise":10000}],"openingBalancePaise":12500,"balancePaise":10000,"next":null,"receivablePaise":10000}'
+                        body = '{"contact":{"id":"000000000000000000000003","displayName":"Pagination contact one"},"currency":"INR","rows":[{"eventId":"advance-1","date":"2026-01-02T00:00:00.000Z","type":"customer_advance","reference":"ADV-1","description":"Customer advance received","debitPaise":0,"creditPaise":2500,"balancePaise":10000}],"openingBalancePaise":12500,"balancePaise":10000,"next":null,"subledger":{"openDocumentBalancePaise":12500,"unallocatedAdvancePaise":2500,"netBalancePaise":10000,"differencePaise":0,"reconciled":true}}'
                     else:
-                        body = '{"contact":{"id":"000000000000000000000003","displayName":"Pagination contact one"},"currency":"INR","rows":[{"eventId":"invoice-1","date":"2026-01-01T00:00:00.000Z","type":"invoice","reference":"INV-1","description":"Invoice INV-1","debitPaise":12500,"creditPaise":0,"balancePaise":12500}],"openingBalancePaise":0,"balancePaise":10000,"next":"cursor2","receivablePaise":10000}'
+                        body = '{"contact":{"id":"000000000000000000000003","displayName":"Pagination contact one"},"currency":"INR","rows":[{"eventId":"invoice-1","date":"2026-01-01T00:00:00.000Z","type":"invoice","reference":"INV-1","description":"Invoice INV-1","debitPaise":12500,"creditPaise":0,"balancePaise":12500}],"openingBalancePaise":0,"balancePaise":10000,"next":"cursor2","subledger":{"openDocumentBalancePaise":12500,"unallocatedAdvancePaise":2500,"netBalancePaise":10000,"differencePaise":0,"reconciled":true}}'
                 elif "after=" in route.request.url:
                     body = '{"contacts":[{"_id":"000000000000000000000004","displayName":"Pagination contact two","roles":["customer"],"active":true}],"next":null}'
                 else:
@@ -375,6 +375,7 @@ def test_chart():
             expect(page.get_by_text("Pagination contact two", exact=True)).to_be_visible()
             page.get_by_role("button", name="Customer statement").first.click()
             expect(page.get_by_text("Outstanding balance: ₹100.00", exact=True)).to_be_visible()
+            expect(page.get_by_text("Statement and subledger reconcile.", exact=True)).to_be_visible()
             expect(page.get_by_text("Invoice INV-1", exact=True)).to_be_visible()
             page.get_by_role("button", name="Load more statement entries", exact=True).click()
             expect(page.get_by_text("Customer advance received", exact=True)).to_be_visible()
@@ -398,5 +399,4 @@ def test_chart():
 
 if __name__ == "__main__":
     test_chart()
-
 

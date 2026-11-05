@@ -61,6 +61,7 @@ function statementCursorMatch(cursor: { date: Date; eventId: string }, inclusive
 const sumStatement: PipelineStage.Group = { $group: { _id: null, debitPaise: { $sum: '$debitPaise' }, creditPaise: { $sum: '$creditPaise' } } };
 async function sendStatement(
   res: Response,
+  organizationId: Types.ObjectId,
   source: typeof InvoiceModel | typeof BillModel,
   pipeline: PipelineStage[],
   party: { _id: Types.ObjectId; displayName: string },
@@ -71,20 +72,55 @@ async function sendStatement(
   beforeMatch: Record<string, unknown> | null,
 ) {
   const beforeStages: PipelineStage.FacetPipelineStage[] = beforeMatch
-    ? [{ $match: beforeMatch }, sumStatement]
-    : [{ $match: { $expr: { $eq: [1, 0] } } }, sumStatement];
+    ? [{ $match: { type: { $nin: ['__subledger_document', '__subledger_advance'] } } }, { $match: beforeMatch }, sumStatement]
+    : [{ $match: { type: { $nin: ['__subledger_document', '__subledger_advance'] } } }, { $match: { $expr: { $eq: [1, 0] } } }, sumStatement];
   const pageStages: PipelineStage.FacetPipelineStage[] = [
+    { $match: { type: { $nin: ['__subledger_document', '__subledger_advance'] } } },
     ...(cursor ? [{ $match: afterMatch } as PipelineStage.Match] : []),
     { $sort: { date: 1, eventId: 1 } }, { $limit: limit + 1 },
   ];
-  const [result] = await source.aggregate([...pipeline, { $facet: {
-    totals: [sumStatement],
+  const reconciliationStages: PipelineStage[] = role === 'customer' ? [
+    { $unionWith: { coll: InvoiceModel.collection.name, pipeline: [
+      { $match: { organizationId, customerId: party._id, status: { $in: ['issued', 'partially_paid', 'partially_credited'] } } },
+      { $project: { _id: 0, type: { $literal: '__subledger_document' },
+        openDocumentBalancePaise: { $subtract: [{ $subtract: ['$totalPaise', '$amountPaidPaise'] }, { $ifNull: ['$amountCreditedPaise', 0] }] },
+        unallocatedAdvancePaise: { $literal: 0 } } },
+    ] } },
+    { $unionWith: { coll: CustomerAdvanceModel.collection.name, pipeline: [
+      { $match: { organizationId, customerId: party._id } },
+      { $project: { _id: 0, type: { $literal: '__subledger_advance' }, openDocumentBalancePaise: { $literal: 0 },
+        unallocatedAdvancePaise: { $subtract: [{ $subtract: ['$amountPaise', '$allocatedPaise'] }, { $ifNull: ['$refundedPaise', 0] }] } } },
+    ] } },
+  ] : [
+    { $unionWith: { coll: BillModel.collection.name, pipeline: [
+      { $match: { organizationId, vendorId: party._id, status: { $in: ['posted', 'partially_paid', 'partially_credited'] } } },
+      { $project: { _id: 0, type: { $literal: '__subledger_document' },
+        openDocumentBalancePaise: { $subtract: [{ $subtract: ['$amountPaise', '$amountPaidPaise'] }, { $ifNull: ['$amountCreditedPaise', 0] }] },
+        unallocatedAdvancePaise: { $literal: 0 } } },
+    ] } },
+    { $unionWith: { coll: VendorAdvanceModel.collection.name, pipeline: [
+      { $match: { organizationId, vendorId: party._id } },
+      { $project: { _id: 0, type: { $literal: '__subledger_advance' }, openDocumentBalancePaise: { $literal: 0 },
+        unallocatedAdvancePaise: { $subtract: ['$amountPaise', '$allocatedPaise'] } } },
+    ] } },
+  ];
+  const [result] = await source.aggregate([...pipeline, ...reconciliationStages, { $facet: {
+    totals: [{ $match: { type: { $nin: ['__subledger_document', '__subledger_advance'] } } }, sumStatement],
     before: beforeStages,
     page: pageStages,
-  } }]);
+    subledger: [
+      { $match: { type: { $in: ['__subledger_document', '__subledger_advance'] } } },
+      { $group: { _id: null, openDocumentBalancePaise: { $sum: '$openDocumentBalancePaise' },
+        unallocatedAdvancePaise: { $sum: '$unallocatedAdvancePaise' } } },
+    ],
+  } }]).readConcern('snapshot');
+  const subledger = result?.subledger?.[0] ?? { openDocumentBalancePaise: 0, unallocatedAdvancePaise: 0 };
+  const { openDocumentBalancePaise, unallocatedAdvancePaise } = subledger;
+  const netSubledgerBalancePaise = openDocumentBalancePaise - unallocatedAdvancePaise;
   const totals = result?.totals?.[0] ?? { debitPaise: 0, creditPaise: 0 };
   const opening = result?.before?.[0] ?? { debitPaise: 0, creditPaise: 0 };
   const balancePaise = totals.debitPaise - totals.creditPaise;
+  const reconciliationDifferencePaise = balancePaise - netSubledgerBalancePaise;
   let runningBalancePaise = opening.debitPaise - opening.creditPaise;
   const sourceRows = (result?.page ?? []) as Array<{ eventId: string; date: Date; type: string; reference: string; description: string; debitPaise: number; creditPaise: number }>;
   const hasMore = sourceRows.length > limit;
@@ -92,13 +128,16 @@ async function sendStatement(
     runningBalancePaise += row.debitPaise - row.creditPaise;
     return { ...row, date: row.date.toISOString(), balancePaise: runningBalancePaise };
   });
-  if (![balancePaise, runningBalancePaise, ...rows.map(row => row.balancePaise)].every(Number.isSafeInteger)) {
+  if (![balancePaise, runningBalancePaise, openDocumentBalancePaise, unallocatedAdvancePaise, netSubledgerBalancePaise,
+    reconciliationDifferencePaise, ...rows.map(row => row.balancePaise)].every(Number.isSafeInteger)) {
     res.status(422).json({ error: 'Contact statement exceeds supported integer amount range' }); return;
   }
   const last = sourceRows[Math.min(sourceRows.length, limit) - 1];
   const next = hasMore && last ? Buffer.from(JSON.stringify({ timestamp: last.date.getTime(), eventId: last.eventId })).toString('base64url') : null;
-  res.json({ contact: { id: String(party._id), displayName: party.displayName }, currency: 'INR', rows, balancePaise, openingBalancePaise: opening.debitPaise - opening.creditPaise, next,
-    ...(role === 'customer' ? { receivablePaise: balancePaise } : { payablePaise: balancePaise }) });
+  res.json({ contact: { id: String(party._id), displayName: party.displayName }, currency: 'INR', rows, balancePaise,
+    openingBalancePaise: opening.debitPaise - opening.creditPaise, next,
+    subledger: { openDocumentBalancePaise, unallocatedAdvancePaise, netBalancePaise: netSubledgerBalancePaise,
+      differencePaise: reconciliationDifferencePaise, reconciled: reconciliationDifferencePaise === 0 } });
 }
 
 export function contactRouter() {
@@ -198,7 +237,7 @@ export function contactRouter() {
         { $project: project('invoice', 'invoice:', { $ifNull: ['$issuedAt', '$createdAt'] }, { $ifNull: ['$invoiceNumber', { $toString: '$_id' }] }, { $concat: ['Invoice ', { $ifNull: ['$invoiceNumber', ''] }] }, '$totalPaise', 0) },
         ...unions,
       ];
-      return sendStatement(res, source, pipeline, party, 'customer', limit, cursor, accountMatch, beforeMatch);
+      return sendStatement(res, organizationId, source, pipeline, party, 'customer', limit, cursor, accountMatch, beforeMatch);
     }
     if (isVendor) {
       source = BillModel;
@@ -227,7 +266,7 @@ export function contactRouter() {
         { $project: project('bill', 'bill:', { $ifNull: ['$postedAt', '$createdAt'] }, '$vendorReference', '$description', '$amountPaise', 0) },
         ...unions,
       ];
-      return sendStatement(res, source, pipeline, party, 'vendor', limit, cursor, accountMatch, beforeMatch);
+      return sendStatement(res, organizationId, source, pipeline, party, 'vendor', limit, cursor, accountMatch, beforeMatch);
     }
   });
   router.post('/', write);
@@ -284,4 +323,3 @@ const write: RequestHandler = async (req, res, next) => {
     next(error);
   }
 };
-

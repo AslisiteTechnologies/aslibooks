@@ -5,8 +5,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AuditEventModel } from '../models/auditEvent.js';
 import { BillModel, VendorCreditModel } from '../models/bill.js';
 import { ContactModel } from '../models/contact.js';
+import { CustomerAdvanceModel, CustomerAdvanceRefundModel } from '../models/customerAdvance.js';
 import { MembershipModel } from '../models/membership.js';
 import { VendorPaymentModel } from '../models/vendorPayment.js';
+import { VendorAdvanceModel } from '../models/vendorAdvance.js';
 import { organizationRouter } from './organizations.js';
 
 const uri = process.env.MONGODB_TEST_URI;
@@ -76,7 +78,8 @@ describe.skipIf(!enabled)('contacts API', () => {
     const filtered = await request(app).get(path + '?q=Coastal&role=vendor').set(owner).expect(200);
     expect(filtered.body.contacts[0]).toMatchObject({ displayName: 'Coastal Supply', phone: '+91 9999999999', address: 'New address', gstin: '22AAAAA0000A1Z5' });
     const [bill] = await BillModel.create([{ organizationId: org, vendorId: new Types.ObjectId(id), vendorName: 'Coastal Supply', vendorReference: 'BILL-STATEMENT-1',
-      expenseAccountId: new Types.ObjectId(), expenseAccountName: 'Operating expenses', description: 'Statement fixture', status: 'posted', amountPaise: 12500,
+      expenseAccountId: new Types.ObjectId(), expenseAccountName: 'Operating expenses', description: 'Statement fixture', status: 'partially_credited',
+      amountPaise: 12500, amountPaidPaise: 2500, amountCreditedPaise: 3000,
       postedAt: new Date('2026-01-01T00:00:00Z') }]);
     await VendorPaymentModel.create([{ organizationId: org, vendorId: new Types.ObjectId(id), vendorName: 'Coastal Supply', idempotencyKey: 'statement-payment-1',
       cashAccountId: new Types.ObjectId(), amountPaise: 2500, paidAt: new Date('2026-01-02T00:00:00Z'), journalId: new Types.ObjectId(),
@@ -85,7 +88,8 @@ describe.skipIf(!enabled)('contacts API', () => {
       amountPaise: 3000, reason: 'Supplier allowance', idempotencyKey: 'statement-credit-1', journalId: new Types.ObjectId(), issuedAt: new Date('2026-01-03T00:00:00Z') }]);
     const ledger = await request(app).get(path + '/' + id + '/ledger').set(owner);
     if (ledger.status !== 200) throw new Error(`Contact statement failed: ${ledger.body.error}`);
-    expect(ledger.body).toMatchObject({ contact: { id, displayName: 'Coastal Supply' }, currency: 'INR', openingBalancePaise: 0, balancePaise: 7000, payablePaise: 7000,
+    expect(ledger.body).toMatchObject({ contact: { id, displayName: 'Coastal Supply' }, currency: 'INR', openingBalancePaise: 0, balancePaise: 7000,
+      subledger: { openDocumentBalancePaise: 7000, unallocatedAdvancePaise: 0, netBalancePaise: 7000, differencePaise: 0, reconciled: true },
       rows: [
         { type: 'bill', reference: 'BILL-STATEMENT-1', debitPaise: 12500, creditPaise: 0, balancePaise: 12500 },
         { type: 'payment', reference: 'BILL-STATEMENT-1', debitPaise: 0, creditPaise: 2500, balancePaise: 10000 },
@@ -98,6 +102,23 @@ describe.skipIf(!enabled)('contacts API', () => {
     const lastStatementPage = await request(app).get(path + '/' + id + '/ledger?limit=2&after=' + encodeURIComponent(firstStatementPage.body.next)).set(owner).expect(200);
     expect(lastStatementPage.body).toMatchObject({ openingBalancePaise: 10000, balancePaise: 7000, next: null,
       rows: [{ type: 'vendor_credit', creditPaise: 3000, balancePaise: 7000 }] });
+    await VendorAdvanceModel.create([{ organizationId: org, vendorId: new Types.ObjectId(id), vendorName: 'Coastal Supply',
+      idempotencyKey: 'statement-advance-1', cashAccountId: new Types.ObjectId(), prepaymentAccountId: new Types.ObjectId(),
+      amountPaise: 2000, allocatedPaise: 0, paidAt: new Date('2026-01-04T00:00:00Z'), journalId: new Types.ObjectId() }]);
+    const advancedStatement = await request(app).get(path + '/' + id + '/ledger').set(owner).expect(200);
+    expect(advancedStatement.body).toMatchObject({ balancePaise: 5000,
+      subledger: { openDocumentBalancePaise: 7000, unallocatedAdvancePaise: 2000, netBalancePaise: 5000, differencePaise: 0, reconciled: true } });
+    const customer = await request(app).post(path).set(owner).send({ displayName: 'Coastal Customer', roles: ['customer'] }).expect(201);
+    const advanceId = new Types.ObjectId();
+    await CustomerAdvanceModel.create([{ _id: advanceId, organizationId: org, customerId: new Types.ObjectId(customer.body.id), customerName: 'Coastal Customer',
+      idempotencyKey: 'customer-statement-advance-1', cashAccountId: new Types.ObjectId(), liabilityAccountId: new Types.ObjectId(), amountPaise: 2000,
+      allocatedPaise: 0, refundedPaise: 500, receivedAt: new Date('2026-01-05T00:00:00Z'), journalId: new Types.ObjectId() }]);
+    await CustomerAdvanceRefundModel.create([{ organizationId: org, advanceId, customerId: new Types.ObjectId(customer.body.id),
+      idempotencyKey: 'customer-statement-refund-1', cashAccountId: new Types.ObjectId(), amountPaise: 500,
+      refundedAt: new Date('2026-01-06T00:00:00Z'), journalId: new Types.ObjectId() }]);
+    const customerStatement = await request(app).get(path + '/' + customer.body.id + '/ledger').set(owner).expect(200);
+    expect(customerStatement.body).toMatchObject({ balancePaise: -1500,
+      subledger: { openDocumentBalancePaise: 0, unallocatedAdvancePaise: 1500, netBalancePaise: -1500, differencePaise: 0, reconciled: true } });
     await request(app).get(path + '/' + id + '/ledger?role=invalid').set(owner).expect(400);
     await request(app).get(path + '/' + id + '/ledger?after=invalid').set(owner).expect(400);
     await request(app).get(foreignPath + '/' + id + '/ledger').set(owner).expect(403);
@@ -119,4 +140,3 @@ describe.skipIf(!enabled)('contacts API', () => {
     await mongoose.disconnect();
   });
 });
-
