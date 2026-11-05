@@ -149,5 +149,9 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 
 ## As-of aging report cutoff (local, pending exact-commit workflows)
 - Aging reports now filter invoices by India-local `issuedAt` and bills by India-local `postedAt` through the selected as-of day. Added future-issued/future-posted documents to the integration fixture and kept expected totals unchanged.
-- Focused local aging integration test is skipped without `MONGODB_TEST_URI` and a replica set. Full local suite passed 32 tests with 72 DB tests skipped; typecheck, lint, build and `git diff --check` passed. Exact MongoDB workflow is required to verify the regression assertion.
+- Focused local aging integration test is skipped without `MONGODB_TEST_URI` and a replica set. Full local suite passed 32 tests with 72 DB tests skipped; typecheck, lint, build and `git diff --check` passed. Published head `a2ce58db8c27293f5079fbdf787c2620b005b268` passed CI #330/#329, MongoDB #267/#266 and browser E2E #50/#49, exercising the future-posting regression fixture.
+
+## Product tax metadata editing (local, pending exact-commit workflows)
+- Product edits now accept validated HSN/SAC format, category and an explicitly entered rate; moving away from taxable clears the configured rate. UI retains the warning that code/rate/classification are not verified. Invoice snapshots remain unchanged.
+- Integration test updates taxable metadata and verifies clearing the rate when changing to exempt. Browser E2E edits a taxable service's HSN/SAC and rate. Local focused integration test skipped (no `MONGODB_TEST_URI`); full suite passed 32 tests with 72 database-backed tests skipped. Typecheck, lint, production build, Python compile and `git diff --check` passed. Exact-commit MongoDB/browser evidence is pending.
 

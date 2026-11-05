@@ -67,6 +67,14 @@ describe.skipIf(!enabled)('product catalog API', () => {
     await request(app).patch(path + '/' + id).set(owner)
       .send({ name: 'Design service', unit: 'hour', unitPricePaise: 30000 }).expect(200);
     expect(await ProductModel.findById(id)).toMatchObject({ name: 'Design service', unit: 'hour', unitPricePaise: 30000 });
+    await request(app).patch(path + '/' + id).set(owner).send({ taxCategory: 'taxable' }).expect(422);
+    await request(app).patch(path + '/' + id).set(owner).send({ hsnSacCode: '123' }).expect(400);
+    await request(app).patch(path + '/' + id).set(owner)
+      .send({ hsnSacCode: '998314', taxCategory: 'taxable', gstRateBasisPoints: 1800 }).expect(200);
+    expect(await ProductModel.findById(id)).toMatchObject({ hsnSacCode: '998314', taxCategory: 'taxable', gstRateBasisPoints: 1800 });
+    await request(app).patch(path + '/' + id).set(owner).send({ taxCategory: 'exempt' }).expect(200);
+    expect(await ProductModel.findById(id)).toMatchObject({ taxCategory: 'exempt' });
+    expect((await ProductModel.findById(id))?.gstRateBasisPoints).toBeUndefined();
     await request(app).patch(path + '/' + id).set(owner).send({ active: false }).expect(200);
     const search = await request(app).get(path + '?q=Design').set(owner).expect(200);
     expect(search.body.products).toHaveLength(0);

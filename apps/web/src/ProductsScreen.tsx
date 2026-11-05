@@ -11,7 +11,7 @@ export function ProductsScreen({ organization }: { organization: Organization })
   const [hsnSacCode, setHsnSacCode] = useState('');
   const [taxCategory, setTaxCategory] = useState<'not_configured' | 'taxable' | 'exempt' | 'nil_rated' | 'non_gst'>('not_configured');
   const [gstRate, setGstRate] = useState('');
-  const [editing, setEditing] = useState<{ id: string; name: string; unit: string; price: string } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; name: string; unit: string; price: string; hsnSacCode: string; taxCategory: Product['taxCategory']; gstRate: string } | null>(null);
   const [archiving, setArchiving] = useState<Product | null>(null);
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState('');
@@ -43,9 +43,12 @@ export function ProductsScreen({ organization }: { organization: Organization })
     const paise = Math.round(Number(editing.price) * 100);
     if (!Number.isFinite(paise) || !Number.isSafeInteger(paise) || paise < 0) { setError('Enter a price that can be represented in paise.'); return; }
     if (!editing.name.trim() || !editing.unit.trim() || editing.unit.trim().length > 24) { setError('Enter a service name and a unit between 1 and 24 characters.'); return; }
+    const rate = editing.taxCategory === 'taxable' ? /^(?:\d{1,3})(?:\.\d{1,2})?$/.test(editing.gstRate) ? Math.round(Number(editing.gstRate) * 100) : NaN : undefined;
+    if (editing.taxCategory === 'taxable' && (!Number.isSafeInteger(rate) || !rate || rate > 100_000)) { setError('Enter a positive tax rate from 0 to 1000 with up to two decimal places.'); return; }
     try {
       setSaving(true);
-      await api.updateProduct(organization.id, editing.id, { name: editing.name.trim(), unit: editing.unit.trim(), unitPricePaise: paise });
+      await api.updateProduct(organization.id, editing.id, { name: editing.name.trim(), unit: editing.unit.trim(), unitPricePaise: paise,
+        hsnSacCode: editing.hsnSacCode, taxCategory: editing.taxCategory, ...(rate !== undefined ? { gstRateBasisPoints: rate } : {}) });
       setEditing(null); setVersion(value => value + 1); setError('');
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to update service.'); }
     finally { setSaving(false); }
@@ -88,7 +91,8 @@ export function ProductsScreen({ organization }: { organization: Organization })
       <Typography>₹{(product.unitPricePaise / 100).toFixed(2)} / {product.unit || 'unit'}</Typography>
       <Typography variant="body2" color="text.secondary">{product.hsnSacCode ? `HSN/SAC ${product.hsnSacCode} · ` : ''}{product.taxCategory.replaceAll('_', ' ')}{product.gstRateBasisPoints !== undefined ? ` · ${(product.gstRateBasisPoints / 100).toFixed(2)}% configured` : ''}</Typography>
       {canWrite && <Stack direction="row" spacing={1}>
-        <Button onClick={() => setEditing({ id: product._id, name: product.name, unit: product.unit || 'unit', price: (product.unitPricePaise / 100).toFixed(2) })}>Edit service</Button>
+        <Button onClick={() => setEditing({ id: product._id, name: product.name, unit: product.unit || 'unit', price: (product.unitPricePaise / 100).toFixed(2),
+          hsnSacCode: product.hsnSacCode ?? '', taxCategory: product.taxCategory, gstRate: product.gstRateBasisPoints === undefined ? '' : (product.gstRateBasisPoints / 100).toFixed(2) })}>Edit service</Button>
         <Button color="error" onClick={() => setArchiving(product)}>Archive service</Button>
       </Stack>}
     </Paper>)}
@@ -99,6 +103,14 @@ export function ProductsScreen({ organization }: { organization: Organization })
           <TextField required label="Service name" value={editing.name} onChange={event => setEditing({ ...editing, name: event.target.value })} />
           <TextField required label="Unit" inputProps={{ maxLength: 24 }} value={editing.unit} onChange={event => setEditing({ ...editing, unit: event.target.value })} />
           <TextField required label="Unit price (₹)" type="number" inputProps={{ min: 0, step: '0.01' }} value={editing.price} onChange={event => setEditing({ ...editing, price: event.target.value })} />
+          <TextField label="HSN/SAC code" inputProps={{ maxLength: 8, inputMode: 'numeric' }} helperText="Format only; verify the code and tax treatment separately."
+            value={editing.hsnSacCode} onChange={event => setEditing({ ...editing, hsnSacCode: event.target.value.replace(/\D/g, '') })} />
+          <TextField select label="Tax category" value={editing.taxCategory} onChange={event => setEditing({ ...editing, taxCategory: event.target.value as Product['taxCategory'], gstRate: event.target.value === 'taxable' ? editing.gstRate : '' })}>
+            <MenuItem value="not_configured">Not configured</MenuItem><MenuItem value="taxable">Taxable</MenuItem>
+            <MenuItem value="exempt">Exempt</MenuItem><MenuItem value="nil_rated">Nil rated</MenuItem><MenuItem value="non_gst">Outside GST scope</MenuItem>
+          </TextField>
+          {editing.taxCategory === 'taxable' && <TextField required label="Configured total rate (%)" type="number" inputProps={{ min: 0, max: 1000, step: '0.01' }}
+            helperText="User-entered only; rates and classification are not verified." value={editing.gstRate} onChange={event => setEditing({ ...editing, gstRate: event.target.value })} />}
         </Stack>}
       </DialogContent>
       <DialogActions><Button disabled={saving} onClick={() => setEditing(null)}>Cancel</Button><Button disabled={saving} type="submit" form="edit-service-form" variant="contained">Save service changes</Button></DialogActions>

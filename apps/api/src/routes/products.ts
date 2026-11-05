@@ -23,6 +23,9 @@ const updateProduct = z.union([
     description: z.string().trim().max(1000).optional(),
     unit: z.string().trim().min(1).max(24).optional(),
     unitPricePaise: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
+    hsnSacCode: z.union([z.string().regex(/^(?:\d{2}|\d{4}|\d{6}|\d{8})$/), z.literal('')]).optional(),
+    taxCategory: z.enum(['not_configured', 'taxable', 'exempt', 'nil_rated', 'non_gst']).optional(),
+    gstRateBasisPoints: z.number().int().min(1).max(100_000).optional(),
   }).refine(fields => Object.values(fields).some(field => field !== undefined)),
   z.strictObject({ active: z.literal(false) }),
 ]);
@@ -87,7 +90,18 @@ const writeProduct: RequestHandler = async (req, res, next) => {
         const product = await ProductModel.findOne({ _id: id, organizationId, active: true }).session(session);
         if (!product) throw new ProductError(404, 'Service not found');
         if ('active' in parsed.data) { product.active = false; action = 'product.archived'; }
-        else { product.set(parsed.data); action = 'product.updated'; }
+        else {
+          const changes = parsed.data;
+          const nextCategory = changes.taxCategory ?? product.taxCategory;
+          const nextRate = changes.gstRateBasisPoints ?? product.gstRateBasisPoints;
+          if (nextCategory === 'taxable' && (!nextRate || nextRate <= 0)) throw new ProductError(422, 'Taxable items need an explicitly entered positive rate');
+          if (nextCategory !== 'taxable' && changes.gstRateBasisPoints !== undefined) throw new ProductError(422, 'Only taxable items can have a configured rate');
+          product.set({ ...changes,
+            ...(changes.hsnSacCode !== undefined ? { hsnSacCode: changes.hsnSacCode || undefined } : {}),
+            ...(changes.taxCategory && changes.taxCategory !== 'taxable' ? { gstRateBasisPoints: undefined } : {}),
+          });
+          action = 'product.updated';
+        }
         await product.save({ session });
         resourceId = String(product._id);
       }

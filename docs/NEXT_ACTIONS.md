@@ -2,13 +2,13 @@
 
 ## Current checkpoint
 
-Published head `f39e76e0408fcf8aa66bdbdd285ef92cff34789f` passed CI #328/#327, MongoDB #265/#264, and browser E2E #48/#47. Product and contact create/edit/archive and the end-to-end financial flow are covered. The current local change adds India-local posting-date cutoffs to aging reports and excludes future-posted documents, with regression data; verify by exact-SHA MongoDB workflow and publish it. Local integration was skipped because no replica-set URI is configured.
+Published head `a2ce58db8c27293f5079fbdf787c2620b005b268` passed CI #330/#329, MongoDB #267/#266 and browser E2E #50/#49. As-of aging now excludes future-posted documents; the MongoDB regression test passed. Current local work adds product tax metadata edit UI/API validation and persistence tests; verify all workflow results against the new SHA.
 
 Preserve the original workspace edits; never stage the owner-supplied vision file. Never merge PR #1 to `main` or deploy production.
 
 ## Current implementation task
 
-Verify and publish the aging report cutoff and test to `develop/phase-1-foundation`. Confirm exact-SHA CI, MongoDB, and browser workflows; investigate failures. Then continue the highest-priority unmet acceptance criteria in the master vision, inspecting current routes, models, UI and tests first. Remaining gaps include richer customer/vendor ledgers, qualified GST policy and scenarios, acceptance/security coverage, release operations and live provider configuration.
+Verify and publish product HSN/SAC, category and rate editing. Confirm exact-SHA CI/MongoDB/browser runs; investigate failures. Continue the highest-priority unmet master-vision criteria after that, inspecting current routes, models, UI and tests. Remaining gaps include richer customer/vendor ledgers, qualified GST policy and scenarios, acceptance/security coverage, release operations and live provider configuration.
 
 ## Exact verification commands
 
