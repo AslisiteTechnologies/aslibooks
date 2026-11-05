@@ -36,6 +36,7 @@ describe.skipIf(!enabled)('contacts API', () => {
   it('validates session roles, actor fields, identifiers and tenant scope', async () => {
     const input = { displayName: 'Harbor Textiles', roles: ['customer', 'vendor'], email: 'ap@harbor.example' };
     await request(app).get(path).expect(401);
+    await request(app).get(path + '/bad').set(owner).expect(400);
     await request(app).post(path).send(input).expect(401);
     await request(app).post(path).set('x-fixture-actor', 'contact-reader').send(input).expect(403);
     await request(app).post(path).set('x-fixture-actor', 'contact-paused').send(input).expect(403);
@@ -51,21 +52,25 @@ describe.skipIf(!enabled)('contacts API', () => {
   });
   it('edits, searches, filters, and audits contacts', async () => {
     const result = await request(app).post(path).set(owner).send({
-      displayName: 'Coastal Supplier', roles: ['vendor'], email: 'Accounts@Coastal.example',
+      displayName: 'Coastal Supplier', roles: ['vendor'], email: 'Accounts@Coastal.example', phone: '+91 9876543210', gstin: '22AAAAA0000A1Z5', address: 'Harbor Road',
     }).expect(201);
     const id = result.body.id as string;
+    const detail = await request(app).get(path + '/' + id).set('x-fixture-actor', 'contact-reader').expect(200);
+    expect(detail.body.contact).toMatchObject({ displayName: 'Coastal Supplier', phone: '+91 9876543210', gstin: '22AAAAA0000A1Z5', address: 'Harbor Road' });
+    await request(app).get(foreignPath + '/' + id).set('x-fixture-actor', 'contact-foreign').expect(404);
     const page = await request(app).get(path + '?q=Coastal&role=vendor&limit=1')
       .set('x-fixture-actor', 'contact-reader').expect(200);
     expect(page.body.contacts.map((c: { _id: string }) => c._id)).toContain(id);
     expect(page.body.contacts[0].email).toBe('accounts@coastal.example');
-    await request(app).patch(path + '/' + id).set(owner).send({ displayName: 'Coastal Supply' }).expect(200);
+    await request(app).patch(path + '/' + id).set(owner).send({ displayName: 'Coastal Supply', phone: '+91 9999999999', address: 'New address' }).expect(200);
     const filtered = await request(app).get(path + '?q=Coastal&role=vendor').set(owner).expect(200);
-    expect(filtered.body.contacts[0].displayName).toBe('Coastal Supply');
+    expect(filtered.body.contacts[0]).toMatchObject({ displayName: 'Coastal Supply', phone: '+91 9999999999', address: 'New address', gstin: '22AAAAA0000A1Z5' });
     const defaultPage = await request(app).get(path).set(owner).expect(200);
     expect(defaultPage.body.contacts.length).toBeGreaterThan(1);
     expect(defaultPage.body.next).toBeNull();
     await request(app).patch(path + '/' + id).set(owner).send({ active: false }).expect(200);
     expect((await request(app).get(path + '?q=Coastal').set(owner)).body.contacts).toHaveLength(0);
+    await request(app).get(path + '/' + id).set(owner).expect(404);
     expect(await AuditEventModel.distinct('action', { organizationId: org, resourceId: id }))
       .toEqual(['contact.archived', 'contact.created', 'contact.updated']);
   });

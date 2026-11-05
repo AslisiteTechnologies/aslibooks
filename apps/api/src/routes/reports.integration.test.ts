@@ -50,7 +50,7 @@ describe.skipIf(!enabled)('ledger and trial balance reports', () => {
       { organizationId: org, authUserId: 'reports-viewer', role: 'viewer' },
     ]);
     await AccountModel.create([
-      { _id: cash, organizationId: org, code: `RC-${suffix}`, name: 'Cash', type: 'asset' },
+      { _id: cash, organizationId: org, code: '1000', name: 'Cash', type: 'asset' },
       { _id: equity, organizationId: org, code: `RE-${suffix}`, name: 'Equity', type: 'equity' },
       { _id: income, organizationId: org, code: `RI-${suffix}`, name: 'Sales income', type: 'income' },
       { _id: expense, organizationId: org, code: `RX-${suffix}`, name: 'Rent expense', type: 'expense' },

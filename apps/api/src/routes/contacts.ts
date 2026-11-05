@@ -60,6 +60,14 @@ export function contactRouter() {
     const rows = await ContactModel.find(filter).sort({ _id: 1 }).limit(limit + 1).lean();
     res.json({ contacts: rows.slice(0, limit), next: rows.length > limit ? String(rows[limit - 1]._id) : null });
   });
+  router.get('/:id', async (req, res) => {
+    const { organizationId, authUserId } = res.locals;
+    if (!await hasPermission(authUserId, String(organizationId), 'ledger:read')) { res.status(403).json({ error: 'Contact access denied' }); return; }
+    if (!Types.ObjectId.isValid(req.params.id)) { res.status(400).json({ error: 'Invalid contact ID' }); return; }
+    const contact = await ContactModel.findOne({ _id: req.params.id, organizationId, active: true }).lean();
+    if (!contact) { res.status(404).json({ error: 'Contact not found' }); return; }
+    res.json({ contact });
+  });
   router.post('/', write);
   router.patch('/:id', write);
   return router;
