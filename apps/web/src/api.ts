@@ -82,6 +82,8 @@ export const api = {
   ),
   createProduct: (org: string, input: { code: string; name: string; unit?: string; unitPricePaise: number; hsnSacCode?: string; taxCategory?: TaxCategory; gstRateBasisPoints?: number }) =>
     jsonRequest<{ id: string }>(`/api/organizations/${org}/products`, { method: 'POST', body: JSON.stringify(input) }),
+  updateProduct: (org: string, id: string, input: { name: string; unit: string; unitPricePaise: number }) =>
+    jsonRequest<{ id: string }>(`/api/organizations/${org}/products/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
   invoices: (org: string) => jsonRequest<{ invoices: Invoice[]; next: string | null }>(`/api/organizations/${org}/invoices`),
   invoice: (org: string, id: string) => jsonRequest<{ invoice: InvoiceDocument }>(`/api/organizations/${org}/invoices/${id}`),
   createInvoiceDraft: (org: string, input: { customerId: string; lines: Array<{ productId: string; quantity: number }>; dueDate?: string; taxTreatment?: { kind: 'none' | 'exclusive' | 'inclusive'; placeOfSupplyStateCode?: string; supplyKind?: 'intra_state' | 'inter_state' } }) =>

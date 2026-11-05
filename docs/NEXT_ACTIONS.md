@@ -2,11 +2,11 @@
 
 ## Current checkpoint
 
-Published development head `08285ae067b8d170c26455262807ef27a07f9a68`; CI #310 and MongoDB #247 passed. Remote raw files now confirm unit support. Browser #30 reached receipts after testing invoice unit print; it found two Amount received fields, including one disabled. The locator now selects the active final match. Preserve the original workspace changes; never stage the owner-supplied vision file.
+Development head `3363e799b9902f8022c6bc496b977f29a01f4b5a` passed CI #322, MongoDB #259 and browser E2E #42. Unit-aware sales and receipt/bill/banking workflows completed in the browser. Product edit UI is implemented locally and needs exact-commit verification. Preserve original workspace edits; never stage the owner-supplied vision file.
 
 ## Current implementation task
 
-Run CI, MongoDB and browser workflows for the receipt locator fix; continue through the rest of the E2E flow, fixing failures. The latest run demonstrated unit capture, invoice snapshot and printed quantity/unit. Production uploads remain gated on retention, encryption/backup validation and malware-scanning decisions. AI requires optional `OPENAI_API_KEY`; no live-provider test exists. GST tax-bearing posting remains blocked pending qualified review. Do not claim production readiness.
+Verify product edit UI with `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm build`, and Playwright. Confirm product name/unit/price updates persist and invoice unit snapshots remain accurate. Publish changed files only to `develop/phase-1-foundation`, inspect CI/MongoDB/browser Actions and fix failures. Continue to the next incomplete MVP requirement after this feature passes.
 
 '## Exact verification commands
 

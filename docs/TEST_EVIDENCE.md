@@ -133,3 +133,8 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 - Bill E2E follow-up: run #37 passed vendor selection and found two Amount (INR) fields with different types. Bill amount now uses the exact spinbutton role; rerun pending.
 - Vendor bill/banking browser progress: run #39 passed bill creation/posting/payment and bank statement import/matching, then found duplicate From labels because Dashboard remained mounted while hidden. Reconciliation/dashboard date filters now select visible date inputs by position. Rerun pending.
 
+## Product edit UI (local, pending CI)
+- Added a responsive edit dialog for product/service name, unit, and paise price using the existing tenant-scoped PATCH API; HSN/SAC and tax metadata remain create-only. Existing invoice lines retain their immutable snapshots.
+- Product catalog integration now updates name, unit, and price together and checks persisted values. Browser E2E edits unit from `hour` to `hours` and checks the invoice print.
+- Local `pnpm test`: 32 passed, 72 MongoDB-backed tests skipped without a configured replica-set URI. `pnpm typecheck`, `pnpm lint`, `pnpm build`, bundled Python compile, and `git diff --check` passed. Exact CI/MongoDB/browser runs pending.
+

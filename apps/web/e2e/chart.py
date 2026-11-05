@@ -92,6 +92,10 @@ def test_chart():
             page.get_by_label("Unit price (₹)").fill("50.00")
             page.get_by_role("button", name="Save service").click()
             expect(page.get_by_text("E2E-SERVICE · Consulting service")).to_be_visible()
+            page.get_by_role("button", name="Edit service").click()
+            page.locator("#edit-service-form").get_by_label("Unit", exact=False).first.fill("hours")
+            page.get_by_role("button", name="Save service changes").click()
+            expect(page.get_by_text("₹50.00 / hours", exact=True)).to_be_visible()
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Sales", exact=True).click()
             page.get_by_label("Customer").click()
@@ -120,7 +124,7 @@ def test_chart():
             page.get_by_role("button", name="Confirm and issue").click()
             expect(page.get_by_text("Credit note issued for ₹5.00", exact=False)).to_be_visible()
             page.get_by_role("button", name="Print invoice").click()
-            expect(page.get_by_text("Consulting service × 1 hour")).to_be_visible()
+            expect(page.get_by_text("Consulting service × 1 hours")).to_be_visible()
             with page.expect_popup() as print_page_info:
                 page.get_by_role("button", name="Print", exact=True).click()
             print_page = print_page_info.value

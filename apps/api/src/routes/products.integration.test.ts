@@ -64,8 +64,9 @@ describe.skipIf(!enabled)('product catalog API', () => {
       code: 'DESIGN', name: 'Design', unitPricePaise: 24000,
     }).expect(201);
     const id = created.body.id as string;
-    await request(app).patch(path + '/' + id).set(owner).send({ unitPricePaise: 30000 }).expect(200);
-    expect(await ProductModel.findById(id)).toMatchObject({ unitPricePaise: 30000 });
+    await request(app).patch(path + '/' + id).set(owner)
+      .send({ name: 'Design service', unit: 'hour', unitPricePaise: 30000 }).expect(200);
+    expect(await ProductModel.findById(id)).toMatchObject({ name: 'Design service', unit: 'hour', unitPricePaise: 30000 });
     await request(app).patch(path + '/' + id).set(owner).send({ active: false }).expect(200);
     const search = await request(app).get(path + '?q=Design').set(owner).expect(200);
     expect(search.body.products).toHaveLength(0);

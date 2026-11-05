@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Alert, Button, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
 import { api, type Organization, type Product } from './api';
 
 export function ProductsScreen({ organization }: { organization: Organization }) {
@@ -11,6 +11,7 @@ export function ProductsScreen({ organization }: { organization: Organization })
   const [hsnSacCode, setHsnSacCode] = useState('');
   const [taxCategory, setTaxCategory] = useState<'not_configured' | 'taxable' | 'exempt' | 'nil_rated' | 'non_gst'>('not_configured');
   const [gstRate, setGstRate] = useState('');
+  const [editing, setEditing] = useState<{ id: string; name: string; unit: string; price: string } | null>(null);
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
   const [version, setVersion] = useState(0);
@@ -33,6 +34,17 @@ export function ProductsScreen({ organization }: { organization: Organization })
         ...(hsnSacCode ? { hsnSacCode } : {}), taxCategory, ...(taxCategory === 'taxable' ? { gstRateBasisPoints: rate } : {}) });
       setCode(''); setName(''); setUnit('unit'); setPrice(''); setHsnSacCode(''); setTaxCategory('not_configured'); setGstRate(''); setVersion(value => value + 1); setError('');
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to save service.'); }
+  }
+  async function saveEdit(event: FormEvent) {
+    event.preventDefault();
+    if (!editing) return;
+    const paise = Math.round(Number(editing.price) * 100);
+    if (!Number.isFinite(paise) || !Number.isSafeInteger(paise) || paise < 0) { setError('Enter a price that can be represented in paise.'); return; }
+    if (!editing.name.trim() || !editing.unit.trim() || editing.unit.trim().length > 24) { setError('Enter a service name and a unit between 1 and 24 characters.'); return; }
+    try {
+      await api.updateProduct(organization.id, editing.id, { name: editing.name.trim(), unit: editing.unit.trim(), unitPricePaise: paise });
+      setEditing(null); setVersion(value => value + 1); setError('');
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to update service.'); }
   }
   return <Stack spacing={2}>
     <Typography variant="h5">Products and services</Typography>
@@ -62,7 +74,19 @@ export function ProductsScreen({ organization }: { organization: Organization })
       <Typography variant="h6">{product.code} · {product.name}</Typography>
       <Typography>₹{(product.unitPricePaise / 100).toFixed(2)} / {product.unit || 'unit'}</Typography>
       <Typography variant="body2" color="text.secondary">{product.hsnSacCode ? `HSN/SAC ${product.hsnSacCode} · ` : ''}{product.taxCategory.replaceAll('_', ' ')}{product.gstRateBasisPoints !== undefined ? ` · ${(product.gstRateBasisPoints / 100).toFixed(2)}% configured` : ''}</Typography>
+      {canWrite && <Button onClick={() => setEditing({ id: product._id, name: product.name, unit: product.unit || 'unit', price: (product.unitPricePaise / 100).toFixed(2) })}>Edit service</Button>}
     </Paper>)}
+    <Dialog open={!!editing} onClose={() => setEditing(null)} fullWidth maxWidth="sm">
+      <DialogTitle>Edit service</DialogTitle>
+      <DialogContent>
+        {editing && <Stack component="form" id="edit-service-form" spacing={2} sx={{ pt: 1 }} onSubmit={event => { void saveEdit(event); }}>
+          <TextField required label="Service name" value={editing.name} onChange={event => setEditing({ ...editing, name: event.target.value })} />
+          <TextField required label="Unit" inputProps={{ maxLength: 24 }} value={editing.unit} onChange={event => setEditing({ ...editing, unit: event.target.value })} />
+          <TextField required label="Unit price (₹)" type="number" inputProps={{ min: 0, step: '0.01' }} value={editing.price} onChange={event => setEditing({ ...editing, price: event.target.value })} />
+        </Stack>}
+      </DialogContent>
+      <DialogActions><Button onClick={() => setEditing(null)}>Cancel</Button><Button type="submit" form="edit-service-form" variant="contained">Save service changes</Button></DialogActions>
+    </Dialog>
   </Stack>;
 }
 
