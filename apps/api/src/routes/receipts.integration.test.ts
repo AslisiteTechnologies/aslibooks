@@ -93,7 +93,10 @@ describe.skipIf(!enabled)('customer receipts HTTP lifecycle', () => {
       allocations: [{ invoiceId: issuedInvoiceId, amountPaise: 3000 }],
     };
     await request(app).post(path).set({ 'x-fixture-actor': 'receipt-viewer' }).send(first).expect(403);
-    const partial = await request(app).post(path).set(owner).send(first).expect(201);
+    const sameKeyAttempts = await Promise.all([request(app).post(path).set(owner).send(first), request(app).post(path).set(owner).send(first)]);
+    expect(sameKeyAttempts.map(response => response.status).sort()).toEqual([200, 201]);
+    expect(sameKeyAttempts[0].body.id).toBe(sameKeyAttempts[1].body.id);
+    const partial = sameKeyAttempts.find(response => response.status === 201)!;
     expect(partial.body).toMatchObject({ amountPaise: 3000, replayed: false });
     const invoiceAfterPartial = await InvoiceModel.findById(issuedInvoiceId);
     expect(invoiceAfterPartial).toMatchObject({ status: 'partially_paid', amountPaidPaise: 3000, totalPaise: 10000 });

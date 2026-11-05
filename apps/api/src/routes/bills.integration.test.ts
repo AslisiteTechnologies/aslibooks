@@ -79,7 +79,10 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     const draft = await request(app).post(`${paymentPath}/bills`).set(owner).send({ idempotencyKey: 'bill-payment-draft-1', vendorId: String(paymentVendor), vendorReference: 'PAY-1', expenseAccountId: String(paymentExpense), description: 'Office expense', amountPaise: 5000 }).expect(201);
     await request(app).post(`${paymentPath}/bills/${draft.body.id}/post`).set(owner).send({ idempotencyKey: 'bill-payment-post-1' }).expect(201);
     const first = { idempotencyKey: 'vendor-payment-part-1', cashAccountId: String(cashId), allocations: [{ billId: draft.body.id, amountPaise: 2000 }] };
-    const partial = await request(app).post(`${paymentPath}/vendor-payments`).set(owner).send(first).expect(201);
+    const sameKeyPayments = await Promise.all([request(app).post(`${paymentPath}/vendor-payments`).set(owner).send(first), request(app).post(`${paymentPath}/vendor-payments`).set(owner).send(first)]);
+    expect(sameKeyPayments.map(response => response.status).sort()).toEqual([200, 201]);
+    expect(sameKeyPayments[0].body.id).toBe(sameKeyPayments[1].body.id);
+    const partial = sameKeyPayments.find(response => response.status === 201)!;
     expect(await BillModel.findById(draft.body.id)).toMatchObject({ status: 'partially_paid', amountPaidPaise: 2000 });
     await request(app).post(`${paymentPath}/vendor-payments`).set(owner).send(first).expect(200).expect(response => expect(response.body.replayed).toBe(true));
     await request(app).post(`${paymentPath}/vendor-payments`).set(owner).send({ ...first, allocations: [{ billId: draft.body.id, amountPaise: 2001 }] }).expect(409);

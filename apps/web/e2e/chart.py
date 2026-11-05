@@ -1,5 +1,6 @@
 """Run against local, disposable Aslibooks API and web servers. See docs/integration-testing.md."""
 from pathlib import Path
+import os
 from uuid import uuid4
 from playwright.sync_api import expect, sync_playwright
 
@@ -10,7 +11,7 @@ def test_chart():
         browser = playwright.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1100, "height": 850})
         try:
-            page.goto("http://127.0.0.1:5176")
+            page.goto(os.environ.get("ASLIBOOKS_WEB_URL", "http://127.0.0.1:5176"))
             page.wait_for_load_state("networkidle", timeout=90000)
             page.get_by_role("button", name="Create account", exact=True).click()
             page.get_by_label("Full name").fill("Test Owner")
@@ -166,7 +167,25 @@ def test_chart():
             expect(amount_field).to_have_value("45.00")
             amount_field.fill("20.00")
             page.get_by_role("button", name="Review receipt").click()
+            receipt_keys = []
+            def lose_receipt_response(route):
+                if route.request.method != "POST":
+                    route.continue_()
+                    return
+                receipt_keys.append(route.request.post_data_json["idempotencyKey"])
+                if len(receipt_keys) == 1:
+                    route.abort()
+                else:
+                    route.continue_()
+            page.route("**/api/organizations/*/receipts", lose_receipt_response)
             page.get_by_role("button", name="Confirm and record").click()
+            expect(page.locator('[role="alert"]').filter(has_text="Failed to fetch")).to_be_visible()
+            with page.expect_response(lambda response: response.url.endswith("/receipts") and response.request.method == "POST") as receipt_retry:
+                page.get_by_role("button", name="Confirm and record").click()
+            assert receipt_retry.value.status == 201, receipt_retry.value.text()
+            assert receipt_retry.value.json()["replayed"] is False
+            assert len(receipt_keys) == 2 and receipt_keys[0] == receipt_keys[1]
+            page.unroute("**/api/organizations/*/receipts", lose_receipt_response)
             expect(page.get_by_text("₹20.00 received and allocated", exact=False)).to_be_visible()
             amount_field.fill("25.00")
             page.get_by_role("button", name="Review receipt").click()
