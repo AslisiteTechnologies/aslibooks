@@ -295,13 +295,13 @@ The running acceptance matrix remains partial. Qualified GST/accounting review, 
 
 ## Current checkpoint — persisted manual journal drafts
 
-The chart-grouping and normal-balance slice is complete locally and remotely; exact SHA `ea3fbf4bcb691dea45e3ad3dae9203dfe2718157` passed CI #515/#516, MongoDB #450/#451, Browser #234/#235. Persisted manual journal drafts are implemented and locally verified: focused journal suite 2/2 and full replica-set suite 151/151 (138 API, five accounting, eight web), typecheck, lint, build, high-severity audit and diff check pass. The Python/Playwright browser runner is unavailable locally; verify the changed browser workflow on the published SHA. Commit and publish to the existing development branch, inspect all six exact-SHA workflows, fix any failures, update this checkpoint, then immediately continue the remaining route role/reference audit and responsive accessibility checks.
+The chart-grouping and normal-balance slice is complete locally and remotely; exact SHA `ea3fbf4bcb691dea45e3ad3dae9203dfe2718157` passed CI #515/#516, MongoDB #450/#451, Browser #234/#235. The persisted journal draft commit `652366e32f52400e1597ad3e426d35a4a3e11928` passed all six exact-SHA workflows: CI #517/#518, MongoDB #452/#453, Browser #236/#237. Its route, model and UI passed the full replica-set suite (151/151), typecheck, lint, build, high-severity audit and diff check. A security follow-up now fences duplicate-key recovery with a fresh transaction and tests that suspended members cannot replay a saved draft; focused and full local suites pass, as do typecheck, lint, build, audit and diff check. Publish this follow-up to the existing development branch and verify all six checks, then immediately continue the remaining route role/reference audit and responsive accessibility checks. The Python/Playwright browser runner remains unavailable locally.
 
 Validation commands (PowerShell, repository root):
 
 ```powershell
 $env:MONGODB_TEST_URI='mongodb://127.0.0.1:37491/?replicaSet=testset'
-$env:MONGODB_TEST_DB_NAME='aslibooks_test_journal_drafts_final'
+$env:MONGODB_TEST_DB_NAME='aslibooks_test_journal_draft_reauth_full'
 pnpm --filter @aslibooks/api test -- src/routes/journals.integration.test.ts
 pnpm typecheck
 pnpm lint
