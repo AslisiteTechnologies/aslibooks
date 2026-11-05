@@ -1,6 +1,6 @@
 # Implementation status
 
-Status updated 2026-11-05 in the active implementation branch. Published development head: `6aab30bab8b06e7bda60e8a9ea74b66c87b037c4`. CI #286 and MongoDB integration #223 passed. Browser end-to-end run #6 reached the Contacts workflow and failed because `get_by_label("Name")` matched both the new-contact form and an edit dialog during its close transition. The E2E selectors are being scoped to the form; that browser correction is pending publication and CI. Product units/invoice line snapshots are now on the published branch. This remains an MVP in active development, not a production-ready release.
+Status updated 2026-11-05 in the active implementation branch. Published development head: `6aab30bab8b06e7bda60e8a9ea74b66c87b037c4`. CI #286 and MongoDB integration #223 passed. Browser end-to-end runs #7 and #8 passed contact Name after the selector correction and then failed on the same transition race for Email. The contact Name and Email/Phone/GSTIN/address selectors are now scoped to the create form; this follow-up is pending publication and CI. Product units/invoice line snapshots are now on the published branch. This remains an MVP in active development, not a production-ready release.
 
 | Area | Status | Verified implementation and remaining gaps |
 | --- | --- | --- |
@@ -21,4 +21,5 @@ Status updated 2026-11-05 in the active implementation branch. Published develop
 | Release operations | Missing | No verified staging, production monitoring, least-privilege runtime database role, backup/restore rehearsal or release checklist. |
 
 The API server starts under Node after using runtime-safe Mongoose imports. The full repository suite passed with 31 tests passing and 70 MongoDB integration tests skipped because no local replica-set test URI is configured. `pnpm typecheck`, meaningful `pnpm lint`, `pnpm build`, and `git diff --check` passed locally. Exact-commit GitHub workflows are still required for the latest slice. Production operation, provider configuration, and browser end-to-end behavior have not been established. The master vision file supplied by the user is untracked user content and must be preserved.
+
 

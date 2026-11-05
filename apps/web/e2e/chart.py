@@ -34,7 +34,7 @@ def test_chart():
             expect(page.get_by_text("Opening balances posted to the ledger", exact=False)).to_be_visible()
             page.get_by_role("button", name="Settings", exact=True).click()
             page.get_by_label("Business name").fill(f"Fixture Shop {run} Books")
-            page.get_by_label("GSTIN (optional)").fill("22AAAAA0000A1Z5")
+            page.locator("form").get_by_label("GSTIN (optional)").fill("22AAAAA0000A1Z5")
             page.get_by_role("button", name="Save settings").click()
             expect(page.get_by_text("Organization settings saved.")).to_be_visible()
             page.get_by_role("button", name="Accounting", exact=True).click()
@@ -61,10 +61,10 @@ def test_chart():
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Contacts", exact=True).click()
             page.locator("form").get_by_label("Name").fill("Test Customer")
-            page.get_by_label("Email", exact=False).fill(f"customer-{run}@example.com")
-            page.get_by_label("Phone", exact=True).fill("+91 9876543210")
-            page.get_by_label("GSTIN (optional)").fill("22AAAAA0000A1Z5")
-            page.get_by_label("Billing address").fill("1 Harbor Road, Mumbai")
+            page.locator("form").get_by_label("Email").fill(f"customer-{run}@example.com")
+            page.locator("form").get_by_label("Phone").fill("+91 9876543210")
+            page.locator("form").get_by_label("GSTIN (optional)").fill("22AAAAA0000A1Z5")
+            page.locator("form").get_by_label("Billing address").fill("1 Harbor Road, Mumbai")
             page.get_by_label("Customer", exact=True).check()
             page.get_by_role("button", name="Save contact").click()
             expect(page.get_by_role("heading", name="Test Customer")).to_be_visible()
@@ -74,7 +74,7 @@ def test_chart():
             page.get_by_role("button", name="Save changes").click()
             expect(page.get_by_text("Billing address: 2 New Harbor Road, Mumbai")).to_be_visible()
             page.locator("form").get_by_label("Name").fill("Test Vendor")
-            page.get_by_label("Email", exact=False).fill(f"vendor-{run}@example.com")
+            page.locator("form").get_by_label("Email").fill(f"vendor-{run}@example.com")
             page.get_by_label("Vendor", exact=True).check()
             with page.expect_response(lambda response: response.url.endswith("/contacts") and response.request.method == "POST") as vendor_response:
                 page.get_by_role("button", name="Save contact").click()
@@ -326,4 +326,5 @@ def test_chart():
 
 if __name__ == "__main__":
     test_chart()
+
 
