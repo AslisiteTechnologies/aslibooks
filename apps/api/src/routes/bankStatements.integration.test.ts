@@ -39,6 +39,8 @@ describe.skipIf(!enabled)('bank statement import and reconciliation HTTP', () =>
   });
   it('imports without posting, de-duplicates, requires exact journal match, then reconciles against ledger', async () => {
     const payload = { accountId: String(bank), transactions: [row] };
+    await request(app).post(path + '/import').set({ 'x-fixture-actor': 'viewer' }).send(payload).expect(403);
+    expect(await BankTransactionModel.countDocuments({ organizationId: org })).toBe(0);
     await request(app).post(path + '/import').set(owner).send({ ...payload, accountId: String(foreignBank) }).expect(422);
     expect(await BankTransactionModel.countDocuments({ organizationId: org })).toBe(0);
     await request(app).post(path + '/import').set(owner).send(payload).expect(201, { imported: 1, duplicates: 0 });
@@ -46,8 +48,10 @@ describe.skipIf(!enabled)('bank statement import and reconciliation HTTP', () =>
     expect(await BankTransactionModel.countDocuments({ organizationId: org })).toBe(1);
     expect(await JournalModel.countDocuments({ organizationId: org })).toBe(0);
     const transaction = await BankTransactionModel.findOne({ organizationId: org });
+    await request(app).post(path + `/${transaction!._id}/match`).set({ 'x-fixture-actor': 'viewer' }).send({ journalId: String(foreignJournal) }).expect(403);
     await request(app).post(path + `/${transaction!._id}/match`).set(owner).send({ journalId: String(foreignJournal) }).expect(404);
     expect(await BankTransactionModel.findById(transaction!._id)).toMatchObject({ status: 'unmatched' });
+    await request(app).post(path + '/reconcile').set({ 'x-fixture-actor': 'viewer' }).send({ accountId: String(bank), periodStart: row.transactionDate, periodEnd: row.transactionDate, openingBalancePaise: 0, closingBalancePaise: 10_000 }).expect(403);
     await request(app).post(path + '/reconcile').set(owner).send({ accountId: String(bank), periodStart: row.transactionDate, periodEnd: row.transactionDate, openingBalancePaise: 0, closingBalancePaise: 10_000 }).expect(409);
     const journal = await postAuthorizedJournal('owner', { organizationId: String(org), idempotencyKey: `bank-match-${org}-0001`, description: 'Deposit received', lines: [
       { accountId: String(bank), debitPaise: 10_000, creditPaise: 0 }, { accountId: String(equity), debitPaise: 0, creditPaise: 10_000 },

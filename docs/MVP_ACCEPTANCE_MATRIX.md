@@ -54,3 +54,5 @@ Essential financial report print/PDF access is now implemented in `apps/web/src/
 Receipt tenant isolation now has a real foreign cash-account regression in addition to foreign invoice-reference coverage. This is one additional object-reference case; the complete endpoint/export/role matrix remains partial pending the broader audit. Focused receipt suite 2/2 and full workspace 142/142 plus typecheck/lint/build/audit/diff pass locally. Exact-SHA workflows are pending.
 
 The route/object audit now covers foreign expense accounts in bill drafts, foreign cash accounts in vendor payments, and peer-owned invoice IDs on credit-note issuance, with no persisted side effects on rejection. Criterion 1 remains partial; additional endpoints and exports still need full evidence. Full workspace 142/142 plus typecheck/lint/build/audit/diff pass locally; new exact-SHA hosted checks are pending.
+
+Viewer denial now has direct route integration evidence for bank statement import/match/reconcile in addition to transfer and opening-balance posting. The role matrix remains partial for routes not yet explicitly exercised and the full role-change race matrix.

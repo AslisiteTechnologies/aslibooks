@@ -305,3 +305,7 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 - Bill creation rejects a real foreign-organization expense account with 422 and no draft; vendor payment rejects a foreign cash account with 422 and no payment record.
 - A real peer-owned invoice draft ID cannot be used for a current-tenant credit note; request returns 404 and no foreign credit note is stored.
 - Focused bills/invoices suites pass 4/4 and 2/2. Full workspace tests pass 142/142; typecheck, lint, production build, high-severity audit and diff check pass. Parent `a8b4e4aa7a69dc5dcbbc9460bae3629c0860b220` passed CI #472, MongoDB #409 and Browser #192; exact-SHA workflows for these new regressions are pending.
+
+## Bank workflow viewer-write fences (local verification passed; exact-SHA workflows pending)
+- Added viewer-denial assertions for bank statement import, matching, and reconciliation, including a no-import side-effect assertion. The existing transfer and opening-balance fixtures also deny viewer posting.
+- Focused bank statement suite passes 1/1. Full suite passes 142/142; typecheck/lint/build/high-severity audit/diff check pass. Parent `fa5c289ce495a62eafed7c4dd1974fec1722f4eb` passed CI #474, MongoDB #411 and Browser #194.
