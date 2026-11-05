@@ -8,7 +8,7 @@ Preserve the original workspace edits; never stage the owner-supplied vision fil
 
 ## Current implementation task
 
-Statement correction and CSV export `d0e3b4fc001c3ed5cd74e897d3c98e24e31838a0` passed CI #409/#410, MongoDB #346/#347, and Browser #129/#130. Per-contact reconciliation is implemented locally: open document balances less unallocated advances are compared to the transaction statement and shown in the UI. After the final snapshot-aggregate implementation, workspace tests passed 111/111 (105 API, 5 accounting, 1 web); typecheck, lint, build, diff check, and 390px Playwright passed. Publish this slice and verify exact-SHA CI/MongoDB/Browser, then remediate the dependency audit findings and continue remaining release/security acceptance criteria.
+Per-contact subledger reconciliation `0c6fb67e20b3484b7939880b066c659730c5eac2` passed CI #411/#412, MongoDB #348/#349, and Browser #131/#132. The production audit exposed five Vitest/Tinypool findings through Better Auth's optional peer dependency. Local remediation upgrades workspace Vitest to 4.1.12, adds Vitest source-only discovery configs to prevent compiled `dist` test duplication, and passes `pnpm audit --prod` with no known vulnerabilities. Local replica-set suite passes 111 tests once (105 API, 5 accounting, 1 web); typecheck, lint, build, and diff check pass. Publish the audit remediation and verify exact-SHA CI/MongoDB/Browser; next reconcile all master vision acceptance criteria and address remaining security/release gaps.
 
 ## Exact verification commands
 
@@ -28,7 +28,7 @@ For local integration/browser tests, use a disposable MongoDB replica set and AP
 
 ## Remaining MVP work
 
-- Dependency security audit and remediation for test-tooling peer dependencies included in the production audit tree.
+- Publish and verify the Vitest 4.1.12 security/test-discovery change on its exact SHA.
 - Reconcile every master vision acceptance criterion to implemented code and direct test evidence, especially cross-tenant object access and viewer/accountant permissions.
 - Review invoice lifecycle, sales/purchase tax handling and credit/refund boundaries; keep unsupported GST cases blocked pending qualified review.
 - Verify financial reports, aging, customer/vendor ledgers and source journal reconciliation against realistic transaction fixtures.

@@ -184,3 +184,8 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 - The contacts replica-set integration passes for vendor bill/payment/credit balance and unallocated vendor advance, plus a customer advance/refund. Both statement balances match the independently computed subledger totals with zero difference.
 - Focused contact integration passed 2/2; after the final snapshot-aggregate implementation, full workspace `pnpm test` passed 111/111 (105 API across 30 files including all replica-set tests, 5 accounting, 1 web). Typecheck, ESLint, production build (494.62 kB main bundle), and `git diff --check` passed. Full 390px Playwright passed, including the visible reconciliation message and statement CSV download.
 - This feature is local and not yet published or verified by GitHub Actions.
+
+## Vitest security and test discovery (local, exact-SHA workflows pending)
+- `pnpm audit --prod` initially reported five findings (two critical Tinypool, three moderate Vitest packages) reached through Better Auth's optional Vitest peer dependency. Upgraded Vitest in all three test workspaces to 4.1.12; `pnpm audit --prod` now reports no known vulnerabilities.
+- Added package-local Vitest configs to run only tests under `src` and exclude generated `dist` output. This avoids executing each compiled integration test twice after a build.
+- With `dist` already present, full workspace replica-set `pnpm test` passed 111 tests exactly once: 105 API across 30 files, five accounting, one web. Typecheck, ESLint, production build, audit, and `git diff --check` passed. Exact-SHA GitHub checks pending publication.
