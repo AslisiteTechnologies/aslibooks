@@ -353,7 +353,7 @@ def test_chart():
             page.get_by_role("button", name="Archive contact", exact=True).click()
             page.get_by_role("button", name="Confirm archive", exact=True).click()
             expect(page.get_by_text("No matching contacts.", exact=True)).to_be_visible()
-            contact_list_route = "**/api/organizations/*/contacts*"
+            contact_list_route = "**/api/organizations/*/contacts**"
             def contact_page(route):
                 if "/ledger?" in route.request.url:
                     body = '{"contact":{"id":"000000000000000000000003","displayName":"Pagination contact one"},"currency":"INR","rows":[{"id":"invoice-1","date":"2026-01-01T00:00:00.000Z","type":"invoice","reference":"INV-1","description":"Invoice INV-1","debitPaise":12500,"creditPaise":0,"balancePaise":12500}],"balancePaise":12500,"receivablePaise":12500}'
