@@ -2,11 +2,11 @@
 
 ## Current checkpoint
 
-Published development branch head `08faceae41493b7bcea52f8724153096bebbb12b`; CI #288 and MongoDB integration #225 passed. Browser runs #7/#8 passed Name after the correction but found an Email selector race. Follow-up form scoping is in progress locally. Original workspace uncommitted owner work remains untouched; never stage the owner-supplied vision file.
+Published development branch head `08faceae41493b7bcea52f8724153096bebbb12b`; CI #288 and MongoDB integration #225 passed. Browser runs #7/#8 passed Name after the correction but found an Email selector race. Follow-up form scoping advanced runs #9/#10 through vendor form entry; both found duplicated Vendor checkbox labels. Role selection is now scoped to the form locally. Original workspace uncommitted owner work remains untouched; never stage the owner-supplied vision file.
 
 ## Current implementation task
 
-Publish the form-scoped contact field fix and rerun CI, MongoDB and browser Actions on its exact commit. Browser workflows now pass startup, sign-up, organization creation, starter accounts, opening balances, settings, account create/edit/archive and contact customer creation/edit before failing while setting up a vendor. Continue fixing E2E failures until the full flow passes, then begin the next unfinished MVP milestone. Production uploads remain gated on retention, encryption/backup validation and malware-scanning decisions. AI requires optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
+Publish the form-scoped contact field and checkbox fix, then rerun CI, MongoDB and browser Actions on its exact commit. Browser workflows pass startup, sign-up, organization creation, starter accounts, opening balances, settings, account create/edit/archive and contact customer creation/edit and reach vendor role selection. Continue fixing E2E failures until the full flow passes, then begin the next unfinished MVP milestone. Production uploads remain gated on retention, encryption/backup validation and malware-scanning decisions. AI requires optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
 ## Exact verification commands
 
 ```powershell

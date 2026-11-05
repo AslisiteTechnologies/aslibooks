@@ -65,7 +65,7 @@ def test_chart():
             page.locator("form").get_by_label("Phone").fill("+91 9876543210")
             page.locator("form").get_by_label("GSTIN (optional)").fill("22AAAAA0000A1Z5")
             page.locator("form").get_by_label("Billing address").fill("1 Harbor Road, Mumbai")
-            page.get_by_label("Customer", exact=True).check()
+            page.locator("form").get_by_role("checkbox", name="Customer").check()
             page.get_by_role("button", name="Save contact").click()
             expect(page.get_by_role("heading", name="Test Customer")).to_be_visible()
             expect(page.get_by_text("GSTIN: 22AAAAA0000A1Z5")).to_be_visible()
@@ -75,7 +75,7 @@ def test_chart():
             expect(page.get_by_text("Billing address: 2 New Harbor Road, Mumbai")).to_be_visible()
             page.locator("form").get_by_label("Name").fill("Test Vendor")
             page.locator("form").get_by_label("Email").fill(f"vendor-{run}@example.com")
-            page.get_by_label("Vendor", exact=True).check()
+            page.locator("form").get_by_role("checkbox", name="Vendor").check()
             with page.expect_response(lambda response: response.url.endswith("/contacts") and response.request.method == "POST") as vendor_response:
                 page.get_by_role("button", name="Save contact").click()
             assert vendor_response.value.status == 201, vendor_response.value.text()
