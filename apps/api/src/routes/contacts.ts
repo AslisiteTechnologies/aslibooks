@@ -1,5 +1,5 @@
-import { Router, type RequestHandler } from 'express';
-import mongoose, { Types } from 'mongoose';
+import { Router, type RequestHandler, type Response } from 'express';
+import mongoose, { Types, type PipelineStage } from 'mongoose';
 import { z } from 'zod';
 import { AuditEventModel } from '../models/auditEvent.js';
 import { BillModel, VendorCreditModel } from '../models/bill.js';
@@ -37,6 +37,67 @@ const querySchema = z.strictObject({
   limit: z.string().regex(/^\d{1,3}$/).optional(),
 });
 const positive = (value: unknown, fallback = 50) => Number.isSafeInteger(Number(value)) && Number(value) > 0 ? Number(value) : fallback;
+const statementQuery = z.strictObject({ role: z.enum(['customer', 'vendor']).optional(), after: z.string().max(512).regex(/^[A-Za-z0-9_-]+$/).optional(), limit: z.string().regex(/^\d{1,3}$/).optional() });
+const statementCursor = z.strictObject({ timestamp: z.number().int().positive().max(8_640_000_000_000_000), eventId: z.string().min(1).max(256) });
+
+function parseStatementCursor(value?: string) {
+  if (!value) return null;
+  try {
+    const parsed: unknown = JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
+    const cursor = statementCursor.safeParse(parsed);
+    if (!cursor.success) return null;
+    const date = new Date(cursor.data.timestamp);
+    return Number.isFinite(date.getTime()) ? { date, eventId: cursor.data.eventId } : null;
+  } catch { return null; }
+}
+
+function statementCursorMatch(cursor: { date: Date; eventId: string }, inclusive: boolean) {
+  return { $or: [
+    { date: { [inclusive ? '$lt' : '$gt']: cursor.date } },
+    { date: cursor.date, eventId: { [inclusive ? '$lte' : '$gt']: cursor.eventId } },
+  ] };
+}
+
+const sumStatement: PipelineStage.Group = { $group: { _id: null, debitPaise: { $sum: '$debitPaise' }, creditPaise: { $sum: '$creditPaise' } } };
+async function sendStatement(
+  res: Response,
+  source: typeof InvoiceModel | typeof BillModel,
+  pipeline: PipelineStage[],
+  party: { _id: Types.ObjectId; displayName: string },
+  role: 'customer' | 'vendor',
+  limit: number,
+  cursor: { date: Date; eventId: string } | null,
+  afterMatch: Record<string, unknown>,
+  beforeMatch: Record<string, unknown> | null,
+) {
+  const beforeStages: PipelineStage.FacetPipelineStage[] = beforeMatch ? [{ $match: beforeMatch }, sumStatement] : [];
+  const pageStages: PipelineStage.FacetPipelineStage[] = [
+    ...(cursor ? [{ $match: afterMatch } as PipelineStage.Match] : []),
+    { $sort: { date: 1, eventId: 1 } }, { $limit: limit + 1 },
+  ];
+  const [result] = await source.aggregate([...pipeline, { $facet: {
+    totals: [sumStatement],
+    before: beforeStages,
+    page: pageStages,
+  } }]);
+  const totals = result?.totals?.[0] ?? { debitPaise: 0, creditPaise: 0 };
+  const opening = result?.before?.[0] ?? { debitPaise: 0, creditPaise: 0 };
+  const balancePaise = totals.debitPaise - totals.creditPaise;
+  let runningBalancePaise = opening.debitPaise - opening.creditPaise;
+  const sourceRows = (result?.page ?? []) as Array<{ eventId: string; date: Date; type: string; reference: string; description: string; debitPaise: number; creditPaise: number }>;
+  const hasMore = sourceRows.length > limit;
+  const rows = sourceRows.slice(0, limit).map(row => {
+    runningBalancePaise += row.debitPaise - row.creditPaise;
+    return { ...row, date: row.date.toISOString(), balancePaise: runningBalancePaise };
+  });
+  if (![balancePaise, runningBalancePaise, ...rows.map(row => row.balancePaise)].every(Number.isSafeInteger)) {
+    res.status(422).json({ error: 'Contact statement exceeds supported integer amount range' }); return;
+  }
+  const last = sourceRows[Math.min(sourceRows.length, limit) - 1];
+  const next = hasMore && last ? Buffer.from(JSON.stringify({ timestamp: last.date.getTime(), eventId: last.eventId })).toString('base64url') : null;
+  res.json({ contact: { id: String(party._id), displayName: party.displayName }, currency: 'INR', rows, balancePaise, openingBalancePaise: opening.debitPaise - opening.creditPaise, next,
+    ...(role === 'customer' ? { receivablePaise: balancePaise } : { payablePaise: balancePaise }) });
+}
 
 export function contactRouter() {
   const router = Router({ mergeParams: true });
@@ -78,56 +139,92 @@ export function contactRouter() {
     const { organizationId, authUserId } = res.locals;
     if (!await hasPermission(authUserId, String(organizationId), 'ledger:read')) { res.status(403).json({ error: 'Contact ledger access denied' }); return; }
     if (!Types.ObjectId.isValid(req.params.id)) { res.status(400).json({ error: 'Invalid contact ID' }); return; }
+    const parsedQuery = statementQuery.safeParse(req.query);
+    if (!parsedQuery.success) { res.status(400).json({ error: 'Invalid contact statement filters' }); return; }
+    const cursor = parseStatementCursor(parsedQuery.data.after);
+    if (parsedQuery.data.after && !cursor) { res.status(400).json({ error: 'Invalid contact statement cursor' }); return; }
+    const limit = Math.min(Number(parsedQuery.data.limit) || 50, 100);
     const party = await ContactModel.findOne({ _id: req.params.id, organizationId })
       .lean<{ _id: Types.ObjectId; roles: string[]; displayName: string } | null>();
     if (!party) { res.status(404).json({ error: 'Contact not found' }); return; }
     const customerRole = party.roles.includes('customer');
     const vendorRole = party.roles.includes('vendor');
     const requestedRole = req.query.role;
-    if (requestedRole !== undefined && requestedRole !== 'customer' && requestedRole !== 'vendor') { res.status(400).json({ error: 'Ledger role must be customer or vendor' }); return; }
     if (customerRole && vendorRole && requestedRole === undefined) { res.status(400).json({ error: 'Choose customer or vendor ledger for this contact' }); return; }
     const isCustomer = customerRole && (!vendorRole || requestedRole === 'customer');
     const isVendor = vendorRole && (!customerRole || requestedRole === 'vendor');
     if (!isCustomer && !isVendor) { res.status(422).json({ error: 'Contact has no customer or vendor ledger' }); return; }
-    const events: Array<{ id: string; date: Date; type: string; reference: string; description: string; debitPaise: number; creditPaise: number }> = [];
+    const accountMatch = cursor ? statementCursorMatch(cursor, false) : {};
+    const beforeMatch = cursor ? statementCursorMatch(cursor, true) : null;
+    const project = (type: string, prefix: string, date: unknown,
+      reference: unknown, description: unknown, debit: unknown, credit: unknown): PipelineStage.Project['$project'] => ({
+      _id: 0, eventId: { $concat: [prefix, { $toString: '$_id' }] }, date,
+      type: { $literal: type }, reference, description, debitPaise: debit, creditPaise: credit,
+    } as PipelineStage.Project['$project']);
+    let source: typeof InvoiceModel | typeof BillModel;
+    const unions: PipelineStage[] = [];
     if (isCustomer) {
-      const invoiceIdsForCredits = await InvoiceModel.find({ organizationId, customerId: party._id, status: { $ne: 'draft' } }).distinct('_id');
-      const [invoices, receipts, credits, advances, refunds] = await Promise.all([
-        InvoiceModel.find({ organizationId, customerId: party._id, status: { $ne: 'draft' } }).lean(),
-        ReceiptModel.find({ organizationId, customerId: party._id }).lean(),
-        CreditNoteModel.find({ organizationId, invoiceId: { $in: invoiceIdsForCredits } }).lean(),
-        CustomerAdvanceModel.find({ organizationId, customerId: party._id }).lean(),
-        CustomerAdvanceRefundModel.find({ organizationId, customerId: party._id }).lean(),
-      ]);
-      const invoiceIds = new Set(invoices.map(row => String(row._id)));
-      for (const row of invoices) events.push({ id: String(row._id), date: row.issuedAt ?? row.createdAt, type: 'invoice', reference: row.invoiceNumber ?? String(row._id), description: `Invoice ${row.invoiceNumber ?? ''}`.trim(), debitPaise: row.totalPaise, creditPaise: 0 });
-      for (const row of receipts) for (const allocation of row.allocations) if (invoiceIds.has(String(allocation.invoiceId))) events.push({ id: `${row._id}:${allocation.invoiceId}`, date: row.receivedAt, type: 'receipt', reference: allocation.invoiceNumber, description: 'Customer receipt', debitPaise: 0, creditPaise: allocation.amountPaise });
-      for (const row of credits) if (invoiceIds.has(String(row.invoiceId))) events.push({ id: String(row._id), date: row.issuedAt, type: 'credit_note', reference: row.invoiceNumber, description: row.reason, debitPaise: 0, creditPaise: row.amountPaise });
-      for (const row of advances) events.push({ id: String(row._id), date: row.receivedAt, type: 'customer_advance', reference: String(row._id), description: 'Customer advance received', debitPaise: 0, creditPaise: row.amountPaise });
-      for (const row of refunds) events.push({ id: String(row._id), date: row.refundedAt, type: 'customer_advance_refund', reference: String(row.advanceId), description: 'Customer advance refunded', debitPaise: row.amountPaise, creditPaise: 0 });
+      source = InvoiceModel;
+      const invoiceFilter = { organizationId, customerId: party._id, status: { $ne: 'draft' } };
+      unions.push(
+        { $unionWith: { coll: ReceiptModel.collection.name, pipeline: [
+          { $match: { organizationId, customerId: party._id } }, { $unwind: '$allocations' },
+          { $project: { _id: 0, eventId: { $concat: ['receipt:', { $toString: '$_id' }, ':', { $toString: '$allocations.invoiceId' }] }, date: '$receivedAt', type: { $literal: 'receipt' }, reference: '$allocations.invoiceNumber', description: { $literal: 'Customer receipt' }, debitPaise: { $literal: 0 }, creditPaise: '$allocations.amountPaise' } },
+        ] } },
+        { $unionWith: { coll: CreditNoteModel.collection.name, pipeline: [
+          { $match: { organizationId } },
+          { $lookup: { from: InvoiceModel.collection.name, let: { invoiceId: '$invoiceId' }, pipeline: [
+            { $match: { $expr: { $and: [{ $eq: ['$_id', '$$invoiceId'] }, { $eq: ['$organizationId', organizationId] }, { $eq: ['$customerId', party._id] }, { $ne: ['$status', 'draft'] }] } } },
+            { $project: { _id: 1 } },
+          ], as: 'matchingInvoice' } },
+          { $match: { 'matchingInvoice.0': { $exists: true } } },
+          { $project: project('credit_note', 'credit-note:', '$issuedAt', '$invoiceNumber', '$reason', 0, '$amountPaise') },
+        ] } },
+        { $unionWith: { coll: CustomerAdvanceModel.collection.name, pipeline: [
+          { $match: { organizationId, customerId: party._id } },
+          { $project: project('customer_advance', 'advance:', '$receivedAt', { $toString: '$_id' }, { $literal: 'Customer advance received' }, 0, '$amountPaise') },
+        ] } },
+        { $unionWith: { coll: CustomerAdvanceRefundModel.collection.name, pipeline: [
+          { $match: { organizationId, customerId: party._id } },
+          { $project: { ...project('customer_advance_refund', 'advance-refund:', '$refundedAt', { $toString: '$advanceId' }, { $literal: 'Customer advance refunded' }, '$amountPaise', 0), reference: { $toString: '$advanceId' } } },
+        ] } },
+      );
+      const pipeline: PipelineStage[] = [
+        { $match: invoiceFilter },
+        { $project: project('invoice', 'invoice:', { $ifNull: ['$issuedAt', '$createdAt'] }, { $ifNull: ['$invoiceNumber', { $toString: '$_id' }] }, { $concat: ['Invoice ', { $ifNull: ['$invoiceNumber', ''] }] }, '$totalPaise', 0) },
+        ...unions,
+      ];
+      return sendStatement(res, source, pipeline, party, 'customer', limit, cursor, accountMatch, beforeMatch);
     }
     if (isVendor) {
-      const billIdsForCredits = await BillModel.find({ organizationId, vendorId: party._id, status: { $ne: 'draft' } }).distinct('_id');
-      const [bills, payments, credits, advances] = await Promise.all([
-        BillModel.find({ organizationId, vendorId: party._id, status: { $ne: 'draft' } }).lean(),
-        VendorPaymentModel.find({ organizationId, vendorId: party._id }).lean(),
-        VendorCreditModel.find({ organizationId, billId: { $in: billIdsForCredits } }).lean(),
-        VendorAdvanceModel.find({ organizationId, vendorId: party._id }).lean(),
-      ]);
-      const billIds = new Set(bills.map(row => String(row._id)));
-      for (const row of bills) events.push({ id: String(row._id), date: row.postedAt ?? row.createdAt, type: 'bill', reference: row.vendorReference, description: row.description, debitPaise: row.amountPaise, creditPaise: 0 });
-      for (const row of payments) for (const allocation of row.allocations) if (billIds.has(String(allocation.billId))) events.push({ id: `${row._id}:${allocation.billId}`, date: row.paidAt, type: 'payment', reference: allocation.vendorReference, description: 'Vendor payment', debitPaise: 0, creditPaise: allocation.amountPaise });
-      for (const row of credits) if (billIds.has(String(row.billId))) events.push({ id: String(row._id), date: row.issuedAt, type: 'vendor_credit', reference: row.vendorReference, description: row.reason, debitPaise: 0, creditPaise: row.amountPaise });
-      for (const row of advances) events.push({ id: String(row._id), date: row.paidAt, type: 'vendor_advance', reference: String(row._id), description: 'Vendor advance paid', debitPaise: 0, creditPaise: row.amountPaise });
+      source = BillModel;
+      const billFilter = { organizationId, vendorId: party._id, status: { $ne: 'draft' } };
+      unions.push(
+        { $unionWith: { coll: VendorPaymentModel.collection.name, pipeline: [
+          { $match: { organizationId, vendorId: party._id } }, { $unwind: '$allocations' },
+          { $project: { _id: 0, eventId: { $concat: ['payment:', { $toString: '$_id' }, ':', { $toString: '$allocations.billId' }] }, date: '$paidAt', type: { $literal: 'payment' }, reference: '$allocations.vendorReference', description: { $literal: 'Vendor payment' }, debitPaise: { $literal: 0 }, creditPaise: '$allocations.amountPaise' } },
+        ] } },
+        { $unionWith: { coll: VendorCreditModel.collection.name, pipeline: [
+          { $match: { organizationId } },
+          { $lookup: { from: BillModel.collection.name, let: { billId: '$billId' }, pipeline: [
+            { $match: { $expr: { $and: [{ $eq: ['$_id', '$$billId'] }, { $eq: ['$organizationId', organizationId] }, { $eq: ['$vendorId', party._id] }, { $ne: ['$status', 'draft'] }] } } },
+            { $project: { _id: 1 } },
+          ], as: 'matchingBill' } },
+          { $match: { 'matchingBill.0': { $exists: true } } },
+          { $project: project('vendor_credit', 'vendor-credit:', '$issuedAt', '$vendorReference', '$reason', 0, '$amountPaise') },
+        ] } },
+        { $unionWith: { coll: VendorAdvanceModel.collection.name, pipeline: [
+          { $match: { organizationId, vendorId: party._id } },
+          { $project: project('vendor_advance', 'vendor-advance:', '$paidAt', { $toString: '$_id' }, { $literal: 'Vendor advance paid' }, 0, '$amountPaise') },
+        ] } },
+      );
+      const pipeline: PipelineStage[] = [
+        { $match: billFilter },
+        { $project: project('bill', 'bill:', { $ifNull: ['$postedAt', '$createdAt'] }, '$vendorReference', '$description', '$amountPaise', 0) },
+        ...unions,
+      ];
+      return sendStatement(res, source, pipeline, party, 'vendor', limit, cursor, accountMatch, beforeMatch);
     }
-    events.sort((a, b) => a.date.getTime() - b.date.getTime() || a.id.localeCompare(b.id));
-    let balancePaise = 0;
-    const rows = events.map(event => {
-      balancePaise += event.debitPaise - event.creditPaise;
-      if (!Number.isSafeInteger(balancePaise)) throw new Error('Contact ledger exceeds supported integer range');
-      return { ...event, date: event.date.toISOString(), balancePaise };
-    });
-    res.json({ contact: { id: String(party._id), displayName: party.displayName }, currency: 'INR', rows, balancePaise, receivablePaise: isCustomer ? balancePaise : undefined, payablePaise: isVendor ? balancePaise : undefined });
   });
   router.post('/', write);
   router.patch('/:id', write);
