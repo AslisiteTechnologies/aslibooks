@@ -28,6 +28,7 @@ export function ReportsScreen({ organization }: { organization: Organization }) 
   const [to, setTo] = useState(todayInIndia());
   const [ledger, setLedger] = useState<GeneralLedgerResult | null>(null);
   const [ledgerNext, setLedgerNext] = useState<string | null>(null);
+  const [exportingLedger, setExportingLedger] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -70,6 +71,26 @@ export function ReportsScreen({ organization }: { organization: Organization }) 
       if (!after) setLedger(page); else if (ledger) setLedger({ ...ledger, entries: [...ledger.entries, ...page.entries] });
       setLedgerNext(page.next);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'General ledger could not be loaded.'); }
+  }
+  async function exportFullLedger() {
+    if (!ledger || exportingLedger) return;
+    setExportingLedger(true); setError('');
+    try {
+      let after = '';
+      let firstPage: GeneralLedgerResult | undefined;
+      const entries: GeneralLedgerResult['entries'] = [];
+      do {
+        const page = await api.generalLedger(organization.id, ledger.account.id, ledger.from, ledger.to, after);
+        firstPage ??= page;
+        entries.push(...page.entries);
+        after = page.next ?? '';
+      } while (after);
+      if (!firstPage) return;
+      const rows = [[ '', 'Opening balance', '', 0, 0, firstPage.openingBalancePaise ],
+        ...entries.map(entry => [entry.journalId, entry.description, new Date(entry.postedAt).toISOString(), entry.debitPaise, entry.creditPaise, entry.runningBalancePaise])];
+      downloadCsv(`general-ledger-${ledger.account.code}-${ledger.from}-${ledger.to}.csv`, ['Journal ID', 'Description', 'Posted at', 'Debit paise', 'Credit paise', 'Running balance paise'], rows);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Full general ledger export could not be loaded.'); }
+    finally { setExportingLedger(false); }
   }
 
   return <Stack spacing={2}>
@@ -153,7 +174,7 @@ export function ReportsScreen({ organization }: { organization: Organization }) 
     <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
       <Stack spacing={2}>
         <Typography variant="h6">General ledger</Typography>
-        {ledger && <Button variant="outlined" onClick={() => downloadCsv(`general-ledger-${ledger.account.code}-${ledger.from}-${ledger.to}.csv`, ['Journal ID', 'Description', 'Posted at', 'Debit paise', 'Credit paise', 'Running balance paise'], ledger.entries.map(entry => [entry.journalId, entry.description, new Date(entry.postedAt).toISOString(), entry.debitPaise, entry.creditPaise, entry.runningBalancePaise]))}>Download loaded ledger CSV</Button>}
+        {ledger && <Button variant="outlined" onClick={() => void exportFullLedger()} disabled={exportingLedger}>{exportingLedger ? 'Preparing full export…' : 'Download full ledger CSV'}</Button>}
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
           <TextField select label="Account" value={accountId} onChange={event => { setAccountId(event.target.value); setLedger(null); }} sx={{ flex: 2 }}>
             {accounts.map(account => <MenuItem key={account.id} value={account.id}>{account.code} · {account.name}</MenuItem>)}

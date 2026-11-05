@@ -2,11 +2,11 @@
 
 ## Current checkpoint
 
-Development branch head `aa6631c27ecdf3bff5962ca0e7050e5ff1cbbe56`. Email commit `67314132cbfa1a533a3912621a4ba1a04ca470fd` passed CI #234/MongoDB #171; fiscal checklist commit `d4ef5f3f9efab2941348852b9aedce218df40c43` passed CI #236, and its confirmation-test correction `aa6631c27ecdf3bff5962ca0e7050e5ff1cbbe56` passed CI #238/MongoDB #175. Optional Resend verification, password recovery and invitation notification are implemented in this worktree. Local checks passed: 28 tests; 67 MongoDB integration tests skipped due to no local replica set; typecheck, lint, build and `git diff --check` passed. The owner-supplied vision document must remain unstaged.
+Development branch head `10c6a1008d745771d475e1cba9c941fd2c7ba57b`. Email commit `67314132cbfa1a533a3912621a4ba1a04ca470fd` passed CI #234/MongoDB #171; fiscal checklist commit `d4ef5f3f9efab2941348852b9aedce218df40c43` passed CI #236, and its confirmation-test correction `aa6631c27ecdf3bff5962ca0e7050e5ff1cbbe56` passed CI #238/MongoDB #175. Optional Resend verification, password recovery and invitation notification are implemented in this worktree. Local checks passed: 28 tests; 67 MongoDB integration tests skipped due to no local replica set; typecheck, lint, build and `git diff --check` passed. The owner-supplied vision document must remain unstaged.
 
 ## Current implementation task
 
-Email and fiscal close checklist slices are verified through `aa6631c27ecdf3bff5962ca0e7050e5ff1cbbe56`. A user-facing GST review page is being added to remove the GST navigation placeholder; verify it and continue attachment policy, transfers, AI approval, and release hardening. Email provider credentials and sender-domain verification remain deployment prerequisites; no live delivery is claimed. The fiscal-close checklist and blocking/retry integration test are verified remotely. Tax-bearing invoices remain blocked pending expert review.
+Email, fiscal close checklist, and GST review slices are verified through `10c6a1008d745771d475e1cba9c941fd2c7ba57b`. A user-facing GST review page and full paginated ledger export are being added; verify both and continue attachment policy, transfers, AI approval, and release hardening. Email provider credentials and sender-domain verification remain deployment prerequisites; no live delivery is claimed. The fiscal-close checklist and blocking/retry integration test are verified remotely. Tax-bearing invoices remain blocked pending expert review.
 ## Exact verification commands
 
 ```powershell
@@ -32,7 +32,7 @@ If local Mongo is unavailable, use exact-commit MongoDB Actions evidence. Do not
 - GST: validated HSN/SAC/rate inputs, expert-reviewed applicability and rate tables, journal mappings, tax-aware credits/purchases and proper printable tax documents. Keep unsupported cases blocked and avoid compliance claims.
 - Production email-provider credentials and sender-domain verification; live delivery and Better Auth end-to-end verification.
 - Attachments metadata and secure storage policy; fiscal period correction/reopen policy.
-- Transfers, advances, cash refunds, export coverage and complete ledger export.
+- Transfers, advances, cash refunds, attachments, constrained AI assistance, and release hardening.
 - Constrained AI explanation/draft extraction with explicit human approval and no direct posting capability.
 - Tenant/role threat review, rate limits, session expiry UX, least-privilege runtime database role, staging/backup/restore/monitoring guide, desktop/mobile browser E2E and release checklist.
 

@@ -84,3 +84,8 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 
 - Added a mobile-friendly GST setup review page that lists user-entered product tax data and states that rates, codes, tax treatment, filing eligibility, and compliance are not verified. The tax-bearing invoice issue block remains in force.
 - `pnpm test`: 28 passed / 67 MongoDB-backed tests skipped. `pnpm typecheck`, `pnpm lint`, `pnpm build`, and `git diff --check` passed. The Playwright script compiled with the bundled Python runtime; browser interaction remains unverified without local API/database services.
+## Complete ledger CSV export (local, before CI)
+
+- Reports now exports every cursor page using the selected account and loaded date range, includes the opening balance, and disables duplicate export attempts. The Playwright flow asserts both the opening balance and later journal description are present in the downloaded CSV.
+- The browser script compiled with bundled Python. This interaction is not locally run because no API/database services are active; full unit/typecheck/lint/build results are being refreshed for this change.
+- GST setup review commit `10c6a1008d745771d475e1cba9c941fd2c7ba57b`: CI #240 and MongoDB integration #177 both passed.

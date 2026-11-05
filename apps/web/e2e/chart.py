@@ -240,6 +240,11 @@ def test_chart():
             assert '"TOTAL"' in exported and '"Cash on hand"' in exported
             page.get_by_role("button", name="Load ledger").click()
             expect(page.get_by_text("Opening cash entry", exact=False)).to_be_visible()
+            with page.expect_download() as ledger_download:
+                page.get_by_role("button", name="Download full ledger CSV").click()
+            ledger_bytes = Path(ledger_download.value.path()).read_bytes()
+            ledger_csv = ledger_bytes.decode("utf-8-sig")
+            assert '"Opening balance"' in ledger_csv and '"Opening cash entry"' in ledger_csv
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Accounting", exact=True).click()
             page.get_by_role("button", name="Journals", exact=True).click()
