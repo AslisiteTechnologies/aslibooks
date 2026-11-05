@@ -72,3 +72,5 @@ Additional route evidence: accountant role now issues/replays both customer and 
 Direct role-route evidence now covers accountant manual journal posting and reversal plus viewer denials, in addition to customer/vendor advances and sales/vendor credits. Role criterion remains Partial until the full mounted-route permission and membership-race matrix is independently mapped.
 
 Master-data endpoint role evidence now includes accountant allowed/viewer denied for account, contact and product create/update operations. Criterion 2 remains Partial because the full route-by-route role matrix and all membership change races have not been closed.
+
+Fiscal close authorization now directly demonstrates owner and admin success while accountant and viewer requests are denied; the route retains atomic checklist gating. Hosted checks for this admin regression are pending. Criterion 2 remains Partial until all mounted endpoints and permission races are reconciled.

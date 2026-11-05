@@ -46,6 +46,7 @@ describe.skipIf(!enabled)('fiscal period close controls', () => {
       startDate: '2026-04-01', endDateExclusive: '2027-04-01', status: 'open' });
     await MembershipModel.create([
       { organizationId: org, authUserId: 'period-owner', role: 'owner' },
+      { organizationId: org, authUserId: 'period-admin', role: 'admin' },
       { organizationId: org, authUserId: 'period-accountant', role: 'accountant' },
       { organizationId: org, authUserId: 'period-viewer', role: 'viewer' },
     ]);
@@ -99,6 +100,12 @@ describe.skipIf(!enabled)('fiscal period close controls', () => {
       .rejects.toMatchObject({ code: 'PERIOD_CLOSED' });
     expect(await AuditEventModel.countDocuments({ organizationId: org, action: 'fiscal_period.closed', resourceId: periodId })).toBe(1);
     await request(app).post(`${path}/${periodId}/close`).set('x-fixture-actor', 'period-owner').send({ confirmChecklist: true }).expect(409);
+
+    const priorPeriod = await FiscalPeriodModel.create({ organizationId: org, startDate: '2025-04-01', endDateExclusive: '2026-04-01', status: 'open' });
+    const priorChecklist = await request(app).get(`${path}/${priorPeriod.id}/close-checklist`).set('x-fixture-actor', 'period-admin').expect(200);
+    expect(priorChecklist.body.checklist.canClose).toBe(true);
+    await request(app).post(`${path}/${priorPeriod.id}/close`).set('x-fixture-actor', 'period-admin').send({ confirmChecklist: true }).expect(200);
+    expect(await FiscalPeriodModel.findById(priorPeriod.id)).toMatchObject({ status: 'closed', closedByAuthUserId: 'period-admin' });
   });
 
   afterAll(async () => {
