@@ -28,6 +28,9 @@ describe.skipIf(!enabled)('authenticated manual journal API', () => {
   const foreignOrg = new Types.ObjectId();
   const debit = new Types.ObjectId();
   const credit = new Types.ObjectId();
+  const foreignDebit = new Types.ObjectId();
+  const foreignCredit = new Types.ObjectId();
+  const foreignJournalId = new Types.ObjectId();
   const suffix = org.toHexString();
   const path = `/orgs/${org}/journals`;
   const valid = {
@@ -58,7 +61,13 @@ describe.skipIf(!enabled)('authenticated manual journal API', () => {
     await AccountModel.create([
       { _id: debit, organizationId: org, code: `JD-${suffix}`, name: 'Cash', type: 'asset' },
       { _id: credit, organizationId: org, code: `JC-${suffix}`, name: 'Opening equity', type: 'equity' },
+      { _id: foreignDebit, organizationId: foreignOrg, code: '1000', name: 'Foreign cash', type: 'asset' },
+      { _id: foreignCredit, organizationId: foreignOrg, code: '3000', name: 'Foreign capital', type: 'equity' },
     ]);
+    await JournalModel.create({ _id: foreignJournalId, organizationId: foreignOrg, idempotencyKey: `foreign-journal-${suffix}`,
+      currency: 'INR', description: 'Foreign source journal', postedAt: new Date(), lines: [
+        { accountId: foreignDebit, debitPaise: 100, creditPaise: 0 }, { accountId: foreignCredit, debitPaise: 0, creditPaise: 100 },
+      ] });
   });
 
   it('lists, posts, reads and reverses journals with tenant and actor fences', async () => {
@@ -82,6 +91,10 @@ describe.skipIf(!enabled)('authenticated manual journal API', () => {
       .set('x-fixture-actor', 'journal-foreign').expect(404);
     await request(app).post(`${path}/${posted.body.journalId}/reversals`).set({ 'x-fixture-actor': 'journal-viewer' })
       .send({ idempotencyKey: `reverse:${suffix}`, reason: 'Wrong opening amount' }).expect(403);
+    await request(app).post(`${path}/${foreignJournalId}/reversals`).set(owner)
+      .send({ idempotencyKey: `foreign-reversal-${suffix}`, reason: 'Must stay in its tenant' }).expect(400, { error: 'Original journal not found' });
+    expect(await JournalModel.countDocuments({ organizationId: org })).toBe(1);
+    expect(await JournalModel.findById(foreignJournalId)).toMatchObject({ organizationId: foreignOrg, reversalOf: undefined });
     const reversed = await request(app).post(`${path}/${posted.body.journalId}/reversals`).set(owner)
       .send({ idempotencyKey: `reverse:${suffix}`, reason: 'Wrong opening amount' }).expect(201);
     const reversalDetail = await request(app).get(`${path}/${reversed.body.journalId}`).set(owner).expect(200);
