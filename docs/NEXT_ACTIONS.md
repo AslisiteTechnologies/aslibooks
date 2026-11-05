@@ -6,7 +6,7 @@ Published development branch head `08faceae41493b7bcea52f8724153096bebbb12b`; CI
 
 ## Current implementation task
 
-Publish the form-scoped contact field and checkbox fix, then rerun CI, MongoDB and browser Actions on its exact commit. Browser workflows pass startup, sign-up, organization creation, starter accounts, opening balances, settings, account create/edit/archive and contact customer creation/edit and reach vendor role selection. Continue fixing E2E failures until the full flow passes, then begin the next unfinished MVP milestone. Production uploads remain gated on retention, encryption/backup validation and malware-scanning decisions. AI requires optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
+Publish the form-scoped contact and product field selector fix, then rerun CI, MongoDB and browser Actions on its exact commit. Browser workflows pass startup, sign-up, organization creation, starter accounts, opening balances, settings, account create/edit/archive and contact customer creation/edit and reach product creation after vendor role selection. They then found the Code/HSN-SAC substring collision; the product fields now use exact form-scoped selectors. Continue fixing E2E failures until the full flow passes, then begin the next unfinished MVP milestone. Production uploads remain gated on retention, encryption/backup validation and malware-scanning decisions. AI requires optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
 ## Exact verification commands
 
 ```powershell
