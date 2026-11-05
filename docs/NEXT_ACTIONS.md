@@ -8,7 +8,7 @@ Preserve the original workspace edits; never stage the owner-supplied vision fil
 
 ## Current implementation task
 
-Audit/readiness/docs commit `ea2516e3052e9ac224dd29652714de5a176b62dd` passed CI #421/#422, MongoDB #358/#359 and Browser #141/#142. The full audit is clean with patched minimatch 11.0.4; local replica-set tests pass 113/113, frozen install, typecheck, lint, build and browser flow pass. The README and architecture docs now describe the actual MVP. A two-organization switching/isolation browser case has passed locally and is ready for exact-SHA verification. Next publish that browser coverage and acceptance matrix, then close remaining tenant/role, accounting and release-operation gaps.
+Tenant-switch coverage and acceptance matrix commit `eec78a3d1f237f51e036a43f158735898c34b820` passed CI #423/#424, MongoDB #360/#361 and Browser #143/#144. The full audit is clean with patched minimatch 11.0.4; the 390px browser flow now checks a second tenant shows no first-tenant ledger activity. A complete role-permission truth table is locally verified across all 28 role/permission combinations; full replica-set workspace tests now pass 132/132 (126 API, 5 accounting, 1 web). Next publish this role matrix and its evidence, then close remaining route-by-route tenant/role gaps and release-operation blockers.
 
 ## Exact verification commands
 
