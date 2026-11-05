@@ -170,3 +170,22 @@ git diff --check
 ```
 
 Unresolved external release gates: qualified accounting/GST review; staging/production access and deployment approval; database least privilege, backup/restore and monitoring; email deliverability; attachment malware/retention; final accessibility/security review. PR #1 stays Draft, `main` untouched, and no production deployment.
+
+## Active task: publish accountant bank permissions and continue remaining role matrix gaps
+1. Publish `apps/api/src/routes/bankStatements.integration.test.ts` and the updated progress documents on top of remote `ac0af67275ac0230d1f1b1d5d5dbe1fd647b0c0c`.
+2. Verify exact-SHA CI, MongoDB, and Browser Actions.
+3. Continue testing per-role access for attachments, organization/settings, fiscal-period closure, reports and exports; verify destructive/mutating actions leave state unchanged when denied.
+
+PowerShell validation (repository root):
+```powershell
+$env:MONGODB_TEST_URI='mongodb://127.0.0.1:37491/?replicaSet=testset'
+$env:MONGODB_TEST_DB_NAME='aslibooks_test_role_matrix_full'
+pnpm test
+pnpm typecheck
+pnpm lint
+pnpm build
+pnpm audit --audit-level=high
+git diff --check
+```
+
+External gates remain: qualified accounting/GST review, staging/production access and deploy approval, least-privilege database grants, backup/restore/monitoring, email delivery, attachment malware/retention, final accessibility/security review. Draft PR remains unmerged; no production deployment.

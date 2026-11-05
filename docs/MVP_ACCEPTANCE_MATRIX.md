@@ -56,3 +56,5 @@ Receipt tenant isolation now has a real foreign cash-account regression in addit
 The route/object audit now covers foreign expense accounts in bill drafts, foreign cash accounts in vendor payments, and peer-owned invoice IDs on credit-note issuance, with no persisted side effects on rejection. Criterion 1 remains partial; additional endpoints and exports still need full evidence. Full workspace 142/142 plus typecheck/lint/build/audit/diff pass locally; new exact-SHA hosted checks are pending.
 
 Viewer denial now has direct route integration evidence for bank statement import/match/reconcile in addition to transfer and opening-balance posting. The role matrix remains partial for routes not yet explicitly exercised and the full role-change race matrix.
+
+The accounting permission matrix has positive accountant-write evidence and negative viewer-write evidence for statement import, matching, and reconciliation. This extends criterion 2 but does not close the full route-by-route role matrix or role-update race scenarios.

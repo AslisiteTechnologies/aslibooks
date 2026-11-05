@@ -309,3 +309,7 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 ## Bank workflow viewer-write fences (local verification passed; exact-SHA workflows pending)
 - Added viewer-denial assertions for bank statement import, matching, and reconciliation, including a no-import side-effect assertion. The existing transfer and opening-balance fixtures also deny viewer posting.
 - Focused bank statement suite passes 1/1. Full suite passes 142/142; typecheck/lint/build/high-severity audit/diff check pass. Parent `fa5c289ce495a62eafed7c4dd1974fec1722f4eb` passed CI #474, MongoDB #411 and Browser #194.
+
+## Accountant and viewer bank statement permissions (local verification passed; exact-SHA workflows pending)
+- The bank statement fixture now confirms the accountant role may import statements, match a ledger journal, and reconcile a statement. The viewer role is denied all three operations; denied import leaves no transaction.
+- Focused suite passes 1/1. Full workspace passes 142/142; typecheck/lint/build/audit/diff checks pass. Parent `ac0af67275ac0230d1f1b1d5d5dbe1fd647b0c0c` passed CI #476, MongoDB #413 and Browser #196.
