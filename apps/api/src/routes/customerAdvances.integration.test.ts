@@ -23,12 +23,12 @@ describe.skipIf(!enabled)('customer advances', () => {
   const org = new Types.ObjectId(); const foreignOrg = new Types.ObjectId(); const foreignAdvanceId = new Types.ObjectId();
   const customer = new Types.ObjectId(); const peerCustomer = new Types.ObjectId();
   const product = new Types.ObjectId(); const cash = new Types.ObjectId(); const ar = new Types.ObjectId(); const liability = new Types.ObjectId(); const income = new Types.ObjectId();
-  const path = `/orgs/${org}/customer-advances`; const owner = { 'x-fixture-actor': 'advance-owner' };
+  const path = `/orgs/${org}/customer-advances`; const owner = { 'x-fixture-actor': 'advance-owner' }; const accountant = { 'x-fixture-actor': 'advance-accountant' };
   beforeAll(async () => {
     await mongoose.connect(uri!, { dbName: dbName! });
     await Promise.all([AccountModel.init(), AuditEventModel.init(), ContactModel.init(), CustomerAdvanceModel.init(), CustomerAdvanceAllocationModel.init(), CustomerAdvanceRefundModel.init(), FiscalPeriodModel.init(), InvoiceModel.init(), JournalModel.init(), MembershipModel.init(), OrganizationModel.init(), ProductModel.init()]);
     await OrganizationModel.create([{ _id: org, name: 'Advance fixture', slug: `advance-${org}` }, { _id: foreignOrg, name: 'Foreign advance fixture', slug: `advance-foreign-${foreignOrg}` }]);
-    await MembershipModel.create([{ organizationId: org, authUserId: 'advance-owner', role: 'owner' }, { organizationId: org, authUserId: 'advance-viewer', role: 'viewer' }]);
+    await MembershipModel.create([{ organizationId: org, authUserId: 'advance-owner', role: 'owner' }, { organizationId: org, authUserId: 'advance-accountant', role: 'accountant' }, { organizationId: org, authUserId: 'advance-viewer', role: 'viewer' }]);
     await ContactModel.create([{ _id: customer, organizationId: org, displayName: 'Advance Customer', roles: ['customer'] }, { _id: peerCustomer, organizationId: org, displayName: 'Other Customer', roles: ['customer'] }]);
     await ProductModel.create({ _id: product, organizationId: org, code: 'SERVICE', name: 'Service', unitPricePaise: 10000 });
     await AccountModel.create([{ _id: cash, organizationId: org, code: '1000', name: 'Cash', type: 'asset' },
@@ -44,13 +44,13 @@ describe.skipIf(!enabled)('customer advances', () => {
     const advancePayload = { idempotencyKey: `advance-${org}`, customerId: String(customer), cashAccountId: String(cash), amountPaise: 12000 };
     await request(app).post(path).send(advancePayload).expect(401);
     await request(app).post(path).set({ 'x-fixture-actor': 'advance-viewer' }).send(advancePayload).expect(403);
-    const advanceAttempts = await Promise.all([request(app).post(path).set(owner).send(advancePayload), request(app).post(path).set(owner).send(advancePayload)]);
+    const advanceAttempts = await Promise.all([request(app).post(path).set(accountant).send(advancePayload), request(app).post(path).set(accountant).send(advancePayload)]);
     expect(advanceAttempts.map(response => response.status).sort()).toEqual([200, 201]);
     expect(advanceAttempts[0].body.id).toBe(advanceAttempts[1].body.id);
     const advanceResponse = advanceAttempts.find(response => response.status === 201)!;
     const advanceId = advanceResponse.body.id as string;
-    await request(app).post(path).set(owner).send(advancePayload).expect(200, { ...advanceResponse.body, replayed: true });
-    await request(app).post(path).set(owner).send({ ...advancePayload, amountPaise: 13000 }).expect(409);
+    await request(app).post(path).set(accountant).send(advancePayload).expect(200, { ...advanceResponse.body, replayed: true });
+    await request(app).post(path).set(accountant).send({ ...advancePayload, amountPaise: 13000 }).expect(409);
     const advanceJournal = await JournalModel.findById(advanceResponse.body.journalId).lean<{ lines: Array<{ accountId: Types.ObjectId; debitPaise: number; creditPaise: number }> } | null>();
     expect(advanceJournal?.lines.map(line => [String(line.accountId), line.debitPaise, line.creditPaise]))
       .toEqual([[String(cash), 12000, 0], [String(liability), 0, 12000]]);
@@ -58,17 +58,18 @@ describe.skipIf(!enabled)('customer advances', () => {
     const draft = await request(app).post(`/orgs/${org}/invoices`).set(owner).send({ idempotencyKey: `advance-invoice-draft-${org}`, customerId: String(customer), lines: [{ productId: String(product), quantity: 1 }] }).expect(201);
     const issued = await request(app).post(`/orgs/${org}/invoices/${draft.body.id}/issue`).set(owner).send({ idempotencyKey: `advance-invoice-${org}` }).expect(201);
     const firstPayload = { idempotencyKey: `advance-allocation-${org}`, invoiceId: issued.body.id, amountPaise: 6000 };
-    const allocationAttempts = await Promise.all([request(app).post(`${path}/${advanceId}/allocations`).set(owner).send(firstPayload), request(app).post(`${path}/${advanceId}/allocations`).set(owner).send(firstPayload)]);
+    await request(app).post(`${path}/${advanceId}/allocations`).set({ 'x-fixture-actor': 'advance-viewer' }).send(firstPayload).expect(403);
+    const allocationAttempts = await Promise.all([request(app).post(`${path}/${advanceId}/allocations`).set(accountant).send(firstPayload), request(app).post(`${path}/${advanceId}/allocations`).set(accountant).send(firstPayload)]);
     expect(allocationAttempts.map(response => response.status).sort()).toEqual([200, 201]);
     expect(allocationAttempts[0].body.id).toBe(allocationAttempts[1].body.id);
     const first = allocationAttempts.find(response => response.status === 201)!;
-    await request(app).post(`${path}/${advanceId}/allocations`).set(owner).send(firstPayload).expect(200, { ...first.body, replayed: true });
-    await request(app).post(`${path}/${advanceId}/allocations`).set(owner).send({ ...firstPayload, amountPaise: 5000 }).expect(409);
+    await request(app).post(`${path}/${advanceId}/allocations`).set(accountant).send(firstPayload).expect(200, { ...first.body, replayed: true });
+    await request(app).post(`${path}/${advanceId}/allocations`).set(accountant).send({ ...firstPayload, amountPaise: 5000 }).expect(409);
     const invoice = await InvoiceModel.findById(issued.body.id);
     expect(invoice).toMatchObject({ status: 'partially_paid', amountPaidPaise: 6000 });
     const competingFinals = await Promise.all([
-      request(app).post(`${path}/${advanceId}/allocations`).set(owner).send({ idempotencyKey: `advance-allocation-final-a-${org}`, invoiceId: issued.body.id, amountPaise: 4000 }),
-      request(app).post(`${path}/${advanceId}/allocations`).set(owner).send({ idempotencyKey: `advance-allocation-final-b-${org}`, invoiceId: issued.body.id, amountPaise: 4000 }),
+      request(app).post(`${path}/${advanceId}/allocations`).set(accountant).send({ idempotencyKey: `advance-allocation-final-a-${org}`, invoiceId: issued.body.id, amountPaise: 4000 }),
+      request(app).post(`${path}/${advanceId}/allocations`).set(accountant).send({ idempotencyKey: `advance-allocation-final-b-${org}`, invoiceId: issued.body.id, amountPaise: 4000 }),
     ]);
     expect(competingFinals.map(response => response.status).sort()).toEqual([201, 409]);
     const second = competingFinals.find(response => response.status === 201)!;
@@ -83,13 +84,13 @@ describe.skipIf(!enabled)('customer advances', () => {
     const refundPayload = { idempotencyKey: `advance-refund-${org}`, cashAccountId: String(cash), amountPaise: 1000 };
     await request(app).post(`${path}/${advanceId}/refunds`).send(refundPayload).expect(401);
     await request(app).post(`${path}/${advanceId}/refunds`).set({ 'x-fixture-actor': 'advance-viewer' }).send(refundPayload).expect(403);
-    const refundAttempts = await Promise.all([request(app).post(`${path}/${advanceId}/refunds`).set(owner).send(refundPayload), request(app).post(`${path}/${advanceId}/refunds`).set(owner).send(refundPayload)]);
+    const refundAttempts = await Promise.all([request(app).post(`${path}/${advanceId}/refunds`).set(accountant).send(refundPayload), request(app).post(`${path}/${advanceId}/refunds`).set(accountant).send(refundPayload)]);
     expect(refundAttempts.map(response => response.status).sort()).toEqual([200, 201]);
     expect(refundAttempts[0].body.id).toBe(refundAttempts[1].body.id);
     const refund = refundAttempts.find(response => response.status === 201)!;
-    await request(app).post(`${path}/${advanceId}/refunds`).set(owner).send(refundPayload).expect(200, { ...refund.body, replayed: true });
-    await request(app).post(`${path}/${advanceId}/refunds`).set(owner).send({ ...refundPayload, amountPaise: 999 }).expect(409);
-    await request(app).post(`${path}/${advanceId}/refunds`).set(owner).send({ ...refundPayload, idempotencyKey: `advance-refund-overdraw-${org}`, amountPaise: 1001 }).expect(409);
+    await request(app).post(`${path}/${advanceId}/refunds`).set(accountant).send(refundPayload).expect(200, { ...refund.body, replayed: true });
+    await request(app).post(`${path}/${advanceId}/refunds`).set(accountant).send({ ...refundPayload, amountPaise: 999 }).expect(409);
+    await request(app).post(`${path}/${advanceId}/refunds`).set(accountant).send({ ...refundPayload, idempotencyKey: `advance-refund-overdraw-${org}`, amountPaise: 1001 }).expect(409);
     await request(app).post(`${path}/${foreignAdvanceId}/refunds`).set(owner)
       .send({ ...refundPayload, idempotencyKey: `foreign-refund-${org}` }).expect(404);
     await request(app).post(`${path}/${foreignAdvanceId}/allocations`).set(owner)

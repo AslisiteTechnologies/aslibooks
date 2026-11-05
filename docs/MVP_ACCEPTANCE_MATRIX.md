@@ -64,3 +64,5 @@ Additional role assertions now cover source attachment read/write separation, or
 Core invoice issuance, bill posting, and receipt recording now demonstrate accountant allow and viewer deny behavior at route level, alongside idempotent retries. Criterion 2 remains partial for unreviewed routes and role-change races.
 
 Vendor payment now directly demonstrates accountant authorization and viewer denial, including idempotency and competing allocations. Criterion 2 still has partial status pending remaining endpoint and role-race coverage.
+
+Role permissions extension: customer and vendor advance route tests now cover accountant writes and viewer denial for receipt/payment and allocation; customer advance refund is also covered. These direct route cases extend criterion 2, which remains Partial pending the full mounted endpoint/role matrix and race audit.

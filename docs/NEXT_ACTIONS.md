@@ -246,3 +246,6 @@ git diff --check
 ```
 
 Release still requires qualified accounting/GST review and authorized staging/production operations, DB least privilege/backups/monitoring, configured email delivery, attachment malware/retention controls, and final accessibility/security review. The draft PR remains unmerged; no production deployment.
+
+## Current task after advance role verification
+Publish accountant/viewer coverage for customer advance receipt/allocation/refund and vendor advance receipt/allocation. Verify CI, MongoDB integration and Browser workflows on the resulting SHA. Then resume the mounted-route tenant/reference audit with endpoints and object references not yet covered by direct no-side-effect tests, and keep the acceptance matrix status partial until every criterion has direct evidence.

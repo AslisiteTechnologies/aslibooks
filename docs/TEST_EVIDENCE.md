@@ -325,3 +325,9 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 ## Vendor payment accountant/viewer permissions (local verification passed; hosted checks pending)
 - Accountant partial payment and idempotent replay succeed, exactly one accountant final allocation wins a concurrency race, and viewer payment creation returns 403 without a payment record.
 - Focused bills suite passes 4/4. Full workspace tests pass 142/142; typecheck, lint, build, high-severity audit, and diff checks pass. Parent `986e1a3ca851b11eca30b7926a6a3da261216da0` passed CI #482, MongoDB #419 and Browser #201.
+
+## Current resumed checkpoint — advance role permissions
+- Exact-SHA checks for vendor-payment role commit `2288ae210d22b214efcbdb7213ff582442345d3e` completed successfully: CI #484, MongoDB integration #421 and Browser end-to-end #204.
+- Customer advance integration now proves accountants may receive, allocate and refund advances (including same-key replay and competing allocation behavior); viewers are denied receipt, allocation and refund writes. Vendor advance integration now proves accountants may receive and allocate advances, with viewers denied those writes. Both focused suites pass (2/2).
+- Full workspace suite passes 142/142 (131 API, five accounting, six web) against local MongoDB replica set. `pnpm typecheck`, meaningful `pnpm lint`, `pnpm build`, `pnpm audit --audit-level=high` (no known vulnerabilities) and `git diff --check` pass locally.
+- Remaining route-by-route role and tenant reference audit is still partial. This checkpoint does not establish production readiness or close the MVP acceptance matrix.
