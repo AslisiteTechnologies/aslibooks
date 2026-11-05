@@ -8,6 +8,7 @@ export const starterChart: ReadonlyArray<StarterAccount> = [
   { code: '1100', name: 'Accounts receivable', type: 'asset' },
   { code: '1200', name: 'Inventory', type: 'asset' },
   { code: '1300', name: 'Input GST credit', type: 'asset' },
+  { code: '1400', name: 'Vendor advances', type: 'asset' },
   { code: '1500', name: 'Property and equipment', type: 'asset' },
   { code: '2000', name: 'Accounts payable', type: 'liability' },
   { code: '2100', name: 'Output CGST payable', type: 'liability' },

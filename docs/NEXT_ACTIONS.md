@@ -2,11 +2,11 @@
 
 ## Current checkpoint
 
-Development branch head `c7cf7c7b760d9127e3c6afa30c61fe7df9d7f9e4`. AI report explanations passed CI #244/MongoDB #181; internal cash/bank transfers passed CI #246/MongoDB #183. CI #248 passed; MongoDB #185 ran customer advances successfully but found one stale starter-chart row-count assertion (expected 23 rather than 24). That assertion is corrected locally and requires a follow-up commit/workflow. The owner-supplied vision document must remain unstaged.
+Development branch head `33ecf1c11ba42eefa83ed2bb5a75c0fd01191ecb`. AI report explanations passed CI #244/MongoDB #181; internal cash/bank transfers passed CI #246/MongoDB #183; customer advances and the starter-chart count correction passed CI #250/MongoDB #187. Vendor advances are the current task. The owner-supplied vision document must remain unstaged.
 
 ## Current implementation task
 
-Finish the starter-chart assertion correction and rerun both workflows. Customer advances use liability account 2210, atomic received-cash journal and same-customer invoice allocation, transactionally updated availability, invoice payment update, audit, idempotency, and explicit review dialogs. The customer-advance integration test passed on MongoDB CI #185. Next implement vendor advances/refunds or secure attachments, browser coverage and release hardening. AI needs optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
+Vendor advances use asset control account 1400, same-vendor bill allocation, invoice status updates, idempotency, audit and atomic journals, with responsive review/confirmation UI. Run exact-commit MongoDB integration. Then add refunds or secure attachments, browser coverage and release hardening. AI needs optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
 ## Exact verification commands
 
 ```powershell

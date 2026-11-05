@@ -60,11 +60,11 @@ describe.skipIf(!enabled)('chart of accounts HTTP', () => {
     await request(app).post(path + '/starter-chart').set('x-fixture-actor', 'viewer').send({}).expect(403);
     await request(app).post(path + '/starter-chart').set(owner).send({ actorAuthUserId: 'forged' }).expect(400);
     const first = await request(app).post(path + '/starter-chart').set(owner).send({}).expect(201);
-    expect(first.body).toMatchObject({ added: 23, alreadyPresent: 1, total: 24 });
-    expect(await AccountModel.countDocuments({ organizationId: org })).toBe(24);
+    expect(first.body).toMatchObject({ added: 24, alreadyPresent: 1, total: 25 });
+    expect(await AccountModel.countDocuments({ organizationId: org })).toBe(25);
     expect(await AccountModel.findById(customized._id)).toMatchObject({ name: 'Custom sales account', type: 'asset' });
     const repeated = await request(app).post(path + '/starter-chart').set(owner).send({}).expect(201);
-    expect(repeated.body).toMatchObject({ added: 0, alreadyPresent: 24, total: 24 });
+    expect(repeated.body).toMatchObject({ added: 0, alreadyPresent: 25, total: 25 });
     expect(await AuditEventModel.countDocuments({ organizationId: org, action: 'account.starter_chart_added' })).toBe(2);
   });
   it('scopes codes, list and updates; audits create, rename and archive', async () => {

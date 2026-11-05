@@ -16,8 +16,9 @@ export type Invoice = { id: string; customerId: string; customerName: string; st
 export type InvoiceDocument = Invoice & { lines: Array<{ name: string; quantity: number; unitPricePaise: number; lineTotalPaise: number; hsnSacCode?: string; taxCategory?: TaxCategory; gstRateBasisPoints?: number; taxablePaise?: number; cgstPaise?: number; sgstPaise?: number; igstPaise?: number }> };
 export type Receipt = { id: string; customerName: string; amountPaise: number; receivedAt: string; journalId: string; allocations: Array<{ invoiceId: string; invoiceNumber: string; amountPaise: number }> };
 export type CustomerAdvance = { id: string; customerId: string; customerName: string; amountPaise: number; allocatedPaise: number; availablePaise: number; receivedAt: string; journalId: string };
-export type Bill = { id: string; vendorName: string; vendorReference: string; expenseAccountName: string; description: string; status: 'draft' | 'posted' | 'partially_paid' | 'paid' | 'partially_credited' | 'credited'; amountPaise: number; amountPaidPaise: number; amountCreditedPaise?: number; dueDate?: string; overdue?: boolean; journalId?: string };
+export type Bill = { id: string; vendorId: string; vendorName: string; vendorReference: string; expenseAccountName: string; description: string; status: 'draft' | 'posted' | 'partially_paid' | 'paid' | 'partially_credited' | 'credited'; amountPaise: number; amountPaidPaise: number; amountCreditedPaise?: number; dueDate?: string; overdue?: boolean; journalId?: string };
 export type VendorPayment = { id: string; vendorName: string; amountPaise: number; paidAt: string; journalId: string; allocations: Array<{ billId: string; vendorReference: string; amountPaise: number }> };
+export type VendorAdvance = { id: string; vendorId: string; vendorName: string; amountPaise: number; allocatedPaise: number; availablePaise: number; paidAt: string; journalId: string };
 export type OpeningBalance = { id: string; asOf: string; totalPaise: number; journalId: string; lines: Array<{ accountId: string; accountCode: string; accountName: string; side: 'debit' | 'credit'; amountPaise: number }> };
 export type Journal = { id: string; description: string; postedAt: string; reversalOf: string | null; lineCount: number };
 export type JournalDetail = Omit<Journal, 'lineCount'> & { lines: Array<{ accountId: string; debitPaise: number; creditPaise: number }> };
@@ -108,6 +109,11 @@ export const api = {
   vendorPayments: (org: string) => jsonRequest<{ payments: VendorPayment[] }>(`/api/organizations/${org}/vendor-payments`),
   recordVendorPayment: (org: string, input: { idempotencyKey: string; cashAccountId: string; allocations: Array<{ billId: string; amountPaise: number }> }) =>
     jsonRequest<{ id: string; journalId: string; amountPaise: number; replayed: boolean }>(`/api/organizations/${org}/vendor-payments`, { method: 'POST', body: JSON.stringify(input) }),
+  vendorAdvances: (org: string) => jsonRequest<{ advances: VendorAdvance[] }>(`/api/organizations/${org}/vendor-advances`),
+  recordVendorAdvance: (org: string, input: { idempotencyKey: string; vendorId: string; cashAccountId: string; amountPaise: number }) =>
+    jsonRequest<{ id: string; journalId: string; replayed: boolean }>(`/api/organizations/${org}/vendor-advances`, { method: 'POST', body: JSON.stringify(input) }),
+  allocateVendorAdvance: (org: string, advanceId: string, input: { idempotencyKey: string; billId: string; amountPaise: number }) =>
+    jsonRequest<{ id: string; journalId: string; replayed: boolean }>(`/api/organizations/${org}/vendor-advances/${advanceId}/allocations`, { method: 'POST', body: JSON.stringify(input) }),
   openingBalance: (org: string) => jsonRequest<{ opening: OpeningBalance | null }>(`/api/organizations/${org}/opening-balances`),
   postOpeningBalance: (org: string, input: { idempotencyKey: string; asOf: string; balances: Array<{ accountId: string; amountPaise: number }> }) =>
     jsonRequest<{ id: string; journalId: string; totalPaise: number; replayed: boolean }>(`/api/organizations/${org}/opening-balances`, { method: 'POST', body: JSON.stringify(input) }),

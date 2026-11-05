@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
-import { api, type Account, type Bill, type Contact, type Organization, type VendorPayment } from './api';
+import { api, type Account, type Bill, type Contact, type Organization, type VendorAdvance, type VendorPayment } from './api';
 
 const formatMoney = (paise: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(paise / 100);
 export function ExpensesScreen({ organization }: { organization: Organization }) {
@@ -8,6 +8,7 @@ export function ExpensesScreen({ organization }: { organization: Organization })
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [bills, setBills] = useState<Bill[]>([]);
   const [payments, setPayments] = useState<VendorPayment[]>([]);
+  const [advances, setAdvances] = useState<VendorAdvance[]>([]);
   const [vendorId, setVendorId] = useState(''); const [expenseAccountId, setExpenseAccountId] = useState('');
   const [reference, setReference] = useState(''); const [description, setDescription] = useState('');
   const [amount, setAmount] = useState(''); const [dueDate, setDueDate] = useState('');
@@ -16,14 +17,25 @@ export function ExpensesScreen({ organization }: { organization: Organization })
   const [revision, setRevision] = useState(0); const [toPost, setToPost] = useState<Bill | null>(null);
   const [toPay, setToPay] = useState<Bill | null>(null); const [cashAccountId, setCashAccountId] = useState(''); const [paymentAmount, setPaymentAmount] = useState('');
   const [payDialogOpen, setPayDialogOpen] = useState(false);
+  const [advanceVendorId, setAdvanceVendorId] = useState(''); const [advanceAmount, setAdvanceAmount] = useState(''); const [advanceConfirm, setAdvanceConfirm] = useState(false);
+  const [advanceId, setAdvanceId] = useState(''); const [allocationBillId, setAllocationBillId] = useState(''); const [allocationAmount, setAllocationAmount] = useState(''); const [allocationConfirm, setAllocationConfirm] = useState(false);
+  const [advanceKey, setAdvanceKey] = useState(''); const [allocationKey, setAllocationKey] = useState('');
   const [toCredit, setToCredit] = useState<Bill | null>(null); const [creditAmount, setCreditAmount] = useState(''); const [creditReason, setCreditReason] = useState('');
   const canWrite = ['owner', 'admin', 'accountant'].includes(organization.role);
   const activeVendors = useMemo(() => vendors.filter(v => v.roles.includes('vendor') && v.active), [vendors]);
   const expenses = useMemo(() => accounts.filter(a => a.type === 'expense' && a.active), [accounts]);
+  const selectedAdvance = advances.find(row => row.id === advanceId);
+  const availableBills = bills.filter(bill => bill.vendorId === selectedAdvance?.vendorId && ['posted', 'partially_paid', 'partially_credited'].includes(bill.status) && bill.amountPaise > bill.amountPaidPaise + (bill.amountCreditedPaise ?? 0));
+  const selectedAllocationBill = availableBills.find(bill => bill.id === allocationBillId);
+  function parseAmount(value: string) { const match = /^(\d{1,12})(?:\.(\d{1,2}))?$/.exec(value.trim()); const amountPaise = match ? Number(match[1]) * 100 + Number((match[2] || '').padEnd(2, '0')) : NaN; return Number.isSafeInteger(amountPaise) && amountPaise > 0 ? amountPaise : null; }
   useEffect(() => {
     let active = true; setLoading(true); setError('');
-    Promise.all([api.contacts(organization.id), api.accounts(organization.id), api.bills(organization.id), api.vendorPayments(organization.id)])
-      .then(([c, a, b, p]) => { if (active) { setVendors(c.contacts); setAccounts(a.accounts); setBills(b.bills); setPayments(p.payments); if (!cashAccountId) setCashAccountId(a.accounts.find(account => ['1000', '1010'].includes(account.code) && account.active)?.id || ''); } })
+    Promise.all([api.contacts(organization.id), api.accounts(organization.id), api.bills(organization.id), api.vendorPayments(organization.id), api.vendorAdvances(organization.id)])
+      .then(([c, a, b, p, advanceResult]) => { if (active) { setVendors(c.contacts); setAccounts(a.accounts); setBills(b.bills); setPayments(p.payments); setAdvances(advanceResult.advances);
+        const activeVendor = c.contacts.find(contact => contact.roles.includes('vendor') && contact.active);
+        if (!advanceVendorId && activeVendor) setAdvanceVendorId(activeVendor._id);
+        setAdvanceId(id => advanceResult.advances.some(row => row.id === id && row.availablePaise > 0) ? id : advanceResult.advances.find(row => row.availablePaise > 0)?.id ?? '');
+        if (!cashAccountId) setCashAccountId(a.accounts.find(account => ['1000', '1010'].includes(account.code) && account.active)?.id || ''); } })
       .catch(cause => { if (active) setError(cause instanceof Error ? cause.message : 'Unable to load expense data.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -69,10 +81,28 @@ export function ExpensesScreen({ organization }: { organization: Organization })
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Vendor credit could not be issued.'); }
     finally { setSaving(false); }
   }
+  async function recordAdvance() {
+    const amountPaise = parseAmount(advanceAmount); if (!advanceVendorId || !cashAccountId || amountPaise === null) return;
+    const key = advanceKey || `vendor-advance:${crypto.randomUUID()}`; setAdvanceKey(key); setSaving(true); setError(''); setNotice('');
+    try { await api.recordVendorAdvance(organization.id, { idempotencyKey: key, vendorId: advanceVendorId, cashAccountId, amountPaise });
+      setNotice(`${formatMoney(amountPaise)} recorded as a vendor prepayment.`); setAdvanceConfirm(false); setAdvanceAmount(''); setAdvanceKey(''); setRevision(n => n + 1);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Vendor advance could not be recorded.'); }
+    finally { setSaving(false); }
+  }
+  async function allocateAdvance() {
+    const amountPaise = parseAmount(allocationAmount); if (!selectedAdvance || !selectedAllocationBill || amountPaise === null) return;
+    const outstanding = selectedAllocationBill.amountPaise - selectedAllocationBill.amountPaidPaise - (selectedAllocationBill.amountCreditedPaise ?? 0);
+    if (amountPaise > selectedAdvance.availablePaise || amountPaise > outstanding) { setError('Allocation exceeds the available advance or bill balance.'); setAllocationConfirm(false); return; }
+    const key = allocationKey || `vendor-advance-allocation:${crypto.randomUUID()}`; setAllocationKey(key); setSaving(true); setError(''); setNotice('');
+    try { await api.allocateVendorAdvance(organization.id, selectedAdvance.id, { idempotencyKey: key, billId: selectedAllocationBill.id, amountPaise });
+      setNotice(`${formatMoney(amountPaise)} allocated from the vendor advance to ${selectedAllocationBill.vendorReference}.`); setAllocationConfirm(false); setAllocationKey(''); setAllocationAmount(''); setRevision(n => n + 1);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Vendor advance allocation failed.'); }
+    finally { setSaving(false); }
+  }
   const cashAccounts = accounts.filter(a => a.active && a.type === 'asset' && ['1000', '1010'].includes(a.code));
   return <Stack spacing={2}>
     <Typography variant="h5">Vendor bills and expenses</Typography>
-    <Alert severity="info">This flow records expense bills without GST or inventory. Drafts do not post; confirming a bill debits its selected expense account and credits accounts payable. Vendor payments are a separate workflow.</Alert>
+    <Alert severity="info">This flow records expense bills without GST or inventory. Drafts do not post; confirming a bill debits its selected expense account and credits accounts payable. Vendor advances are held as prepayments in account 1400 until allocated to a posted bill.</Alert>
     {canWrite && <Paper variant="outlined" sx={{ p: 2 }}><Stack component="form" spacing={2} onSubmit={e => { void createDraft(e); }}>
       <Typography variant="h6">New bill draft</Typography>
       <TextField select required label="Vendor" value={vendorId} onChange={e => setVendorId(e.target.value)}>{activeVendors.map(v => <MenuItem key={v._id} value={v._id}>{v.displayName}</MenuItem>)}</TextField>
@@ -84,6 +114,26 @@ export function ExpensesScreen({ organization }: { organization: Organization })
       <Button type="submit" variant="contained" disabled={saving || !activeVendors.length || !expenses.length}>Save bill draft</Button>
       {!activeVendors.length && <Typography color="text.secondary">Add a vendor in Contacts before entering a bill.</Typography>}
       {!expenses.length && <Typography color="text.secondary">Add an expense account in Accounting first.</Typography>}
+    </Stack></Paper>}
+    {canWrite && <Paper variant="outlined" sx={{ p: 2 }}><Stack spacing={2}>
+      <Typography variant="h6">Pay a vendor advance</Typography><Typography color="text.secondary">Prepayments are assets in vendor-advances control account 1400 until applied to a bill.</Typography>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+        <TextField select label="Vendor" value={advanceVendorId} onChange={e => { setAdvanceVendorId(e.target.value); setAdvanceKey(''); }}>{activeVendors.map(v => <MenuItem key={v._id} value={v._id}>{v.displayName}</MenuItem>)}</TextField>
+        <TextField select label="Pay from" value={cashAccountId} onChange={e => setCashAccountId(e.target.value)}>{cashAccounts.map(a => <MenuItem key={a.id} value={a.id}>{a.code} · {a.name}</MenuItem>)}</TextField>
+        <TextField label="Amount (INR)" value={advanceAmount} onChange={e => { setAdvanceAmount(e.target.value); setAdvanceKey(''); }} inputProps={{ inputMode: 'decimal' }} />
+        <Button variant="contained" disabled={saving || loading || !advanceVendorId || !cashAccountId || !parseAmount(advanceAmount) || !accounts.some(a => a.active && a.code === '1400')} onClick={() => setAdvanceConfirm(true)}>Review advance</Button>
+      </Stack>
+      {!accounts.some(a => a.active && a.code === '1400') && <Typography color="warning.main">Add or activate the starter chart’s vendor-advances account 1400 before recording advances.</Typography>}
+      {!!advances.length && <><Typography variant="subtitle1">Vendor advances</Typography>{advances.map(row => <Typography key={row.id}>{row.vendorName} · paid {formatMoney(row.amountPaise)} · available {formatMoney(row.availablePaise)}</Typography>)}</>}
+      {!!advances.some(row => row.availablePaise > 0) && <>
+        <Typography variant="subtitle1">Allocate advance to a bill</Typography>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+          <TextField select label="Advance" value={advanceId} onChange={e => { setAdvanceId(e.target.value); setAllocationBillId(''); setAllocationKey(''); }}>{advances.filter(row => row.availablePaise > 0).map(row => <MenuItem key={row.id} value={row.id}>{row.vendorName} · available {formatMoney(row.availablePaise)}</MenuItem>)}</TextField>
+          <TextField select label="Posted bill" value={allocationBillId} onChange={e => { setAllocationBillId(e.target.value); setAllocationKey(''); }}>{availableBills.map(bill => <MenuItem key={bill.id} value={bill.id}>{bill.vendorReference} · due {formatMoney(bill.amountPaise - bill.amountPaidPaise - (bill.amountCreditedPaise ?? 0))}</MenuItem>)}</TextField>
+          <TextField label="Amount to allocate (INR)" value={allocationAmount} onChange={e => { setAllocationAmount(e.target.value); setAllocationKey(''); }} inputProps={{ inputMode: 'decimal' }} />
+          <Button variant="outlined" disabled={saving || !selectedAllocationBill || !parseAmount(allocationAmount)} onClick={() => setAllocationConfirm(true)}>Review allocation</Button>
+        </Stack>
+      </>}
     </Stack></Paper>}
     {error && <Alert severity="error" action={<Button onClick={() => setRevision(n => n + 1)}>Reload</Button>}>{error}</Alert>}
     {notice && <Typography role="status">{notice}</Typography>}
@@ -108,5 +158,7 @@ export function ExpensesScreen({ organization }: { organization: Organization })
       <TextField required label="Credit amount (INR)" type="number" inputProps={{ min: '0.01', step: '0.01' }} value={creditAmount} onChange={e => setCreditAmount(e.target.value)} />
       <TextField required label="Reason" value={creditReason} inputProps={{ maxLength: 500 }} onChange={e => setCreditReason(e.target.value)} />
     </Stack></DialogContent><DialogActions><Button disabled={saving} onClick={() => setToCredit(null)}>Cancel</Button><Button disabled={saving} variant="contained" onClick={() => { if (toCredit) void credit(toCredit); }}>Confirm and issue</Button></DialogActions></Dialog>
+    <Dialog open={advanceConfirm} onClose={() => { if (!saving) setAdvanceConfirm(false); }}><DialogTitle>Confirm vendor prepayment</DialogTitle><DialogContent><DialogContentText>{formatMoney(parseAmount(advanceAmount) ?? 0)} paid to {activeVendors.find(v => v._id === advanceVendorId)?.displayName}. This debits vendor advances account 1400 and credits cash/bank; it is not an expense yet.</DialogContentText></DialogContent><DialogActions><Button disabled={saving} onClick={() => setAdvanceConfirm(false)}>Back</Button><Button disabled={saving} variant="contained" onClick={() => void recordAdvance()}>Confirm payment</Button></DialogActions></Dialog>
+    <Dialog open={allocationConfirm} onClose={() => { if (!saving) setAllocationConfirm(false); }}><DialogTitle>Confirm vendor advance allocation</DialogTitle><DialogContent><DialogContentText>{formatMoney(parseAmount(allocationAmount) ?? 0)} from {selectedAdvance?.vendorName} applied to bill {selectedAllocationBill?.vendorReference}. This reduces the prepayment and accounts payable balances.</DialogContentText></DialogContent><DialogActions><Button disabled={saving} onClick={() => setAllocationConfirm(false)}>Back</Button><Button disabled={saving} variant="contained" onClick={() => void allocateAdvance()}>Confirm allocation</Button></DialogActions></Dialog>
   </Stack>;
 }

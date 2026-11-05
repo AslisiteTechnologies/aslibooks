@@ -18,6 +18,7 @@ import { organizationSettingsRouter } from './organizationSettings.js';
 import { bankStatementRouter } from './bankStatements.js';
 import { transferRouter } from './transfers.js';
 import { customerAdvanceRouter } from './customerAdvances.js';
+import { vendorAdvanceRouter } from './vendorAdvances.js';
 import { memberRouter, invitationRouter } from './memberships.js';
 
 type AuthUser = { id: string };
@@ -96,6 +97,7 @@ export function organizationRouter(resolveUser: (headers: Headers) => Promise<Au
   router.use('/:organizationId/bank-statements', requireUser, bankStatementRouter());
   router.use('/:organizationId/transfers', requireUser, transferRouter());
   router.use('/:organizationId/customer-advances', requireUser, customerAdvanceRouter());
+  router.use('/:organizationId/vendor-advances', requireUser, vendorAdvanceRouter());
   return router;
 }
 
