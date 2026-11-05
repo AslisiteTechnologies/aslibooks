@@ -2,11 +2,11 @@
 
 ## Current checkpoint
 
-Development branch head `74e2eb165355ba7beb266c5f068c62cde9f444ee`. AI report explanations passed CI #244/MongoDB #181; internal cash/bank transfers passed CI #246/MongoDB #183. Customer advance receipt and allocation workflow is in implementation and requires CI-backed integration verification. The owner-supplied vision document must remain unstaged.
+Development branch head `c7cf7c7b760d9127e3c6afa30c61fe7df9d7f9e4`. AI report explanations passed CI #244/MongoDB #181; internal cash/bank transfers passed CI #246/MongoDB #183. CI #248 passed; MongoDB #185 ran customer advances successfully but found one stale starter-chart row-count assertion (expected 23 rather than 24). That assertion is corrected locally and requires a follow-up commit/workflow. The owner-supplied vision document must remain unstaged.
 
 ## Current implementation task
 
-Customer advances: liability account 2210, received-cash journal, same-customer invoice allocation, transactionally updated available balance, invoice payment state update, audit, idempotency, and review dialogs. Verify via MongoDB CI; local database integration tests are skipped without a replica set. Next implement vendor advances/refunds or attachments, browser coverage and release hardening. AI needs optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
+Finish the starter-chart assertion correction and rerun both workflows. Customer advances use liability account 2210, atomic received-cash journal and same-customer invoice allocation, transactionally updated availability, invoice payment update, audit, idempotency, and explicit review dialogs. The customer-advance integration test passed on MongoDB CI #185. Next implement vendor advances/refunds or secure attachments, browser coverage and release hardening. AI needs optional `OPENAI_API_KEY` and has no live-provider test. GST tax-bearing posting remains blocked pending qualified review; no live email delivery or production service is claimed.
 ## Exact verification commands
 
 ```powershell

@@ -61,7 +61,7 @@ describe.skipIf(!enabled)('chart of accounts HTTP', () => {
     await request(app).post(path + '/starter-chart').set(owner).send({ actorAuthUserId: 'forged' }).expect(400);
     const first = await request(app).post(path + '/starter-chart').set(owner).send({}).expect(201);
     expect(first.body).toMatchObject({ added: 23, alreadyPresent: 1, total: 24 });
-    expect(await AccountModel.countDocuments({ organizationId: org })).toBe(23);
+    expect(await AccountModel.countDocuments({ organizationId: org })).toBe(24);
     expect(await AccountModel.findById(customized._id)).toMatchObject({ name: 'Custom sales account', type: 'asset' });
     const repeated = await request(app).post(path + '/starter-chart').set(owner).send({}).expect(201);
     expect(repeated.body).toMatchObject({ added: 0, alreadyPresent: 24, total: 24 });
