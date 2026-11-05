@@ -11,8 +11,7 @@ export function SalesScreen({ organization }: { organization: Organization }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [customerId, setCustomerId] = useState('');
-  const [productId, setProductId] = useState('');
-  const [quantity, setQuantity] = useState('1');
+  const [draftLines, setDraftLines] = useState<Array<{ productId: string; quantity: string }>>([{ productId: '', quantity: '1' }]);
   const [dueDate, setDueDate] = useState('');
   const [taxTreatment, setTaxTreatment] = useState<'none' | 'exclusive' | 'inclusive'>('none');
   const [placeOfSupplyStateCode, setPlaceOfSupplyStateCode] = useState('');
@@ -30,9 +29,16 @@ export function SalesScreen({ organization }: { organization: Organization }) {
   const [documentError, setDocumentError] = useState('');
   const canWrite = ['owner', 'admin', 'accountant'].includes(organization.role);
   const customers = useMemo(() => contacts.filter(contact => contact.roles.includes('customer')), [contacts]);
-  const selectedProduct = products.find(product => product._id === productId);
-  const totalPaise = selectedProduct && Number.isInteger(Number(quantity)) && Number(quantity) > 0
-    ? selectedProduct.unitPricePaise * Number(quantity) : 0;
+  const totalPaise = draftLines.reduce((total, line) => {
+    const product = products.find(item => item._id === line.productId);
+    const quantity = Number(line.quantity);
+    const lineTotal = product && Number.isSafeInteger(quantity) && quantity > 0 ? product.unitPricePaise * quantity : 0;
+    return Number.isSafeInteger(total + lineTotal) ? total + lineTotal : Number.NaN;
+  }, 0);
+  const needsTax = draftLines.some(line => {
+    const product = products.find(item => item._id === line.productId);
+    return product?.taxCategory === 'taxable' && (product.gstRateBasisPoints ?? 0) > 0;
+  });
 
   useEffect(() => {
     let active = true;
@@ -41,7 +47,8 @@ export function SalesScreen({ organization }: { organization: Organization }) {
       .then(([contactResult, productResult, invoiceResult]) => {
         if (!active) return;
         setContacts(contactResult.contacts); setProducts(productResult.products); setInvoices(invoiceResult.invoices);
-        if (!productId && productResult.products.length) setProductId(productResult.products[0]._id);
+        setDraftLines(lines => lines.map((line, index) => index === 0 && !line.productId && productResult.products.length
+          ? { ...line, productId: productResult.products[0]._id } : line));
       }).catch(cause => { if (active) setError(cause instanceof Error ? cause.message : 'Unable to load sales data.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -49,17 +56,17 @@ export function SalesScreen({ organization }: { organization: Organization }) {
 
   async function createDraft(event: FormEvent) {
     event.preventDefault();
-    if (!customerId || !productId || !Number.isSafeInteger(totalPaise) || totalPaise <= 0) {
-      setError('Choose a customer and service with a valid quantity.'); return;
+    if (!customerId || !draftLines.length || draftLines.some(line => !line.productId || !Number.isSafeInteger(Number(line.quantity)) || Number(line.quantity) < 1)
+      || !Number.isSafeInteger(totalPaise) || totalPaise <= 0) {
+      setError('Choose a customer and give every invoice line a service and valid whole-number quantity.'); return;
     }
-    const needsTax = selectedProduct?.taxCategory === 'taxable' && (selectedProduct.gstRateBasisPoints ?? 0) > 0;
     if (needsTax && (taxTreatment === 'none' || !/^\d{2}$/.test(placeOfSupplyStateCode))) {
       setError('Select an explicit tax price basis and two-digit place-of-supply state code.'); return;
     }
     setSaving(true); setError(''); setNotice('');
     try {
       const result = await api.createInvoiceDraft(organization.id, {
-        customerId, lines: [{ productId, quantity: Number(quantity) }], ...(dueDate ? { dueDate } : {}),
+        customerId, lines: draftLines.map(line => ({ productId: line.productId, quantity: Number(line.quantity) })), ...(dueDate ? { dueDate } : {}),
         ...(needsTax ? { taxTreatment: { kind: taxTreatment, placeOfSupplyStateCode, supplyKind } } : {}),
       });
       setNotice('Draft saved. No journal or income has been recorded. Tax-bearing drafts are retained for review and cannot be posted yet.'); setDueDate(''); setRevision(value => value + 1);
@@ -117,14 +124,19 @@ export function SalesScreen({ organization }: { organization: Organization }) {
         <TextField select required label="Customer" value={customerId} onChange={event => setCustomerId(event.target.value)}>
           {customers.map(customer => <MenuItem key={customer._id} value={customer._id}>{customer.displayName}</MenuItem>)}
         </TextField>
-        <TextField select required label="Service" value={productId} onChange={event => setProductId(event.target.value)}>
-          {products.map(product => <MenuItem key={product._id} value={product._id}>{product.code} · {product.name} — {formatMoney(product.unitPricePaise)} · {product.taxCategory.replaceAll('_', ' ')}</MenuItem>)}
-        </TextField>
-        <TextField required label="Quantity" type="number" inputProps={{ min: 1, max: 1000000, step: 1 }} value={quantity}
-          onChange={event => setQuantity(event.target.value)} />
+        {draftLines.map((line, index) => <Stack key={index} direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }}>
+          <TextField select required label={index === 0 ? 'Service' : `Service ${index + 1}`} value={line.productId}
+            onChange={event => setDraftLines(lines => lines.map((item, lineIndex) => lineIndex === index ? { ...item, productId: event.target.value } : item))}>
+            {products.map(product => <MenuItem key={product._id} value={product._id}>{product.code} · {product.name} — {formatMoney(product.unitPricePaise)} · {product.taxCategory.replaceAll('_', ' ')}</MenuItem>)}
+          </TextField>
+          <TextField required label={index === 0 ? 'Quantity' : `Quantity ${index + 1}`} type="number" inputProps={{ min: 1, max: 1000000, step: 1 }} value={line.quantity}
+            onChange={event => setDraftLines(lines => lines.map((item, lineIndex) => lineIndex === index ? { ...item, quantity: event.target.value } : item))} />
+          {draftLines.length > 1 && <Button type="button" onClick={() => setDraftLines(lines => lines.filter((_, lineIndex) => lineIndex !== index))}>Remove line {index + 1}</Button>}
+        </Stack>)}
+        <Button type="button" onClick={() => setDraftLines(lines => [...lines, { productId: products[0]?._id ?? '', quantity: '1' }])} disabled={!products.length}>Add service line</Button>
         <TextField label="Due date" type="date" slotProps={{ inputLabel: { shrink: true } }} value={dueDate}
           onChange={event => setDueDate(event.target.value)} />
-        {selectedProduct?.taxCategory === 'taxable' && (selectedProduct.gstRateBasisPoints ?? 0) > 0 && <>
+        {needsTax && <>
           <TextField select required label="Configured tax price basis" value={taxTreatment} onChange={event => setTaxTreatment(event.target.value as typeof taxTreatment)}>
             <MenuItem value="none">Choose tax basis</MenuItem><MenuItem value="exclusive">Price excludes configured tax</MenuItem><MenuItem value="inclusive">Price includes configured tax</MenuItem>
           </TextField>
@@ -133,9 +145,9 @@ export function SalesScreen({ organization }: { organization: Organization }) {
           <TextField select required label="Tax component treatment" value={supplyKind} onChange={event => setSupplyKind(event.target.value as typeof supplyKind)}>
             <MenuItem value="intra_state">Central plus state components</MenuItem><MenuItem value="inter_state">Integrated component</MenuItem>
           </TextField>
-          <Typography>Configured total rate: {((selectedProduct.gstRateBasisPoints ?? 0) / 100).toFixed(2)}% · draft only</Typography>
+          <Typography>Configured product rates · draft only</Typography>
         </>}
-        <Typography>Service price: {formatMoney(totalPaise)}{taxTreatment === 'exclusive' ? ' before configured tax' : taxTreatment === 'inclusive' ? ' including configured tax' : ''}</Typography>
+        <Typography>Invoice line total: {formatMoney(totalPaise)}{taxTreatment === 'exclusive' ? ' before configured tax' : taxTreatment === 'inclusive' ? ' including configured tax' : ''}</Typography>
         <Button type="submit" variant="contained" disabled={saving || !customers.length || !products.length}>Save draft</Button>
         {!customers.length && <Typography color="text.secondary">Add a customer in Contacts before drafting an invoice.</Typography>}
         {!products.length && <Typography color="text.secondary">Add a service under Products before drafting an invoice.</Typography>}
