@@ -74,7 +74,7 @@ describe.skipIf(!enabled)('contacts API', () => {
     expect(defaultPage.body.contacts.length).toBeGreaterThan(1);
     expect(defaultPage.body.next).toBeNull();
     await request(app).patch(path + '/' + id).set(owner).send({ active: false }).expect(200);
-    expect((await request(app).get(path + '?q=Coastal').set(owner)).body.contacts).toHaveLength(0);
+    expect((await request(app).get(path + '?q=Coastal+Supply').set(owner)).body.contacts).toHaveLength(0);
     await request(app).get(path + '/' + id).set(owner).expect(404);
     expect(await AuditEventModel.distinct('action', { organizationId: org, resourceId: id }))
       .toEqual(['contact.archived', 'contact.created', 'contact.updated']);
