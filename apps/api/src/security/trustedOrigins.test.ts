@@ -13,10 +13,13 @@ describe('trusted origin guard', () => {
     const app = express();
     let writes = 0;
     app.use('/api/organizations', requireTrustedOrigin(['https://books.example']));
-    app.post('/api/organizations/:organizationId/contacts', (_req, res) => { writes += 1; res.sendStatus(204); });
+    app.all('/api/organizations/:organizationId/contacts', (_req, res) => { writes += 1; res.sendStatus(204); });
 
     await request(app).post('/api/organizations/org-id/contacts').set('Origin', 'https://attacker.example').expect(403, { error: 'Untrusted request origin' });
     expect(writes).toBe(0);
+    await request(app).put('/api/organizations/org-id/contacts').set('Origin', 'https://attacker.example').expect(403);
+    await request(app).patch('/api/organizations/org-id/contacts').set('Origin', 'https://attacker.example').expect(403);
+    await request(app).delete('/api/organizations/org-id/contacts').set('Origin', 'https://attacker.example').expect(403);
     await request(app).post('/api/organizations/org-id/contacts').set('Origin', 'null').expect(403);
     expect(writes).toBe(0);
   });

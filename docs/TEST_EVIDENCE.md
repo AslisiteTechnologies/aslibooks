@@ -209,3 +209,8 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 ## Explicit GST discount arithmetic (local verification, exact-SHA workflows pending)
 - `calculateGstAmounts` accepts an optional fixed integer-paise discount, rejects negative/fractional/over-amount values, and applies it to the explicit entered amount before either inclusive or exclusive tax calculations. Return values include the discount and adjusted amount. Tests cover 18% intra-state exclusive and inter-state inclusive arithmetic, existing half-up boundaries, and invalid inputs.
 - Focused GST tests passed 4/4. With `MONGODB_TEST_URI` and a disposable replica set configured, the full workspace passed 136/136 (130 API across all 32 files, five accounting, one web); typecheck, lint, build, full dependency audit and `git diff --check` passed. This generic arithmetic does not choose a legal discount treatment. Invoice discounts, tax credit notes and tax-bearing posting remain unsupported pending qualified review. Exact-SHA workflows are pending.
+
+
+## Competing receipt allocations (local replica-set verification, exact-SHA pending)
+- The customer receipt integration test now races two distinct idempotency keys, each requesting the same remaining 7,000-paise invoice balance. Exactly one returns 201 and the other 409; the invoice is paid once and journal, receipt, and audit counts remain reconciled. Focused receipts integration passed 2/2.
+- Trusted-Origin middleware coverage now blocks untrusted POST, PUT, PATCH, and DELETE before handlers run, as well as opaque `null` origins. Focused origin tests passed 3/3. These latest test-only changes are not yet published.

@@ -8,7 +8,7 @@ Preserve the original workspace edits; never stage the owner-supplied vision fil
 
 ## Current implementation task
 
-Trusted-Origin commit `e1c8e71cd5a4994cdde244311715a3d9be24bc79` passed CI #427/#428, MongoDB #364/#365 and Browser #147/#148. The next local GST gap is partially closed: generic tax arithmetic now supports an explicit fixed paise discount before tax; invoice-level discounts and tax-bearing posting remain blocked pending qualified review. Focused GST tests pass 4/4; full disposable replica-set workspace tests pass 136/136 (130 API, five accounting, one web), and typecheck, lint, build, audit and browser journey pass. Publish the GST arithmetic with evidence and verify all six exact-SHA workflows; next inspect cross-route authorization and acceptance 10 error/replay coverage.
+GST discount arithmetic commit `3c44df44bbe899adf133bc84fe713bf6b1570ed8` passed CI #429/#430, MongoDB #366/#367 and Browser #149/#150. A new customer receipt race proves two distinct requests cannot settle the same remaining balance twice (focused replica-set test 2/2). Trusted-Origin tests now cover unsafe POST/PUT/PATCH/DELETE and `null` origins (3/3). Run the full local workspace suite, publish these test-strengthening changes with refreshed evidence, and verify all six workflows at the resulting SHA. Next add vendor payment and advance-allocation concurrency cases, then broaden retry/network-error tests.
 
 ## Exact verification commands
 

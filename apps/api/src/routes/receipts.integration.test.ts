@@ -100,10 +100,18 @@ describe.skipIf(!enabled)('customer receipts HTTP lifecycle', () => {
     const replay = await request(app).post(path).set(owner).send(first).expect(200);
     expect(replay.body).toMatchObject({ id: partial.body.id, journalId: partial.body.journalId, replayed: true });
     await request(app).post(path).set(owner).send({ ...first, idempotencyKey: 'receipt-overpay-0001', allocations: [{ invoiceId: issuedInvoiceId, amountPaise: 7001 }] }).expect(409);
-    const final = await request(app).post(path).set(owner).send({
-      idempotencyKey: 'receipt-final-0001', cashAccountId: String(bankId),
-      allocations: [{ invoiceId: issuedInvoiceId, amountPaise: 7000 }],
-    }).expect(201);
+    const competingFinals = await Promise.all([
+      request(app).post(path).set(owner).send({
+        idempotencyKey: 'receipt-final-race-a', cashAccountId: String(bankId),
+        allocations: [{ invoiceId: issuedInvoiceId, amountPaise: 7000 }],
+      }),
+      request(app).post(path).set(owner).send({
+        idempotencyKey: 'receipt-final-race-b', cashAccountId: String(bankId),
+        allocations: [{ invoiceId: issuedInvoiceId, amountPaise: 7000 }],
+      }),
+    ]);
+    expect(competingFinals.map(response => response.status).sort()).toEqual([201, 409]);
+    const final = competingFinals.find(response => response.status === 201)!;
     expect(final.body.amountPaise).toBe(7000);
     expect(await InvoiceModel.findById(issuedInvoiceId)).toMatchObject({ status: 'paid', amountPaidPaise: 10000 });
     expect(await JournalModel.countDocuments({ organizationId })).toBe(3);
