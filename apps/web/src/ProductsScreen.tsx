@@ -42,7 +42,7 @@ export function ProductsScreen({ organization }: { organization: Organization })
         <TextField required label="Name" value={name} onChange={event => setName(event.target.value)} />
         <TextField required label="Unit price (₹)" type="number" inputProps={{ min: 0, step: '0.01' }}
           value={price} onChange={event => setPrice(event.target.value)} />
-        <TextField label="HSN/SAC code" inputProps={{ maxLength: 8, inputMode: 'numeric' }} helperText="Optional classification code; verify the correct code separately."
+        <TextField label="HSN/SAC code" inputProps={{ maxLength: 8, inputMode: 'numeric' }} helperText="Optional: enter 2, 4, 6, or 8 digits. Format only; verify the code and tax treatment separately."
           value={hsnSacCode} onChange={event => setHsnSacCode(event.target.value.replace(/\D/g, ''))} />
         <TextField select label="Tax category" value={taxCategory} onChange={event => setTaxCategory(event.target.value as typeof taxCategory)}>
           <MenuItem value="not_configured">Not configured</MenuItem><MenuItem value="taxable">Taxable</MenuItem>

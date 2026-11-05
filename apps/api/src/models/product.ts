@@ -7,7 +7,7 @@ const productSchema = new Schema({
   name: { type: String, required: true, trim: true, maxlength: 160 },
   description: { type: String, trim: true, maxlength: 1000 },
   unitPricePaise: { type: Number, required: true, min: 0, validate: Number.isSafeInteger },
-  hsnSacCode: { type: String, trim: true, maxlength: 8, match: /^\d{4,8}$/ },
+  hsnSacCode: { type: String, trim: true, maxlength: 8, match: /^(?:\d{2}|\d{4}|\d{6}|\d{8})$/ },
   taxCategory: { type: String, enum: ['not_configured', 'taxable', 'exempt', 'nil_rated', 'non_gst'], required: true, default: 'not_configured' },
   gstRateBasisPoints: { type: Number, min: 0, max: 100_000, validate: Number.isSafeInteger },
   active: { type: Boolean, required: true, default: true },

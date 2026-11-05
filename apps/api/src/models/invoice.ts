@@ -7,7 +7,7 @@ const invoiceLineSchema = new Schema({
   quantity: { type: Number, required: true, min: 1, validate: Number.isSafeInteger },
   unitPricePaise: { type: Number, required: true, min: 0, validate: Number.isSafeInteger },
   lineTotalPaise: { type: Number, required: true, min: 0, validate: Number.isSafeInteger },
-  hsnSacCode: { type: String, maxlength: 8 },
+  hsnSacCode: { type: String, maxlength: 8, match: /^(?:\d{2}|\d{4}|\d{6}|\d{8})$/ },
   taxCategory: { type: String, enum: ['not_configured', 'taxable', 'exempt', 'nil_rated', 'non_gst'], required: true, default: 'not_configured' },
   gstRateBasisPoints: { type: Number, min: 0, max: 100_000, validate: Number.isSafeInteger },
   taxablePaise: { type: Number, min: 0, validate: Number.isSafeInteger, required: true, default: 0 },
