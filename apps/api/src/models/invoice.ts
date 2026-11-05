@@ -42,6 +42,7 @@ const invoiceSchema = new Schema({
 }, { timestamps: true, strict: 'throw', versionKey: false });
 
 invoiceSchema.index({ organizationId: 1, createdAt: -1, _id: -1 });
+invoiceSchema.index({ organizationId: 1, customerId: 1, issuedAt: 1, _id: 1 });
 invoiceSchema.index({ organizationId: 1, invoiceNumber: 1 }, { unique: true, partialFilterExpression: { invoiceNumber: { $type: 'string' } } });
 invoiceSchema.index({ organizationId: 1, issueIdempotencyKey: 1 }, { unique: true, partialFilterExpression: { issueIdempotencyKey: { $type: 'string' } } });
 invoiceSchema.pre('save', async function () {
