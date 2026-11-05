@@ -41,6 +41,7 @@ describe.skipIf(!enabled)('customer receipts HTTP lifecycle', () => {
   const peerCustomerId = new Types.ObjectId();
   const productId = new Types.ObjectId();
   const cashId = new Types.ObjectId();
+  const peerCashId = new Types.ObjectId();
   const bankId = new Types.ObjectId();
   const arId = new Types.ObjectId();
   const incomeId = new Types.ObjectId();
@@ -71,6 +72,7 @@ describe.skipIf(!enabled)('customer receipts HTTP lifecycle', () => {
     await ProductModel.create({ _id: productId, organizationId, code: 'SERVICE', name: 'Service', unitPricePaise: 10000 });
     await AccountModel.create([
       { _id: cashId, organizationId, code: '1000', name: 'Cash', type: 'asset' },
+      { _id: peerCashId, organizationId: peerId, code: '1000', name: 'Peer cash', type: 'asset' },
       { _id: bankId, organizationId, code: '1010', name: 'Bank', type: 'asset' },
       { _id: arId, organizationId, code: '1100', name: 'Receivables', type: 'asset' },
       { _id: incomeId, organizationId, code: '4000', name: 'Sales', type: 'income' },
@@ -134,6 +136,11 @@ describe.skipIf(!enabled)('customer receipts HTTP lifecycle', () => {
       idempotencyKey: 'receipt-foreign-0001', cashAccountId: String(cashId),
       allocations: [{ invoiceId, amountPaise: 1000 }],
     }).expect(404);
+    await request(app).post(path).set(owner).send({
+      idempotencyKey: 'receipt-foreign-cash-0001', cashAccountId: String(peerCashId),
+      allocations: [{ invoiceId, amountPaise: 1000 }],
+    }).expect(422);
+    expect(await ReceiptModel.countDocuments({ organizationId, idempotencyKey: 'receipt-foreign-cash-0001' })).toBe(0);
     await request(app).post(path).set(owner).send({
       idempotencyKey: 'receipt-bad-cash-0001', cashAccountId: String(arId),
       allocations: [{ invoiceId, amountPaise: 1000 }],

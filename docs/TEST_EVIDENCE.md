@@ -296,3 +296,7 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 - Added a print/Save as PDF report packet for trial balance, P&L, balance sheet, receivable/payable aging, and AR/AP control reconciliation. It uses the already loaded server-derived report values, escapes all dynamic organization/section/cell strings, and reports a blocked popup instead of silently failing.
 - Renderer tests passed 2/2 including markup escaping. Full workspace tests passed 142/142 (131 API, five accounting, six web); typecheck and production build passed. Lint initially found an unnecessary escape in the renderer; after correction, focused web tests, typecheck, lint, build, high-severity audit (no known vulnerabilities), and `git diff --check` passed.
 - Added a browser journey assertion for the print popup and report headings. It has not run locally because Python and the Playwright CLI are unavailable; verify via exact-SHA Browser workflow.
+
+## Receipt cash-account tenant boundary (local verification passed; exact-SHA workflows pending)
+- Receipt integration seeds a real cash account under a peer organization. Posting a receipt in the current organization with a valid current invoice and that foreign cash account returns 422 and creates no receipt record.
+- Focused receipts suite passes 2/2; full workspace tests pass 142/142, typecheck/lint/build/audit/diff pass. Parent `d02af80789419177ec59d265d84d7cc6f55d034d` passed exact-SHA CI #470, MongoDB #407 and Browser #190. Exact-SHA workflows for the new regression remain pending.

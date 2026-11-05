@@ -113,3 +113,22 @@ git diff --check
 ```
 
 External release gates remain: qualified accounting/GST review; staging and production secrets/access plus explicit deployment authorization; database least-privilege grants and restore rehearsal; monitoring and email deliverability; attachment malware scanning/retention policy; final accessibility/security review. Keep PR #1 Draft; do not merge `main` or deploy production without owner authorization.
+
+## Active task: publish receipt tenant-boundary regression, then continue the route and role matrix
+1. Publish only `apps/api/src/routes/receipts.integration.test.ts` and updated status documents on top of remote `d02af80789419177ec59d265d84d7cc6f55d034d`.
+2. Verify exact-SHA CI, MongoDB and Browser Actions.
+3. Continue auditing the acceptance matrix's tenant isolation and role permissions for every mounted route, attachment/content path, and export. Add a real-data denial test where route coverage is missing, then run full validation.
+
+PowerShell validation commands from repository root:
+```powershell
+$env:MONGODB_TEST_URI='mongodb://127.0.0.1:37491/?replicaSet=testset'
+$env:MONGODB_TEST_DB_NAME='aslibooks_test_foreign_receipt_account_full'
+pnpm test
+pnpm typecheck
+pnpm lint
+pnpm build
+pnpm audit --audit-level=high
+git diff --check
+```
+
+External gates: qualified accounting/GST review, staging/production access and explicit deploy authorization, database least privilege/backup restore/monitoring/email, attachment malware and retention review, final accessibility/security review. PR #1 remains Draft; do not merge main or deploy production without authorization.
