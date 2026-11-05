@@ -2,11 +2,11 @@
 
 ## Current checkpoint
 
-Development branch head before this email slice: `5bf1e754916ccddde1d9be64014189865fd3d99e`; GST fixture correction and its exact-commit CI/MongoDB workflows passed. Optional Resend verification, password recovery and invitation notification are implemented in this worktree. Local checks passed: 28 tests; 67 MongoDB integration tests skipped due to no local replica set; typecheck, lint, build and `git diff --check` passed. The owner-supplied vision document must remain unstaged.
+Development branch head `d4ef5f3f9efab2941348852b9aedce218df40c43`; email slice `67314132cbfa1a533a3912621a4ba1a04ca470fd` passed CI #234 and MongoDB #171. Fiscal close CI #236 passed; MongoDB #173 found one stale repeated-close test request missing the explicit checklist confirmation. Its request shape is corrected locally and requires a new MongoDB run. Optional Resend verification, password recovery and invitation notification are implemented in this worktree. Local checks passed: 28 tests; 67 MongoDB integration tests skipped due to no local replica set; typecheck, lint, build and `git diff --check` passed. The owner-supplied vision document must remain unstaged.
 
 ## Current implementation task
 
-The email slice at `67314132cbfa1a533a3912621a4ba1a04ca470fd` passed CI #234 and MongoDB #171. Publish the fiscal-close checklist slice on top of this verified head, verify exact-commit CI/MongoDB, then continue attachment policy, transfers, AI approval, and release hardening. Email provider credentials and sender-domain verification remain deployment prerequisites; no live delivery is claimed. The fiscal-close checklist is implemented locally and needs exact-commit MongoDB workflow verification. Tax-bearing invoices remain blocked pending expert review.
+The email slice at `67314132cbfa1a533a3912621a4ba1a04ca470fd` passed CI #234 and MongoDB #171. Publish the fiscal-close test correction on top of the current branch head, verify its MongoDB workflow, then continue attachment policy, transfers, AI approval, and release hardening. Email provider credentials and sender-domain verification remain deployment prerequisites; no live delivery is claimed. The fiscal-close checklist is implemented locally and needs exact-commit MongoDB workflow verification. Tax-bearing invoices remain blocked pending expert review.
 ## Exact verification commands
 
 ```powershell

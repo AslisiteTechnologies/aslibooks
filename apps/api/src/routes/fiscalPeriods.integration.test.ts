@@ -89,7 +89,7 @@ describe.skipIf(!enabled)('fiscal period close controls', () => {
     await expect(postAuthorizedJournal('period-accountant', { ...input, idempotencyKey: `period-blocked:${suffix}` }))
       .rejects.toMatchObject({ code: 'PERIOD_CLOSED' });
     expect(await AuditEventModel.countDocuments({ organizationId: org, action: 'fiscal_period.closed', resourceId: periodId })).toBe(1);
-    await request(app).post(`${path}/${periodId}/close`).set('x-fixture-actor', 'period-owner').send({}).expect(409);
+    await request(app).post(`${path}/${periodId}/close`).set('x-fixture-actor', 'period-owner').send({ confirmChecklist: true }).expect(409);
   });
 
   afterAll(async () => {
