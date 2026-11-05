@@ -133,8 +133,13 @@ Published sales invoice checkpoint `65435336d9fa8e2f479465d0001ae65da902bad9`: C
 - Bill E2E follow-up: run #37 passed vendor selection and found two Amount (INR) fields with different types. Bill amount now uses the exact spinbutton role; rerun pending.
 - Vendor bill/banking browser progress: run #39 passed bill creation/posting/payment and bank statement import/matching, then found duplicate From labels because Dashboard remained mounted while hidden. Reconciliation/dashboard date filters now select visible date inputs by position. Rerun pending.
 
-## Product edit UI (local, pending CI)
+## Product edit UI (published and verified)
 - Added a responsive edit dialog for product/service name, unit, and paise price using the existing tenant-scoped PATCH API; HSN/SAC and tax metadata remain create-only. Existing invoice lines retain their immutable snapshots.
 - Product catalog integration now updates name, unit, and price together and checks persisted values. Browser E2E edits unit from `hour` to `hours` and checks the invoice print.
-- Local `pnpm test`: 32 passed, 72 MongoDB-backed tests skipped without a configured replica-set URI. `pnpm typecheck`, `pnpm lint`, `pnpm build`, bundled Python compile, and `git diff --check` passed. Exact CI/MongoDB/browser runs pending.
+- Published head `f89d33feadd1b431c033e284b05c61b91025d1f3` passed CI #324, MongoDB integration #261, and Browser end-to-end #44. Local `pnpm test`: 32 passed, 72 MongoDB-backed tests skipped without a configured replica-set URI. `pnpm typecheck`, `pnpm lint`, `pnpm build`, bundled Python compile, and `git diff --check` passed.
+
+## Product archive UI (local, pending exact-commit workflows)
+- Added a confirmation dialog before archiving a product/service. The copy explains it will leave the active catalog and existing invoice snapshots remain intact. Added the archive API shape and browser assertion after the service is used on an issued invoice.
+- Local `pnpm test`: 32 passed; 72 MongoDB-backed tests skipped because no local replica-set URI is configured. `pnpm typecheck`, meaningful `pnpm lint`, `pnpm build`, and `git diff --check` passed.
+- Local browser attempt failed before app interaction with `ERR_CONNECTION_REFUSED` at `127.0.0.1:5176`; this checkout has neither Docker nor `mongod` available to provision disposable MongoDB/API/web services. This is not a passing browser test. Published prior head `f89d33feadd1b431c033e284b05c61b91025d1f3` remains verified by CI #324, MongoDB #261 and E2E #44; archive change still needs exact-SHA workflow evidence.
 

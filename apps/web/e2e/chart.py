@@ -134,6 +134,12 @@ def test_chart():
             print_page.close()
             page.get_by_role("button", name="Close", exact=True).click()
             page.get_by_role("button", name="Open navigation").click()
+            page.get_by_role("button", name="Products", exact=True).click()
+            page.get_by_role("button", name="Archive service", exact=True).first.click()
+            expect(page.get_by_role("heading", name="Archive service?")).to_be_visible()
+            page.get_by_role("button", name="Confirm archive", exact=True).click()
+            expect(page.get_by_text("E2E-SERVICE · Consulting service", exact=True)).not_to_be_visible()
+            page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Receipts", exact=True).click()
             amount_field = page.get_by_label("Amount received (₹)", exact=False).first
             expect(amount_field).to_be_enabled()

@@ -1,44 +1,49 @@
-'# Next actions
+# Next actions
 
 ## Current checkpoint
 
-Development head `3363e799b9902f8022c6bc496b977f29a01f4b5a` passed CI #322, MongoDB #259 and browser E2E #42. Unit-aware sales and receipt/bill/banking workflows completed in the browser. Product edit UI is implemented locally and needs exact-commit verification. Preserve original workspace edits; never stage the owner-supplied vision file.
+Published head `f89d33feadd1b431c033e284b05c61b91025d1f3` passed CI #324, MongoDB #261, and browser E2E #44. The browser workflow covered product/service creation and edit, unit-aware invoice issue/print, receipts, bills, payments, and banking. This local change adds confirmation-gated product archiving and the browser assertion; publish it and verify all three workflows against its exact commit SHA. Local `pnpm test` passed 32 tests with 72 database-backed tests skipped; typecheck, lint, build, and `git diff --check` passed. Local browser execution needs disposable MongoDB/API/web services and failed at connection because Docker and mongod are unavailable on this host.
+
+Preserve the original workspace edits; never stage the owner-supplied vision file. Never merge PR #1 to `main` or deploy production.
 
 ## Current implementation task
 
-Verify product edit UI with `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm build`, and Playwright. Confirm product name/unit/price updates persist and invoice unit snapshots remain accurate. Publish changed files only to `develop/phase-1-foundation`, inspect CI/MongoDB/browser Actions and fix failures. Continue to the next incomplete MVP requirement after this feature passes.
+Publish the product archive UI/API typing and its E2E coverage to `develop/phase-1-foundation`. Confirm exact-SHA CI, MongoDB, and browser runs; investigate and fix any failures. Then continue with the highest-priority unmet acceptance criteria in `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`, inspecting current route, model, UI, and tests before each change. The MVP is not complete: tax scenarios, customer/vendor subledgers, acceptance/security coverage, release operations, and live provider configuration still need review and implementation where unblocked.
 
-'## Exact verification commands
+## Exact verification commands
 
 ```powershell
-pnpm --filter @aslibooks/api test -- src/accounting/gst.test.ts
 pnpm test
 pnpm typecheck
 pnpm lint
 pnpm build
 git diff --check
-$env:MONGODB_TEST_URI='mongodb://127.0.0.1:37491/?replicaSet=aslibooksLocal'
-$env:MONGODB_TEST_DB_NAME='aslibooks_test_<unique_name>'
-pnpm --filter @aslibooks/api test --maxWorkers=1 src/routes/transfers.integration.test.ts
-pnpm --filter @aslibooks/api test --maxWorkers=1 src/routes/customerAdvances.integration.test.ts src/routes/accounts.integration.test.ts
-pnpm --filter @aslibooks/api test --maxWorkers=1 src/routes/products.integration.test.ts src/routes/invoices.integration.test.ts
-pnpm --filter @aslibooks/api test --maxWorkers=1
-$env:PYTHONPATH="$env:TEMP\\aslibooks-playwright-runtime"
-$env:PLAYWRIGHT_BROWSERS_PATH="$env:TEMP\\codex-aslibooks-browsers"
-& "$env:USERPROFILE\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe" apps/web/e2e/chart.py
+pnpm --filter @aslibooks/api test --maxWorkers=1 src/routes/products.integration.test.ts
+$env:PYTHONPATH="$env:TEMP\aslibooks-playwright-runtime"
+$env:PLAYWRIGHT_BROWSERS_PATH="$env:TEMP\codex-aslibooks-browsers"
+& "$env:USERPROFILE\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe" apps/web/e2e/chart.py
 ```
 
-If local Mongo is unavailable, use exact-commit MongoDB Actions evidence. Do not claim local integration or browser tests passed unless executed.
+For local integration/browser tests, provision a disposable MongoDB replica set and API/web servers as described by `.github/workflows/e2e.yml` and `docs/integration-testing.md`. Do not point tests at production. If unavailable, rely only on exact-commit GitHub workflow evidence and state which local tests were skipped.
 
 ## Remaining MVP work
 
-- GST: validated HSN/SAC/rate inputs, expert-reviewed applicability and rate tables, journal mappings, tax-aware credits/purchases and proper printable tax documents. Keep unsupported cases blocked and avoid compliance claims.
-- Production email-provider credentials and sender-domain verification; live delivery and Better Auth end-to-end verification.
-- Attachments metadata and secure storage policy; fiscal period correction/reopen policy.
-- Transfers and customer/vendor advances are implemented; cash refund of an unallocated customer advance is in progress. Attachments and release hardening remain.
-- Constrained AI explanation/draft extraction with explicit human approval and no direct posting capability.
-- Tenant/role threat review, rate limits, session expiry UX, least-privilege runtime database role, staging/backup/restore/monitoring guide, desktop/mobile browser E2E and release checklist.
+- Reconcile every master vision acceptance criterion to implemented code and direct test evidence, especially cross-tenant object access and viewer/accountant permissions.
+- Review invoice lifecycle, sales/purchase tax handling and credit/refund boundaries; keep unsupported GST cases blocked pending qualified review.
+- Verify financial reports, aging, customer/vendor ledgers and source journal reconciliation against realistic transaction fixtures.
+- Review AI isolation and explicit human approval; AI must not post.
+- Complete threat review, dependency/security audit, least-privilege runtime DB role, backup/restore, monitoring, staging runbook and release checklist.
+- Production email credentials/sender verification and live delivery require owner configuration; do not claim verified delivery without it.
 
-Never stage the owner-supplied vision file. Publish only to `develop/phase-1-foundation`, inspect the remote head before each expected-SHA update, never force push. Keep PR #1 draft, do not merge `main`, and do not deploy production.
+## Restart commands
 
+```powershell
+cd D:\aslibooks-next
+git status --short --branch
+git log -5 --oneline
+git ls-remote origin refs/heads/develop/phase-1-foundation
+Get-Content docs/IMPLEMENTATION_STATUS.md
+Get-Content docs/TEST_EVIDENCE.md -Tail 80
+Get-Content docs/NEXT_ACTIONS.md
+```
 
