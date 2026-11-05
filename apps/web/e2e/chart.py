@@ -219,7 +219,26 @@ def test_chart():
             page.get_by_role("option", name="E2E-EXP · Office expenses").click()
             page.get_by_label("Description").fill("Monthly office supplies")
             page.get_by_role("spinbutton", name="Amount (INR)", exact=True).fill("12.34")
+            bill_draft_keys = []
+            def lose_bill_draft_response(route):
+                if route.request.method != "POST":
+                    route.continue_()
+                    return
+                bill_draft_keys.append(route.request.post_data_json["idempotencyKey"])
+                response = route.fetch()
+                if len(bill_draft_keys) == 1:
+                    route.abort()
+                else:
+                    route.fulfill(response=response)
+            page.route("**/api/organizations/*/bills", lose_bill_draft_response)
             page.get_by_role("button", name="Save bill draft").click()
+            expect(page.get_by_role("alert").filter(has_text="Failed to fetch")).to_be_visible()
+            with page.expect_response(lambda response: response.url.endswith("/bills") and response.request.method == "POST") as bill_retry:
+                page.get_by_role("button", name="Save bill draft").click()
+            assert bill_retry.value.status == 200, bill_retry.value.text()
+            assert bill_retry.value.json()["replayed"] is True
+            assert len(bill_draft_keys) == 2 and bill_draft_keys[0] == bill_draft_keys[1]
+            page.unroute("**/api/organizations/*/bills", lose_bill_draft_response)
             expect(page.get_by_text("Bill draft saved. It has not affected the ledger.")).to_be_visible()
             expect(page.get_by_text(f"V-{run} · Test Vendor")).to_be_visible()
             page.get_by_role("button", name="Review and post").click()

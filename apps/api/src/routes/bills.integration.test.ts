@@ -33,11 +33,17 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     await AccountModel.create([{ _id: expenseId, organizationId, code: '5000', name: 'Office supplies', type: 'expense' }, { _id: payableId, organizationId, code: '2000', name: 'Accounts payable', type: 'liability' }]);
   });
   it('creates drafts without posting, validates tenant and roles, then posts atomically and idempotently', async () => {
-    const payload = { vendorId: String(vendorId), vendorReference: 'INV-100', expenseAccountId: String(expenseId), description: 'Paper and stationery', amountPaise: 12345, dueDate: '2026-11-30' };
+    const payload = { idempotencyKey: 'bill-draft-key-100', vendorId: String(vendorId), vendorReference: 'INV-100', expenseAccountId: String(expenseId), description: 'Paper and stationery', amountPaise: 12345, dueDate: '2026-11-30' };
     await request(app).post(path).set(owner).send({ ...payload, taxRate: 18 }).expect(400);
     await request(app).post(path).set(owner).send({ ...payload, vendorId: String(peerVendorId) }).expect(422);
     await request(app).post(path).set({ 'x-fixture-actor': 'bill-viewer' }).send(payload).expect(403);
-    const created = await request(app).post(path).set(owner).send(payload).expect(201); draftId = created.body.id;
+    const concurrentCreates = await Promise.all([request(app).post(path).set(owner).send(payload), request(app).post(path).set(owner).send(payload)]);
+    expect(concurrentCreates.map(response => response.status).sort()).toEqual([200, 201]);
+    expect(concurrentCreates[0].body.id).toBe(concurrentCreates[1].body.id); draftId = concurrentCreates[0].body.id;
+    await request(app).post(path).set(owner).send(payload).expect(200).expect(response => expect(response.body.replayed).toBe(true));
+    await request(app).post(path).set(owner).send({ ...payload, amountPaise: 12346 }).expect(409);
+    expect(await BillModel.countDocuments({ organizationId, draftIdempotencyKey: payload.idempotencyKey })).toBe(1);
+    expect(await AuditEventModel.countDocuments({ organizationId, action: 'bill.draft_created' })).toBe(1);
     expect(await JournalModel.countDocuments({ organizationId })).toBe(0);
     await request(app).post(`${path}/${draftId}/post`).set(owner).send({ idempotencyKey: 'bill-post-0001' }).expect(201);
     const bill = await BillModel.findById(draftId).lean<{ journalId: Types.ObjectId; status: string; amountPaise: number } | null>(); expect(bill).toMatchObject({ status: 'posted', amountPaise: 12345 });
@@ -57,7 +63,7 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     await ContactModel.create({ _id: secondVendor, organizationId: secondOrg, displayName: 'Vendor', roles: ['vendor'] });
     await AccountModel.create({ _id: secondExpense, organizationId: secondOrg, code: '5000', name: 'Expense', type: 'expense' });
     const secondPath = `/orgs/${secondOrg}/bills`;
-    const draft = await request(app).post(secondPath).set(owner).send({ vendorId: String(secondVendor), vendorReference: 'V-2', expenseAccountId: String(secondExpense), description: 'Test', amountPaise: 100 }).expect(201);
+    const draft = await request(app).post(secondPath).set(owner).send({ idempotencyKey: 'bill-no-control-draft-1', vendorId: String(secondVendor), vendorReference: 'V-2', expenseAccountId: String(secondExpense), description: 'Test', amountPaise: 100 }).expect(201);
     await request(app).post(`${secondPath}/${draft.body.id}/post`).set(owner).send({ idempotencyKey: 'bill-no-control-1' }).expect(422);
     expect(await BillModel.findById(draft.body.id)).toMatchObject({ status: 'draft' }); expect(await JournalModel.countDocuments({ organizationId: secondOrg })).toBe(0);
   });
@@ -70,7 +76,7 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
       { _id: cashId, organizationId: paymentOrg, code: '1000', name: 'Cash', type: 'asset' },
       { organizationId: paymentOrg, code: '2000', name: 'Payables', type: 'liability' }]);
     const paymentPath = `/orgs/${paymentOrg}`;
-    const draft = await request(app).post(`${paymentPath}/bills`).set(owner).send({ vendorId: String(paymentVendor), vendorReference: 'PAY-1', expenseAccountId: String(paymentExpense), description: 'Office expense', amountPaise: 5000 }).expect(201);
+    const draft = await request(app).post(`${paymentPath}/bills`).set(owner).send({ idempotencyKey: 'bill-payment-draft-1', vendorId: String(paymentVendor), vendorReference: 'PAY-1', expenseAccountId: String(paymentExpense), description: 'Office expense', amountPaise: 5000 }).expect(201);
     await request(app).post(`${paymentPath}/bills/${draft.body.id}/post`).set(owner).send({ idempotencyKey: 'bill-payment-post-1' }).expect(201);
     const first = { idempotencyKey: 'vendor-payment-part-1', cashAccountId: String(cashId), allocations: [{ billId: draft.body.id, amountPaise: 2000 }] };
     const partial = await request(app).post(`${paymentPath}/vendor-payments`).set(owner).send(first).expect(201);
@@ -99,7 +105,7 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
       { _id: creditCash, organizationId: creditOrg, code: '1000', name: 'Cash', type: 'asset' },
       { _id: creditPayable, organizationId: creditOrg, code: '2000', name: 'Payables', type: 'liability' }]);
     const creditPath = `/orgs/${creditOrg}`;
-    const draft = await request(app).post(`${creditPath}/bills`).set(owner).send({ vendorId: String(creditVendor), vendorReference: 'CREDIT-1', expenseAccountId: String(creditExpense), description: 'Returned supplies', amountPaise: 10000 }).expect(201);
+    const draft = await request(app).post(`${creditPath}/bills`).set(owner).send({ idempotencyKey: 'bill-credit-draft-1', vendorId: String(creditVendor), vendorReference: 'CREDIT-1', expenseAccountId: String(creditExpense), description: 'Returned supplies', amountPaise: 10000 }).expect(201);
     const billPath = `${creditPath}/bills/${draft.body.id}`;
     await request(app).post(`${billPath}/post`).set(owner).send({ idempotencyKey: 'bill-credit-post-1' }).expect(201);
     await request(app).post(`${creditPath}/vendor-payments`).set(owner).send({ idempotencyKey: 'bill-credit-payment-1', cashAccountId: String(creditCash), allocations: [{ billId: draft.body.id, amountPaise: 2000 }] }).expect(201);

@@ -40,7 +40,7 @@ describe.skipIf(!enabled)('vendor advances', () => {
     const advanceResponse = await request(app).post(path).set(owner).send(payload).expect(201); const advanceId = advanceResponse.body.id as string;
     await request(app).post(path).set(owner).send(payload).expect(200, { ...advanceResponse.body, replayed: true });
     await request(app).post(path).set(owner).send({ ...payload, amountPaise: 13000 }).expect(409);
-    const billDraft = await request(app).post(`/orgs/${org}/bills`).set(owner).send({ vendorId: String(vendor), vendorReference: `ADV-${org}`, expenseAccountId: String(expense), description: 'Materials', amountPaise: 10000 }).expect(201);
+    const billDraft = await request(app).post(`/orgs/${org}/bills`).set(owner).send({ idempotencyKey: `bill-advance-draft-${org}`, vendorId: String(vendor), vendorReference: `ADV-${org}`, expenseAccountId: String(expense), description: 'Materials', amountPaise: 10000 }).expect(201);
     const billPosted = await request(app).post(`/orgs/${org}/bills/${billDraft.body.id}/post`).set(owner).send({ idempotencyKey: `vendor-advance-bill-${org}` }).expect(201);
     const allocation = { idempotencyKey: `vendor-advance-allocation-${org}`, billId: billPosted.body.id, amountPaise: 6000 };
     const first = await request(app).post(`${path}/${advanceId}/allocations`).set(owner).send(allocation).expect(201);
@@ -52,7 +52,7 @@ describe.skipIf(!enabled)('vendor advances', () => {
     ]);
     expect(competingFinals.map(response => response.status).sort()).toEqual([201, 409]);
     expect(await BillModel.findById(billPosted.body.id)).toMatchObject({ status: 'paid', amountPaidPaise: 10000 });
-    const otherBillDraft = await request(app).post(`/orgs/${org}/bills`).set(owner).send({ vendorId: String(otherVendor), vendorReference: `OTHER-${org}`, expenseAccountId: String(expense), description: 'Other materials', amountPaise: 1000 }).expect(201);
+    const otherBillDraft = await request(app).post(`/orgs/${org}/bills`).set(owner).send({ idempotencyKey: `bill-advance-other-${org}`, vendorId: String(otherVendor), vendorReference: `OTHER-${org}`, expenseAccountId: String(expense), description: 'Other materials', amountPaise: 1000 }).expect(201);
     const otherBill = await request(app).post(`/orgs/${org}/bills/${otherBillDraft.body.id}/post`).set(owner).send({ idempotencyKey: `vendor-other-bill-${org}` }).expect(201);
     await request(app).post(`${path}/${advanceId}/allocations`).set(owner).send({ idempotencyKey: `vendor-advance-wrong-vendor-${org}`, billId: otherBill.body.id, amountPaise: 1 }).expect(422);
     await request(app).post(`${path}/${advanceId}/allocations`).set(owner).send({ idempotencyKey: `vendor-advance-overdraw-${org}`, billId: billPosted.body.id, amountPaise: 1 }).expect(409);

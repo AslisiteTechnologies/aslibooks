@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
 import { api, type Account, type Bill, type Contact, type Organization, type VendorAdvance, type VendorPayment } from './api';
 import { AttachmentsPanel } from './AttachmentsPanel';
@@ -16,6 +16,7 @@ export function ExpensesScreen({ organization }: { organization: Organization })
   const [error, setError] = useState(''); const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false);
   const [revision, setRevision] = useState(0); const [toPost, setToPost] = useState<Bill | null>(null);
+  const draftRetry = useRef<{ signature: string; key: string } | null>(null);
   const [toPay, setToPay] = useState<Bill | null>(null); const [cashAccountId, setCashAccountId] = useState(''); const [paymentAmount, setPaymentAmount] = useState('');
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [advanceVendorId, setAdvanceVendorId] = useState(''); const [advanceAmount, setAdvanceAmount] = useState(''); const [advanceConfirm, setAdvanceConfirm] = useState(false);
@@ -46,9 +47,13 @@ export function ExpensesScreen({ organization }: { organization: Organization })
     const rupees = match ? Number(match[1]) : NaN; const fraction = match ? Number((match[2] || '').padEnd(2, '0')) : NaN;
     const paise = rupees * 100 + fraction;
     if (!match || !Number.isSafeInteger(paise) || paise <= 0) { setError('Enter a valid positive INR amount with up to two decimal places.'); return; }
+    const input = { vendorId, vendorReference: reference.trim(), expenseAccountId, description: description.trim(), amountPaise: paise, ...(dueDate ? { dueDate } : {}) };
+    const signature = JSON.stringify([organization.id, input]);
+    if (!draftRetry.current || draftRetry.current.signature !== signature) draftRetry.current = { signature, key: `bill-draft:${crypto.randomUUID()}` };
     setSaving(true); setError(''); setNotice('');
     try {
-      await api.createBillDraft(organization.id, { vendorId, vendorReference: reference, expenseAccountId, description, amountPaise: paise, ...(dueDate ? { dueDate } : {}) });
+      await api.createBillDraft(organization.id, { ...input, idempotencyKey: draftRetry.current.key });
+      draftRetry.current = null;
       setNotice('Bill draft saved. It has not affected the ledger.'); setReference(''); setDescription(''); setAmount(''); setDueDate(''); setRevision(n => n + 1);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Bill draft could not be saved.'); }
     finally { setSaving(false); }

@@ -125,7 +125,7 @@ export const api = {
     return response.blob();
   }),
   bills: (org: string) => jsonRequest<{ bills: Bill[] }>(`/api/organizations/${org}/bills`),
-  createBillDraft: (org: string, input: { vendorId: string; vendorReference: string; expenseAccountId: string; description: string; amountPaise: number; dueDate?: string }) =>
+  createBillDraft: (org: string, input: { idempotencyKey: string; vendorId: string; vendorReference: string; expenseAccountId: string; description: string; amountPaise: number; dueDate?: string }) =>
     jsonRequest<{ id: string; status: 'draft' }>(`/api/organizations/${org}/bills`, { method: 'POST', body: JSON.stringify(input) }),
   postBill: (org: string, id: string, idempotencyKey: string) => jsonRequest<{ id: string; journalId: string; replayed: boolean }>(
     `/api/organizations/${org}/bills/${id}/post`, { method: 'POST', body: JSON.stringify({ idempotencyKey }) },

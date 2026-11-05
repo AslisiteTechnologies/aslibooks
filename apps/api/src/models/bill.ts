@@ -6,6 +6,8 @@ const billSchema = new Schema({
   vendorId: { type: Schema.Types.ObjectId, required: true },
   vendorName: { type: String, required: true, maxlength: 160 },
   vendorReference: { type: String, required: true, trim: true, maxlength: 80 },
+  draftIdempotencyKey: { type: String, maxlength: 128, select: false },
+  draftRequestHash: { type: String, match: /^[a-f0-9]{64}$/, select: false },
   expenseAccountId: { type: Schema.Types.ObjectId, required: true },
   expenseAccountName: { type: String, required: true, maxlength: 160 },
   description: { type: String, required: true, trim: true, maxlength: 500 },
@@ -22,6 +24,7 @@ const billSchema = new Schema({
 billSchema.index({ organizationId: 1, createdAt: -1, _id: -1 });
 billSchema.index({ organizationId: 1, vendorId: 1, postedAt: 1, _id: 1 });
 billSchema.index({ organizationId: 1, vendorId: 1, vendorReference: 1 }, { unique: true });
+billSchema.index({ organizationId: 1, draftIdempotencyKey: 1 }, { unique: true, partialFilterExpression: { draftIdempotencyKey: { $type: 'string' } } });
 billSchema.index({ organizationId: 1, postIdempotencyKey: 1 }, { unique: true, partialFilterExpression: { postIdempotencyKey: { $type: 'string' } } });
 billSchema.pre('save', async function () {
   if (this.isNew) return;
@@ -64,4 +67,3 @@ vendorCreditSchema.pre('deleteMany', rejectVendorCreditMutation);
 vendorCreditSchema.pre('findOneAndDelete', rejectVendorCreditMutation);
 vendorCreditSchema.pre('bulkWrite', rejectVendorCreditMutation);
 export const VendorCreditModel = mongoose.models.VendorCredit || mongoose.model('VendorCredit', vendorCreditSchema);
-
