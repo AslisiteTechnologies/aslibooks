@@ -27,6 +27,10 @@ journalDraftSchema.pre('save', async function () {
   const existing = await JournalDraftModel.findById(this._id).session(this.$session() ?? null).select('status').lean<{ status: string } | null>();
   if (!existing || existing.status !== 'draft') throw new Error('Posted journal drafts are immutable');
   if (this.status !== 'draft' && this.status !== 'posted') throw new Error('Invalid journal draft status');
+  if (this.status === 'posted' && (!this.postedJournalId || !this.postedAt))
+    throw new Error('Posted journal drafts require a source journal and posting time');
+  if (this.status === 'draft' && (this.postedJournalId || this.postedAt))
+    throw new Error('Draft journal cannot contain posted journal metadata');
 });
 const rejectDraftMutation = () => { throw new Error('Use the journal draft lifecycle'); };
 journalDraftSchema.pre('updateOne', rejectDraftMutation);
