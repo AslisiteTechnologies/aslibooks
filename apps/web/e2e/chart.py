@@ -257,17 +257,18 @@ def test_chart():
                     route.continue_()
                     return
                 receipt_keys.append(route.request.post_data_json["idempotencyKey"])
+                response = route.fetch()
                 if len(receipt_keys) == 1:
                     route.abort()
                 else:
-                    route.continue_()
+                    route.fulfill(response=response)
             page.route("**/api/organizations/*/receipts", lose_receipt_response)
             page.get_by_role("button", name="Confirm and record").click()
             expect(page.locator('[role="alert"]').filter(has_text="Failed to fetch")).to_be_visible()
             with page.expect_response(lambda response: response.url.endswith("/receipts") and response.request.method == "POST") as receipt_retry:
                 page.get_by_role("button", name="Confirm and record").click()
             assert receipt_retry.value.status == 201, receipt_retry.value.text()
-            assert receipt_retry.value.json()["replayed"] is False
+            assert receipt_retry.value.json()["replayed"] is True
             assert len(receipt_keys) == 2 and receipt_keys[0] == receipt_keys[1]
             page.unroute("**/api/organizations/*/receipts", lose_receipt_response)
             expect(page.get_by_text("₹20.00 received and allocated", exact=False)).to_be_visible()
