@@ -79,7 +79,8 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     await request(app).post(`${path}/${draftId}/post`).set({ 'x-fixture-actor': 'bill-accountant' }).send({ idempotencyKey: 'bill-post-0001' }).expect(200).expect(response => expect(response.body.replayed).toBe(true));
     await request(app).post(`${path}/${draftId}/post`).set(owner).send({ idempotencyKey: 'bill-post-0002' }).expect(409);
     await request(app).patch(`${path}/${draftId}`).set(owner).send(payload).expect(404);
-    await request(app).get(`/orgs/${peerId}/bills`).set({ 'x-fixture-actor': 'bill-peer' }).expect(200).expect(response => expect(response.body.bills).toHaveLength(0));
+    await request(app).get(`/orgs/${peerId}/bills`).set({ 'x-fixture-actor': 'bill-peer' }).expect(200)
+      .expect(response => expect(response.body.bills.map((bill: { id: string }) => bill.id)).toEqual([peerDraft.body.id]));
     expect(await AuditEventModel.countDocuments({ organizationId, action: 'bill.posted' })).toBe(1);
     expect(await JournalModel.countDocuments({ organizationId })).toBe(1);
   });

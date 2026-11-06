@@ -173,8 +173,17 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
     const peerPath = `/orgs/${peerId}/invoices`;
     const peerDraft = await request(app).post(peerPath).set({ 'x-fixture-actor': 'invoice-peer' })
       .send({ idempotencyKey: 'invoice-peer-credit-draft-01', customerId: String(peerCustomerId), lines: [{ productId: String(peerServiceId), quantity: 1 }] }).expect(201);
+    const peerInvoiceBefore = await InvoiceModel.findById(peerDraft.body.id).lean();
+    const localAuditCountBeforePeerInvoice = await AuditEventModel.countDocuments({ organizationId });
+    await request(app).get(`${path}/${peerDraft.body.id}`).set(owner).expect(404);
+    await request(app).patch(`${path}/${peerDraft.body.id}`).set(owner)
+      .send({ customerId: String(customerId), lines: [{ productId: String(serviceId), quantity: 1 }] }).expect(404);
+    await request(app).post(`${path}/${peerDraft.body.id}/issue`).set(owner)
+      .send({ idempotencyKey: 'invoice-peer-cross-issue-01' }).expect(404);
     await request(app).post(`${path}/${peerDraft.body.id}/credit-notes`).set(owner)
       .send({ idempotencyKey: 'invoice-foreign-credit-01', amountPaise: 1, reason: 'Unauthorized reference' }).expect(404);
+    expect(await InvoiceModel.findById(peerDraft.body.id).lean()).toEqual(peerInvoiceBefore);
+    expect(await AuditEventModel.countDocuments({ organizationId })).toBe(localAuditCountBeforePeerInvoice);
     expect(await CreditNoteModel.countDocuments({ organizationId, invoiceId: new Types.ObjectId(peerDraft.body.id) })).toBe(0);
     expect(await JournalModel.countDocuments({ organizationId })).toBe(2);
     const postedInvoice = await InvoiceModel.findById(draftId);

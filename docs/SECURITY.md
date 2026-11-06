@@ -21,7 +21,7 @@ Restore an encrypted backup into a separate isolated database with restricted cr
 
 ## Browser request origin checks
 
-Organization business write routes reject unsafe browser requests whose `Origin` header is absent from the normalized `WEB_ORIGIN` allowlist, including opaque `null` origins. Safe GET/HEAD/OPTIONS requests and origin-less non-browser API clients remain supported; authentication retains its own trusted-origin configuration. This check reduces cross-site request forgery exposure for cookie-authenticated writes but does not replace secure cookie settings, HTTPS, session controls or route authorization. Focused allowlist/block/allow tests pass locally; exact-SHA CI verification is pending.
+Organization business write routes reject unsafe browser requests whose `Origin` header is absent from the normalized `WEB_ORIGIN` allowlist, including opaque `null` origins. Safe GET/HEAD/OPTIONS requests and origin-less non-browser API clients remain supported; authentication retains its own trusted-origin configuration. This check reduces cross-site request forgery exposure for cookie-authenticated writes but does not replace secure cookie settings, HTTPS, session controls or route authorization. Focused allowlist/block/allow tests pass locally; production `WEB_ORIGIN` validation passed all six exact-SHA workflows at `24b592ea190415108e77247f4bbe3dda6103dc78` (CI #541/#542, MongoDB #476/#477, Browser #260/#261). Staging validation remains open.
 
 ## API response headers and AI data
 
