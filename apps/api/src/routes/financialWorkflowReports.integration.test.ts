@@ -153,7 +153,7 @@ describe.skipIf(!enabled)('source transaction report reconciliation', () => {
     await BillModel.collection.deleteMany(filter);
     await VendorCreditModel.collection.deleteMany(filter);
     await VendorPaymentModel.collection.deleteMany(filter);
-    await OpeningBalanceModel.deleteMany(filter);
+    await OpeningBalanceModel.collection.deleteMany(filter);
     await AuditEventModel.deleteMany(filter);
     await FiscalPeriodModel.deleteMany(filter);
     await ContactModel.deleteMany(filter);

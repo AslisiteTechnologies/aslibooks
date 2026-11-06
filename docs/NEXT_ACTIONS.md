@@ -4,6 +4,8 @@
 
 The remote development branch is at `c0b9e6a4ca75fb10411309783b38b562d66e296e`; exact-SHA CI #525/#526, MongoDB #460/#461 and Browser #244/#245 all passed. The active local change rewrites the report reconciliation fixture so opening balances also enter through the authorized opening-balance API. Typecheck, lint, production build, dependency audit and `git diff --check` pass locally. MongoDB at `127.0.0.1:37491` is unavailable, so publish the fixture on the development branch and wait for exact-SHA hosted MongoDB verification. Then continue the mounted-route role/reference audit and responsive accessibility work. Keep acceptance criteria partial while any route permutations and external release gates are open.
 
+Publication `78c0c354e5f19a55410b6020ed8af64ed2ec7a3b` exposed a fixture teardown error: the immutable opening-balance schema rejects model-level `deleteMany`. The report assertions passed, but the MongoDB job failed on teardown. Teardown now uses `OpeningBalanceModel.collection.deleteMany` in this isolated test fixture. Typecheck/lint/build/audit/diff checks pass for this correction; publish and wait for the exact-SHA rerun before proceeding with report completion claims.
+
 Exact local checks already run for this slice:
 
 ```powershell
