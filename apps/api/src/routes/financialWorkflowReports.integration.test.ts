@@ -2,7 +2,6 @@ import express from 'express';
 import mongoose, { Types } from 'mongoose';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { postAuthorizedJournal } from '../accounting/authorizedPosting.js';
 import { AccountModel } from '../models/account.js';
 import { AuditEventModel } from '../models/auditEvent.js';
 import { BillModel, VendorCreditModel } from '../models/bill.js';
@@ -11,6 +10,7 @@ import { FiscalPeriodModel } from '../models/fiscalPeriod.js';
 import { CreditNoteModel, InvoiceModel, InvoiceSequenceModel } from '../models/invoice.js';
 import { JournalModel } from '../models/journal.js';
 import { MembershipModel } from '../models/membership.js';
+import { OpeningBalanceModel } from '../models/openingBalance.js';
 import { OrganizationModel } from '../models/organization.js';
 import { ProductModel } from '../models/product.js';
 import { ReceiptModel } from '../models/receipt.js';
@@ -51,7 +51,7 @@ describe.skipIf(!enabled)('source transaction report reconciliation', () => {
     await Promise.all([
       AccountModel.init(), AuditEventModel.init(), BillModel.init(), ContactModel.init(),
       CreditNoteModel.init(), FiscalPeriodModel.init(), InvoiceModel.init(), InvoiceSequenceModel.init(),
-      JournalModel.init(), MembershipModel.init(), OrganizationModel.init(), ProductModel.init(),
+      JournalModel.init(), MembershipModel.init(), OpeningBalanceModel.init(), OrganizationModel.init(), ProductModel.init(),
       ReceiptModel.init(), VendorCreditModel.init(), VendorPaymentModel.init(),
     ]);
     await OrganizationModel.create({ _id: organizationId, name: 'Source report reconciliation', slug: `source-report-${suffix}` });
@@ -72,13 +72,14 @@ describe.skipIf(!enabled)('source transaction report reconciliation', () => {
   });
 
   it('reconciles ledger and reports from posted invoice, receipt, bill, payment and credits', async () => {
-    await postAuthorizedJournal('source-report-owner', {
-      organizationId: String(organizationId), idempotencyKey: `source-opening-${suffix}`, description: 'Opening capital',
-      lines: [
-        { accountId: String(cashId), debitPaise: 50_000, creditPaise: 0 },
-        { accountId: String(equityId), debitPaise: 0, creditPaise: 50_000 },
+    const opening = await request(app).post(`${organizationPath}/opening-balances`).set(owner).send({
+      idempotencyKey: `source-opening-${suffix}`, asOf: fiscalYearStart,
+      balances: [
+        { accountId: String(cashId), amountPaise: 50_000 },
+        { accountId: String(equityId), amountPaise: 50_000 },
       ],
-    });
+    }).expect(201);
+    expect(opening.body.replayed).toBe(false);
 
     const invoiceDraft = await request(app).post(`${organizationPath}/invoices`).set(owner).send({
       idempotencyKey: `source-invoice-draft-${suffix}`, customerId: String(customerId),
@@ -152,6 +153,7 @@ describe.skipIf(!enabled)('source transaction report reconciliation', () => {
     await BillModel.collection.deleteMany(filter);
     await VendorCreditModel.collection.deleteMany(filter);
     await VendorPaymentModel.collection.deleteMany(filter);
+    await OpeningBalanceModel.deleteMany(filter);
     await AuditEventModel.deleteMany(filter);
     await FiscalPeriodModel.deleteMany(filter);
     await ContactModel.deleteMany(filter);

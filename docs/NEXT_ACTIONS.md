@@ -1,5 +1,19 @@
 # Next actions
 
+## Active checkpoint — route-driven report reconciliation
+
+The remote development branch is at `c0b9e6a4ca75fb10411309783b38b562d66e296e`; exact-SHA CI #525/#526, MongoDB #460/#461 and Browser #244/#245 all passed. The active local change rewrites the report reconciliation fixture so opening balances also enter through the authorized opening-balance API. Typecheck, lint, production build, dependency audit and `git diff --check` pass locally. MongoDB at `127.0.0.1:37491` is unavailable, so publish the fixture on the development branch and wait for exact-SHA hosted MongoDB verification. Then continue the mounted-route role/reference audit and responsive accessibility work. Keep acceptance criteria partial while any route permutations and external release gates are open.
+
+Exact local checks already run for this slice:
+
+```powershell
+pnpm typecheck
+pnpm lint
+pnpm build
+pnpm audit --audit-level=high
+git diff --check
+```
+
 ## Current checkpoint
 
 Recovery head `37e20d201df008db80774da73c3fd69056dc2666` contains all nine verified nonempty pagination files and CI #335 passed. Historical malformed head `64135f913bf234679408077212ba6f2c8b317e57` is retained as an incident record; CI/Mongo failed and E2E #53/#54 are invalid because the test file was empty. Commit `451031e3d496008cc00964dd1850794419b8342d` fixed the Coastal archive test fixture and passed CI #341/#342, MongoDB #278/#279 and E2E #61/#62.
