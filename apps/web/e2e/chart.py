@@ -752,7 +752,7 @@ def test_chart():
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Reports", exact=True).click()
             expect(page.get_by_role("heading", name="Trial balance")).to_be_visible()
-            expect(page.get_by_text("Net profit ₹33.66", exact=False)).to_be_visible()
+            expect(page.get_by_text("Net profit ₹53.66", exact=False)).to_be_visible()
             expect(page.get_by_text("Balance sheet balances", exact=True)).to_be_visible()
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Expenses", exact=True).click()
@@ -782,7 +782,7 @@ def test_chart():
             page.get_by_role("button", name="Reports", exact=True).click()
             expect(page.get_by_text("Your session expired. Sign in again to continue.", exact=True)).to_be_visible()
             expect(page.get_by_text("Sign in to your workspace", exact=True)).to_be_visible()
-            print("Verified signup, tenant switching/isolation, starter chart/opening balances, customer/vendor/service setup, immediate cash expense, edit/archive and catalog pagination, invoice/vendor credits and print views, receipts, partial/final bill payments, account lifecycle, manual journals, bank CSV import/matching/reconciliation, date-filtered ledger dashboard, fiscal close review, session-expiry handling, responsive navigation, CSV export and reconciled reports (INR 34.66 net profit before the separate UI regression expense)")
+            print("Verified signup, tenant switching/isolation, starter chart/opening balances, customer/vendor/service setup, immediate cash expense, edit/archive and catalog pagination, invoice/vendor credits and print views, receipts, partial/final bill payments, account lifecycle, manual journals, bank CSV import/matching/reconciliation, date-filtered ledger dashboard, fiscal close review, session-expiry handling, responsive navigation, CSV export and reconciled reports (INR 54.66 net profit before the separate UI regression expense)")
         finally:
             browser.close()
 

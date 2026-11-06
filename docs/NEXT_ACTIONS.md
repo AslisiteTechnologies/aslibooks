@@ -434,10 +434,10 @@ Current local slice tests account/contact update and archive paths using real pe
 
 The source-receipt workflow commit `4f5683773ce4782943220413fba6ed3fca2ab1e7` is pushed to the development branch and all six exact-SHA CI/MongoDB/Browser push/PR workflows passed (recorded in `TEST_EVIDENCE.md`). The post-commit local follow-up adds direct proof that a viewer cannot upload a private receipt to an immediate expense; focused replica-set test and typecheck pass. Audit and acceptance docs now record the verified feature matrix and distinguish no staging rehearsal from hosted verification.
 
-1. Review and commit the viewer-upload denial assertion and accurate evidence/status updates. Never stage `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`.
-2. Push only to `origin/develop/phase-1-foundation`, then require all six exact-SHA workflows; investigate any failure.
-3. Migration runner is published as `5f15b61`; CI/MongoDB push/PR and Browser push pass while Browser PR runs. The report golden-flow extension now passes the focused replica-set test and full API suite (37 files / 147 tests); workspace typecheck/lint/build, web tests and audit pass. Browser rechecks profit after the expense. Commit/push this accounting reconciliation slice and verify all six exact-SHA Actions. No migration is currently registered; do not run against staging or production.
-4. After publishing the accounting reconciliation follow-up, build a reproducible isolated backup/restore and monitoring evidence procedure using synthetic disposable data; staging access, restore objectives, malware/retention policy, qualified tax/accounting review and release approvals remain owner/environment gates.
+1. SHA `155c6a8` CI/MongoDB push/PR passed, but Browser push #42223125440 and PR #42223132144 failed because the new expense report assertion expected an outdated scenario baseline. The exact UI showed ₹54.66 before and ₹53.66 after the ₹1 expense. The assertion and log summary are corrected locally; publish and verify all six exact-SHA workflows.
+2. A local follow-up extracts and unit-tests migration target confirmation (combined migration suites 2 files / 5 tests; typecheck and lint pass). Publish it after the corrected Browser result; run the full API suite on the resulting SHA.
+3. Never stage `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`; push only to `origin/develop/phase-1-foundation`. Never merge `main` or deploy production.
+4. Next prepare a reproducible isolated backup/restore and monitoring evidence procedure using synthetic disposable data. Staging access, restore objectives, malware/retention policy, qualified tax/accounting review and release approvals remain owner/environment gates.
 
 1. Finish the current `pnpm build`; rerun `git diff --check` and `pnpm lint` if edits change.
 2. Push a feature commit to `origin/develop/phase-1-foundation` without staging the owner-provided vision document.
@@ -447,6 +447,6 @@ The source-receipt workflow commit `4f5683773ce4782943220413fba6ed3fca2ab1e7` is
 
 ## Immediate next actions
 
-1. Reconcile this status record with the pending documentation commit; source candidate `e8b06668b4ee31bdeea8cebae5e42e0ac45df48f` passed all six exact-SHA workflows: CI #629/#630, MongoDB #564/#565, Browser #348/#349.
-2. Continue the remaining independently executable acceptance gaps; keep staging deployment, backup/restore exercise, monitoring/rollback exercise and independent tax/accounting review explicitly unverified until owner environment/access is provided.
-3. Never merge `main` or deploy production without explicit authorization.
+1. Verify hosted Browser push/PR for `155c6a8`, then commit/publish the tested migration target guard and verify exact-SHA Actions.
+2. Continue the data-protection release work with a reproducible synthetic backup/restore rehearsal and monitoring checks. Record tool/environment prerequisites and keep staging operations unverified until an actual authorized staging exercise occurs.
+3. Preserve the master vision file, other worktrees, and the no-merge/no-production-deploy boundary.
