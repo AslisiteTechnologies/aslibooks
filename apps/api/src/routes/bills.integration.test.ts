@@ -60,7 +60,10 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     await request(app).get(`${path}/${peerDraft.body.id}`).set(owner).expect(404);
     await request(app).patch(`${path}/${peerDraft.body.id}`).set(owner).send(payload).expect(404);
     await request(app).post(`${path}/${peerDraft.body.id}/post`).set(owner).send({ idempotencyKey: 'bill-foreign-post-100' }).expect(404);
+    await request(app).post(`${path}/${peerDraft.body.id}/credit-notes`).set(owner)
+      .send({ idempotencyKey: 'bill-foreign-credit-100', amountPaise: 1, reason: 'Foreign bill reference' }).expect(404);
     expect(await BillModel.findById(peerDraft.body.id).lean()).toEqual(peerBillBefore);
+    expect(await VendorCreditModel.countDocuments({ organizationId })).toBe(0);
     expect(await AuditEventModel.countDocuments({ organizationId })).toBe(localAuditCountBeforeForeignBill);
     const draftBeforeForeignUpdates = await BillModel.findById(draftId).lean();
     const draftUpdateAuditCount = await AuditEventModel.countDocuments({ organizationId, resourceId: draftId, action: 'bill.draft_updated' });

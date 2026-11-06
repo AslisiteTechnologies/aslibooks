@@ -1,8 +1,8 @@
 # Next actions
 
-## Active checkpoint — foreign vendor bill route isolation
+## Active checkpoint — manual journal and vendor credit reference isolation
 
-Foreign-invoice receipt allocation passed MongoDB #496/#497 and CI #561/#562 at `a44697f7`; Browser #280/#281 remains in progress. Current local regression submits a real peer account ID to direct journal posting and asserts no journal/audit writes. Run typecheck/lint/diff-check, commit/push, verify exact-SHA CI/MongoDB/Browser, then continue reference and role review. Local replica set is unavailable; hosted MongoDB is required. Acceptance criteria remain Partial.
+Foreign-invoice receipt allocation passed all six workflows at `a44697f7`. Local changes now cover manual journal direct post and draft create/edit with foreign account IDs, foreign-bill vendor-credit denial, and foreign journal detail denial; typecheck/lint/diff are green. The latest local commit `b39fa20` and follow-up changes are not on the remote because Git Credential Manager requires interactive GitHub sign-in and the noninteractive retry confirms no cached credentials. After authentication is restored, push and verify exact-SHA CI/MongoDB/Browser. The local replica set and Docker are unavailable, so hosted MongoDB remains necessary. Continue independent route/role review while publishing is blocked. Acceptance criteria remain Partial.
 
 ## Active checkpoint — route-driven report reconciliation
 

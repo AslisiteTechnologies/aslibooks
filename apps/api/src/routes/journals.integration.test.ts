@@ -90,6 +90,7 @@ describe.skipIf(!enabled)('authenticated manual journal API', () => {
     ] }).expect(422);
     expect(await JournalModel.countDocuments({ organizationId: org })).toBe(journalsBeforeForeignAccount);
     expect(await AuditEventModel.countDocuments({ organizationId: org })).toBe(auditsBeforeForeignAccount);
+    await request(app).get(`${path}/${foreignJournalId}`).set(owner).expect(404);
     const posted = await request(app).post(path).set(accountant).send(valid).expect(201);
     expect(posted.body.replayed).toBe(false);
     const replay = await request(app).post(path).set(accountant).send(valid).expect(200);
@@ -133,6 +134,8 @@ describe.skipIf(!enabled)('authenticated manual journal API', () => {
     await request(app).post(`${path}/drafts`).set(accountant).send({ ...input, lines: [
       { ...input.lines[0], accountId: String(foreignDebit) }, input.lines[1],
     ] }).expect(422);
+    expect(await JournalDraftModel.countDocuments({ organizationId: org, draftIdempotencyKey: input.idempotencyKey })).toBe(0);
+    expect(await AuditEventModel.countDocuments({ organizationId: org })).toBe(beforeAudits);
     const foreignDraft = await request(app).post(`/orgs/${foreignOrg}/journals/drafts`).set({ 'x-fixture-actor': 'journal-foreign' })
       .send({ idempotencyKey: `foreign-draft:${suffix}`, description: 'Foreign tenant draft', lines: [
         { accountId: String(foreignDebit), debitPaise: 100, creditPaise: 0 },
@@ -159,6 +162,16 @@ describe.skipIf(!enabled)('authenticated manual journal API', () => {
     const edited = { description: 'Reviewed cash adjustment', lines: [
       { ...input.lines[0], debitPaise: 4567 }, { ...input.lines[1], creditPaise: 4567 },
     ] };
+    const draftBeforeForeignAccountEdit = await JournalDraftModel.findById(created.body.draftId).lean();
+    const draftAuditsBeforeForeignAccountEdit = await AuditEventModel.countDocuments({ organizationId: org });
+    await request(app).patch(`${path}/drafts/${created.body.draftId}`).set(accountant).send({
+      description: 'Cross-tenant account edit', lines: [
+        { accountId: String(foreignDebit), debitPaise: 4567, creditPaise: 0 },
+        { accountId: String(credit), debitPaise: 0, creditPaise: 4567 },
+      ],
+    }).expect(422);
+    expect(await JournalDraftModel.findById(created.body.draftId).lean()).toEqual(draftBeforeForeignAccountEdit);
+    expect(await AuditEventModel.countDocuments({ organizationId: org })).toBe(draftAuditsBeforeForeignAccountEdit);
     await request(app).patch(`${path}/drafts/${created.body.draftId}`).set(accountant).send(edited).expect(200);
     const incompletePost = await JournalDraftModel.findById(created.body.draftId);
     incompletePost!.status = 'posted';
