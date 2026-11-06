@@ -16,6 +16,8 @@ export function ReceiptsScreen({ organization }: { organization: Organization })
   const [loadingMoreInvoices, setLoadingMoreInvoices] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [receiptNext, setReceiptNext] = useState<string | null>(null);
+  const [loadingMoreReceipts, setLoadingMoreReceipts] = useState(false);
   const [customers, setCustomers] = useState<Contact[]>([]); const [advances, setAdvances] = useState<CustomerAdvance[]>([]);
   const [receiptAllocations, setReceiptAllocations] = useState<Array<{ invoiceId: string; amount: string }>>([{ invoiceId: '', amount: '' }]);
   const [cashAccountId, setCashAccountId] = useState('');
@@ -59,7 +61,7 @@ export function ReceiptsScreen({ organization }: { organization: Organization })
         const allCustomers = [...contactResult.contacts.filter(contact => contact.roles.includes('customer'))]; let after = contactResult.next;
         while (after) { const page = await api.contacts(organization.id, '', after); allCustomers.push(...page.contacts.filter(contact => contact.roles.includes('customer'))); after = page.next; }
         if (!active) return;
-        setInvoices(invoiceResult.invoices); setInvoiceNext(invoiceResult.next); setAccounts(accountResult.accounts); setReceipts(receiptResult.receipts); setAdvances(advanceResult.advances); setCustomers(allCustomers);
+        setInvoices(invoiceResult.invoices); setInvoiceNext(invoiceResult.next); setAccounts(accountResult.accounts); setReceipts(receiptResult.receipts); setReceiptNext(receiptResult.next); setAdvances(advanceResult.advances); setCustomers(allCustomers);
         const open = invoiceResult.invoices.find(invoice => ['issued', 'partially_paid', 'partially_credited'].includes(invoice.status) && invoice.totalPaise > invoice.amountPaidPaise + (invoice.amountCreditedPaise ?? 0));
         const selectedInvoiceIsOpen = invoiceResult.invoices.some(invoice => invoice.id === receiptAllocations[0]?.invoiceId &&
           ['issued', 'partially_paid', 'partially_credited'].includes(invoice.status) && invoice.totalPaise > invoice.amountPaidPaise + (invoice.amountCreditedPaise ?? 0));
@@ -81,6 +83,13 @@ export function ReceiptsScreen({ organization }: { organization: Organization })
     try { const page = await api.invoices(organization.id, invoiceNext); setInvoices(current => [...current, ...page.invoices.filter(invoice => !current.some(existing => existing.id === invoice.id))]); setInvoiceNext(page.next); }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'More invoices could not be loaded.'); }
     finally { setLoadingMoreInvoices(false); }
+  }
+  async function loadMoreReceipts() {
+    if (!receiptNext || loadingMoreReceipts) return;
+    setLoadingMoreReceipts(true); setError('');
+    try { const page = await api.receipts(organization.id, receiptNext); setReceipts(current => [...current, ...page.receipts.filter(receipt => !current.some(existing => existing.id === receipt.id))]); setReceiptNext(page.next); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'More receipts could not be loaded.'); }
+    finally { setLoadingMoreReceipts(false); }
   }
 
   function selectInvoice(index: number, id: string) {
@@ -223,6 +232,7 @@ export function ReceiptsScreen({ organization }: { organization: Organization })
       {receipt.allocations.map(allocation => <Typography key={allocation.invoiceId}>{allocation.invoiceNumber} · {formatMoney(allocation.amountPaise)}</Typography>)}
       <Typography color="text.secondary">{new Date(receipt.receivedAt).toLocaleString('en-IN')}</Typography>
     </Paper>)}
+    {receiptNext && <Button variant="outlined" disabled={loadingMoreReceipts} onClick={() => void loadMoreReceipts()}>{loadingMoreReceipts ? 'Loading receipts…' : 'Load more receipts'}</Button>}
     <Dialog open={confirm} onClose={() => { if (!saving) setConfirm(false); }}>
       <DialogTitle>Confirm receipt allocation</DialogTitle>
       <DialogContent><DialogContentText>

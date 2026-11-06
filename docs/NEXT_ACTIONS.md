@@ -435,3 +435,10 @@ Current local slice tests account/contact update and archive paths using real pe
 3. Verify exact-SHA CI, MongoDB, and Browser push/PR Actions; diagnose and repair any failure on a new commit.
 4. Continue the product audit priorities: page receipt/payment histories, then evaluate additional customer-facing gaps; only add tests tied to these concrete gaps.
 5. Staging work remains owner/environment dependent: staging secrets and infrastructure, approved backup/restore rehearsal, monitoring integrations and release/rollback exercise.
+
+## Immediate next actions
+
+1. Commit and push the completed receipt/vendor-payment paging follow-up on codex/aslibooks-mvp to origin/develop/phase-1-foundation.
+2. Verify all six CI, MongoDB, and Browser push/PR runs for that exact SHA; fix any failure and repeat.
+3. Continue the audited MVP gap list from docs/PRODUCT_AUDIT_2026-11-06.md, prioritizing customer-visible completion gaps over broad regression expansion.
+4. Staging setup, approved backup/restore rehearsal, monitoring integration, and release/rollback exercise require owner-provided environment/configuration; no production deploy or main merge.

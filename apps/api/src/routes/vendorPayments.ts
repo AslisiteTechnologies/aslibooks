@@ -16,6 +16,7 @@ const input = z.strictObject({
   allocations: z.array(z.strictObject({ billId: z.string().regex(/^[a-f\d]{24}$/i), amountPaise: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER) }))
     .min(1).max(50).refine(rows => new Set(rows.map(row => row.billId.toLowerCase())).size === rows.length),
 });
+const pageQuery = z.strictObject({ after: z.string().regex(/^[a-f\d]{24}$/i).optional(), limit: z.string().regex(/^\d{1,3}$/).optional() });
 class PaymentError extends Error { constructor(readonly status: number, message: string) { super(message); } }
 function samePayload(existing: { cashAccountId: Types.ObjectId; allocations: Array<{ billId: Types.ObjectId; amountPaise: number }> }, command: z.infer<typeof input>) {
   return String(existing.cashAccountId) === command.cashAccountId.toLowerCase() && existing.allocations.length === command.allocations.length &&
@@ -24,11 +25,14 @@ function samePayload(existing: { cashAccountId: Types.ObjectId; allocations: Arr
 export function vendorPaymentRouter() {
   const router = Router({ mergeParams: true });
   router.use((req, res, next) => { const id = req.params.organizationId; if (typeof id !== 'string' || !Types.ObjectId.isValid(id)) { res.status(400).json({ error: 'Invalid organization ID' }); return; } res.locals.organizationId = new Types.ObjectId(id); next(); });
-  router.get('/', async (_req, res) => {
+  router.get('/', async (req, res) => {
     const { organizationId, authUserId } = res.locals;
     if (!await hasPermission(authUserId, String(organizationId), 'ledger:read')) { res.status(403).json({ error: 'Payment access denied' }); return; }
-    const payments = await VendorPaymentModel.find({ organizationId }).sort({ paidAt: -1, _id: -1 }).limit(50).lean();
-    res.json({ payments: payments.map(payment => ({ ...payment, id: String(payment._id), _id: undefined })) });
+    const parsed = pageQuery.safeParse(req.query);
+    if (!parsed.success) { res.status(400).json({ error: 'Invalid payment cursor' }); return; }
+    const limit = Math.min(Number(parsed.data.limit) || 50, 100);
+    const rows = await VendorPaymentModel.find({ organizationId, ...(parsed.data.after ? { _id: { $lt: new Types.ObjectId(parsed.data.after) } } : {}) }).sort({ _id: -1 }).limit(limit + 1).lean();
+    res.json({ payments: rows.slice(0, limit).map(payment => ({ ...payment, id: String(payment._id), _id: undefined })), next: rows.length > limit ? String(rows[limit - 1]._id) : null });
   });
   router.post('/', async (req, res) => {
     const { organizationId, authUserId } = res.locals;

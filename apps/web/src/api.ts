@@ -112,7 +112,7 @@ export const api = {
     ),
   issueCreditNote: (org: string, id: string, input: { idempotencyKey: string; amountPaise: number; reason: string }) =>
     jsonRequest<{ id: string; journalId: string; replayed: boolean }>(`/api/organizations/${org}/invoices/${id}/credit-notes`, { method: 'POST', body: JSON.stringify(input) }),
-  receipts: (org: string) => jsonRequest<{ receipts: Receipt[] }>(`/api/organizations/${org}/receipts`),
+  receipts: (org: string, after = '') => jsonRequest<{ receipts: Receipt[]; next: string | null }>(`/api/organizations/${org}/receipts${after ? `?after=${encodeURIComponent(after)}` : ''}`),
   recordReceipt: (org: string, input: { idempotencyKey: string; cashAccountId: string; allocations: Array<{ invoiceId: string; amountPaise: number }> }) =>
     jsonRequest<{ id: string; journalId: string; amountPaise: number; replayed: boolean }>(
       `/api/organizations/${org}/receipts`, { method: 'POST', body: JSON.stringify(input) },
@@ -148,7 +148,7 @@ export const api = {
   ),
   issueVendorCredit: (org: string, id: string, input: { idempotencyKey: string; amountPaise: number; reason: string }) =>
     jsonRequest<{ id: string; journalId: string; replayed: boolean }>(`/api/organizations/${org}/bills/${id}/credit-notes`, { method: 'POST', body: JSON.stringify(input) }),
-  vendorPayments: (org: string) => jsonRequest<{ payments: VendorPayment[] }>(`/api/organizations/${org}/vendor-payments`),
+  vendorPayments: (org: string, after = '') => jsonRequest<{ payments: VendorPayment[]; next: string | null }>(`/api/organizations/${org}/vendor-payments${after ? `?after=${encodeURIComponent(after)}` : ''}`),
   recordVendorPayment: (org: string, input: { idempotencyKey: string; cashAccountId: string; allocations: Array<{ billId: string; amountPaise: number }> }) =>
     jsonRequest<{ id: string; journalId: string; amountPaise: number; replayed: boolean }>(`/api/organizations/${org}/vendor-payments`, { method: 'POST', body: JSON.stringify(input) }),
   vendorAdvances: (org: string) => jsonRequest<{ advances: VendorAdvance[] }>(`/api/organizations/${org}/vendor-advances`),

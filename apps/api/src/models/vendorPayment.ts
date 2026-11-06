@@ -19,6 +19,7 @@ const paymentSchema = new Schema({
 paymentSchema.index({ organizationId: 1, idempotencyKey: 1 }, { unique: true });
 paymentSchema.index({ organizationId: 1, paidAt: -1, _id: -1 });
 paymentSchema.index({ organizationId: 1, vendorId: 1, paidAt: -1, _id: -1 });
+paymentSchema.index({ organizationId: 1, _id: -1 });
 const rejectMutation = () => { throw new Error('Vendor payments are immutable'); };
 paymentSchema.pre('updateOne', rejectMutation); paymentSchema.pre('updateMany', rejectMutation); paymentSchema.pre('findOneAndUpdate', rejectMutation);
 paymentSchema.pre('replaceOne', rejectMutation); paymentSchema.pre('findOneAndReplace', rejectMutation);

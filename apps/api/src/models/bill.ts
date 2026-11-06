@@ -22,6 +22,7 @@ const billSchema = new Schema({
 }, { timestamps: true, strict: 'throw', versionKey: false });
 
 billSchema.index({ organizationId: 1, createdAt: -1, _id: -1 });
+billSchema.index({ organizationId: 1, _id: -1 });
 billSchema.index({ organizationId: 1, vendorId: 1, postedAt: 1, _id: 1 });
 billSchema.index({ organizationId: 1, vendorId: 1, vendorReference: 1 }, { unique: true });
 billSchema.index({ organizationId: 1, draftIdempotencyKey: 1 }, { unique: true, partialFilterExpression: { draftIdempotencyKey: { $type: 'string' } } });

@@ -32,5 +32,6 @@ receiptSchema.pre('findOneAndDelete', rejectReceiptMutation);
 receiptSchema.pre('bulkWrite', rejectReceiptMutation);
 receiptSchema.index({ organizationId: 1, idempotencyKey: 1 }, { unique: true });
 receiptSchema.index({ organizationId: 1, customerId: 1, receivedAt: -1 });
+receiptSchema.index({ organizationId: 1, _id: -1 });
 
 export const ReceiptModel = mongoose.models.Receipt || mongoose.model('Receipt', receiptSchema);

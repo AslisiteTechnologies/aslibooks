@@ -214,3 +214,7 @@ Cross-tenant export/attachment E2E follow-up (pending hosted verification): afte
 - Bills now expose a validated, tenant-scoped `_id` cursor, with load-more controls for older bills and bill payment/advance workflows.
 - Focused verification at this work slice: workspace typecheck and lint pass; web tests pass 8/8; production workspace build is running. API cursor regression covers pagination, malformed cursor rejection, and tenant filtering; database-backed hosted verification follows publication.
 - Functionally complete: cursor API and screen controls for invoice/bill lists. Tested and verified: local typecheck, lint, eight web tests; API cursor persistence assertions are pending MongoDB Actions. Staging-ready and production-approved: no.
+
+## Follow-up — complete customer ledger paging
+
+At local commit pending after 5679dbe, cursor paging now covers invoice, bill, receipt, and vendor-payment history. Receipt allocation dropdowns can load older invoices; bill and settlement histories can load prior records. Tenant-plus-_id indexes support the cursor queries and are applied by the existing non-destructive index-preparation command. Local API integration tests pass 8/8 for bill and receipt/payment workflows; web tests pass 8/8; typecheck, lint, production build, and diff checks pass. 5679dbe has all six exact-SHA hosted workflows green. Staging-ready/production-approved: no.

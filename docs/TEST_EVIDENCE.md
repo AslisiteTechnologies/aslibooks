@@ -454,3 +454,8 @@ Paginated GST SHA `15aef1f498405d645843b4a7bd4fc40484aa49c6` passed exact-SHA CI
 - Sales and receipt screens now request subsequent invoice pages from the existing cursor endpoint. Expenses requests bill pages from a new validated cursor endpoint.
 - API integration regression covers one-row cursor traversal, duplicate avoidance, malformed cursor rejection, and peer tenant scoping. It requires the hosted replica-set MongoDB workflow; no local database pass is claimed.
 - `pnpm typecheck`, `pnpm lint`, `pnpm --filter @aslibooks/web test` (3 files / 8 tests) passed. Workspace production build is being verified before commit.
+
+## Customer ledger pagination
+- The new bill cursor traverses records without duplicates, rejects invalid cursors, and remains organization-scoped. Hosted MongoDB integration passed the bill cursor regression at 5679dbe (the initial implementation).
+- Receipt and vendor-payment endpoints now use validated _id cursors; route regression covers bounded first pages and invalid cursors. Local replica-set integration: bills plus receipts/payment suites, 8/8 tests pass.
+- Sales, receipts, and expenses expose load-more controls; invoice allocation selector can reach older open invoices. Web tests 8/8; workspace typecheck, lint and production build pass.

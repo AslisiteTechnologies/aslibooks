@@ -157,6 +157,9 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     expect(sameKeyPayments.map(response => response.status).sort()).toEqual([200, 201]);
     expect(sameKeyPayments[0].body.id).toBe(sameKeyPayments[1].body.id);
     const partial = sameKeyPayments.find(response => response.status === 201)!;
+    await request(app).get(`${paymentPath}/vendor-payments?limit=1`).set(paymentAccountant).expect(200)
+      .expect(response => { expect(response.body.payments).toHaveLength(1); expect(response.body.next).toBeNull(); });
+    await request(app).get(`${paymentPath}/vendor-payments?after=invalid`).set(paymentAccountant).expect(400);
     expect(await BillModel.findById(draft.body.id)).toMatchObject({ status: 'partially_paid', amountPaidPaise: 2000 });
     await request(app).post(`${paymentPath}/vendor-payments`).set(paymentAccountant).send(first).expect(200).expect(response => expect(response.body.replayed).toBe(true));
     await request(app).post(`${paymentPath}/vendor-payments`).set(paymentAccountant).send({ ...first, allocations: [{ billId: draft.body.id, amountPaise: 2001 }] }).expect(409);

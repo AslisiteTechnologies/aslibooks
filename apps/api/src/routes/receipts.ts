@@ -17,6 +17,7 @@ const input = z.strictObject({
     invoiceId: z.string().regex(/^[a-f\d]{24}$/i), amountPaise: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
   })).min(1).max(50).refine(rows => new Set(rows.map(row => row.invoiceId.toLowerCase())).size === rows.length),
 });
+const pageQuery = z.strictObject({ after: z.string().regex(/^[a-f\d]{24}$/i).optional(), limit: z.string().regex(/^\d{1,3}$/).optional() });
 
 class ReceiptError extends Error {
   constructor(readonly status: number, message: string) { super(message); }
@@ -43,8 +44,11 @@ export function receiptRouter() {
   router.get('/', async (req, res) => {
     const { organizationId, authUserId } = res.locals;
     if (!await hasPermission(authUserId, String(organizationId), 'ledger:read')) { res.status(403).json({ error: 'Receipt access denied' }); return; }
-    const receipts = await ReceiptModel.find({ organizationId }).sort({ receivedAt: -1, _id: -1 }).limit(50).lean();
-    res.json({ receipts: receipts.map(receipt => ({ ...receipt, id: String(receipt._id), _id: undefined })) });
+    const parsed = pageQuery.safeParse(req.query);
+    if (!parsed.success) { res.status(400).json({ error: 'Invalid receipt cursor' }); return; }
+    const limit = Math.min(Number(parsed.data.limit) || 50, 100);
+    const rows = await ReceiptModel.find({ organizationId, ...(parsed.data.after ? { _id: { $lt: new Types.ObjectId(parsed.data.after) } } : {}) }).sort({ _id: -1 }).limit(limit + 1).lean();
+    res.json({ receipts: rows.slice(0, limit).map(receipt => ({ ...receipt, id: String(receipt._id), _id: undefined })), next: rows.length > limit ? String(rows[limit - 1]._id) : null });
   });
   router.post('/', async (req, res) => {
     const { organizationId, authUserId } = res.locals;

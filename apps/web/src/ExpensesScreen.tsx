@@ -11,6 +11,8 @@ export function ExpensesScreen({ organization }: { organization: Organization })
   const [billNext, setBillNext] = useState<string | null>(null);
   const [loadingMoreBills, setLoadingMoreBills] = useState(false);
   const [payments, setPayments] = useState<VendorPayment[]>([]);
+  const [paymentNext, setPaymentNext] = useState<string | null>(null);
+  const [loadingMorePayments, setLoadingMorePayments] = useState(false);
   const [advances, setAdvances] = useState<VendorAdvance[]>([]);
   const [vendorId, setVendorId] = useState(''); const [expenseAccountId, setExpenseAccountId] = useState('');
   const [reference, setReference] = useState(''); const [description, setDescription] = useState('');
@@ -50,7 +52,7 @@ export function ExpensesScreen({ organization }: { organization: Organization })
   useEffect(() => {
     let active = true; setLoading(true); setError('');
     Promise.all([api.contacts(organization.id), api.accounts(organization.id), api.bills(organization.id), api.vendorPayments(organization.id), api.vendorAdvances(organization.id)])
-      .then(([c, a, b, p, advanceResult]) => { if (active) { setVendors(c.contacts); setAccounts(a.accounts); setBills(b.bills); setBillNext(b.next); setPayments(p.payments); setAdvances(advanceResult.advances);
+      .then(([c, a, b, p, advanceResult]) => { if (active) { setVendors(c.contacts); setAccounts(a.accounts); setBills(b.bills); setBillNext(b.next); setPayments(p.payments); setPaymentNext(p.next); setAdvances(advanceResult.advances);
         const activeVendor = c.contacts.find(contact => contact.roles.includes('vendor') && contact.active);
         if (!advanceVendorId && activeVendor) setAdvanceVendorId(activeVendor._id);
         setAdvanceId(id => advanceResult.advances.some(row => row.id === id && row.availablePaise > 0) ? id : advanceResult.advances.find(row => row.availablePaise > 0)?.id ?? '');
@@ -65,6 +67,13 @@ export function ExpensesScreen({ organization }: { organization: Organization })
     try { const page = await api.bills(organization.id, billNext); setBills(current => [...current, ...page.bills.filter(bill => !current.some(existing => existing.id === bill.id))]); setBillNext(page.next); }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'More bills could not be loaded.'); }
     finally { setLoadingMoreBills(false); }
+  }
+  async function loadMorePayments() {
+    if (!paymentNext || loadingMorePayments) return;
+    setLoadingMorePayments(true); setError('');
+    try { const page = await api.vendorPayments(organization.id, paymentNext); setPayments(current => [...current, ...page.payments.filter(payment => !current.some(existing => existing.id === payment.id))]); setPaymentNext(page.next); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'More vendor payments could not be loaded.'); }
+    finally { setLoadingMorePayments(false); }
   }
   async function createDraft(event: FormEvent) {
     event.preventDefault(); const match = /^(\d{1,12})(?:\.(\d{1,2}))?$/.exec(amount.trim());
@@ -216,7 +225,9 @@ export function ExpensesScreen({ organization }: { organization: Organization })
       </>}
     </Stack><AttachmentsPanel organizationId={organization.id} resourceType="bill" resourceId={bill.id} canWrite={canWrite} /></Paper>)}
     {billNext && <Button variant="outlined" disabled={loadingMoreBills} onClick={() => void loadMoreBills()}>{loadingMoreBills ? 'Loading bills…' : 'Load more bills'}</Button>}
+    <Typography variant="h6">Vendor payment history</Typography>
     {payments.map(payment => <Paper key={payment.id} variant="outlined" sx={{ p: 2 }}><Typography>{payment.vendorName} · {formatMoney(payment.amountPaise)} paid · {payment.allocations.map(a => a.vendorReference).join(', ')}</Typography></Paper>)}
+    {paymentNext && <Button variant="outlined" disabled={loadingMorePayments} onClick={() => void loadMorePayments()}>{loadingMorePayments ? 'Loading payments…' : 'Load more vendor payments'}</Button>}
     <Dialog open={!!toPost} onClose={() => { if (!saving) setToPost(null); }}><DialogTitle>Post this vendor bill?</DialogTitle><DialogContent><DialogContentText>{toPost && `${toPost.vendorName} · ${toPost.vendorReference} · ${formatMoney(toPost.amountPaise)}. This debits ${toPost.expenseAccountName} and credits accounts payable. Posted bill details cannot be edited; correct mistakes with a reversal.`}</DialogContentText></DialogContent><DialogActions><Button disabled={saving} onClick={() => setToPost(null)}>Keep as draft</Button><Button disabled={saving} variant="contained" onClick={() => { if (toPost) void post(toPost); }}>Confirm and post</Button></DialogActions></Dialog>
     <Dialog open={payDialogOpen} onClose={(_event, reason) => { if (!saving && reason === 'escapeKeyDown') { setPayDialogOpen(false); setToPay(null); setPaymentAllocations([]); } }}><DialogTitle>Record vendor payment</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
       <Typography>{toPay && `${toPay.vendorName} · allocate one payment across this vendor’s posted bills.`}</Typography>
