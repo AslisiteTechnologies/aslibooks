@@ -1,10 +1,10 @@
 # Next actions
 
-## Active checkpoint — sync and CI hardening (2026-11-06)
+## Active checkpoint — persisted organization selection (2026-11-06)
 
-This checkout is on `codex/aslibooks-mvp`, based directly on verified remote `develop/phase-1-foundation` SHA `817892ef5435d4a796ddb438f05cebfcee859a22`. The stale local development branch and its 25 equivalent commits remain preserved; the original uncommitted workspace snapshot remains in `git stash@{0}`. The owner-supplied vision file is kept untracked and must not be staged.
+This checkout is on `codex/aslibooks-mvp`; the stale local development branch and its 25 patch-equivalent commits remain preserved, and the original uncommitted workspace snapshot remains in `git stash@{0}`. The owner-supplied vision file is kept untracked and must not be staged.
 
-All six hosted workflows passed at SHA `817892e`: CI #565/#566, MongoDB integration #500/#501, Browser #284/#285. The current task adds lint and a high-severity dependency audit to CI because neither was enforced there. `pnpm install --frozen-lockfile`, forced uncached typecheck/test/build, lint, audit, and `git diff --check` have completed; local tests were 63 passed and 77 database-dependent skips (covered by hosted MongoDB at `817892e`). Commit this CI gate and the refreshed evidence, push only to `develop/phase-1-foundation` without force, and verify all exact-SHA workflows. Then continue the incomplete route/role and systematic accessibility gaps in the matrix.
+CI hardening commit `ddfb53707e3ea7a8a71c884356e94fa5489dedc5` is pushed to `develop/phase-1-foundation`; exact-SHA CI #567/#568, MongoDB #502/#503 and Browser #286/#287 all passed. CI now requires lint and a high-severity audit. `pnpm install --frozen-lockfile`, forced uncached typecheck/test/build, lint, audit, and `git diff --check` passed at parent `817892e`; the local suite had 63 pass and 77 DB-dependent skips. The current uncommitted UX slice persists active organization selection after revalidating the ID against memberships, with an E2E reload/isolation assertion; focused web tests pass 8/8, and typecheck/lint/build pass. Commit and publish this slice, verify all six exact-SHA workflows, then continue the remaining role/reference and accessibility gaps.
 
 Do not merge PR #1 or deploy production. Do not close the MVP checklist while tax/accounting review, staging grants and validation, backup/restore, monitoring, malware/retention controls, and final owner release acceptance remain unverified.
 

@@ -22,6 +22,19 @@ const GSTReadinessScreen = lazy(() => import('./GSTReadinessScreen').then(module
 
 const nav = ['Overview', 'Sales', 'Receipts', 'Products', 'Expenses', 'Banking', 'Contacts', 'Team', 'Accounting', 'GST', 'Reports', 'Period close', 'Settings'];
 const drawerWidth = 248;
+const activeOrganizationStorageKey = 'aslibooks.activeOrganizationId';
+
+function readActiveOrganizationPreference() {
+  try { return window.localStorage.getItem(activeOrganizationStorageKey) ?? ''; }
+  catch { return ''; }
+}
+
+function rememberActiveOrganization(id: string | undefined) {
+  try {
+    if (id) window.localStorage.setItem(activeOrganizationStorageKey, id);
+    else window.localStorage.removeItem(activeOrganizationStorageKey);
+  } catch { /* Organization selection still works for this session when browser storage is unavailable. */ }
+}
 
 export function App() {
   const [section, setSection] = useState('Overview');
@@ -35,12 +48,19 @@ export function App() {
   async function refreshSession() {
     try {
       const session = await api.session();
-      if (!session?.user) { setOrganizations([]); setAuthState('signed-out'); return; }
+      if (!session?.user) {
+        setOrganizations([]); setSelectedId(''); rememberActiveOrganization(undefined); setAuthState('signed-out'); return;
+      }
       const items = await api.organizations();
       setOrganizations(items);
+      const preferredId = readActiveOrganizationPreference();
+      const activeOrganization = items.find(org => org.id === preferredId) ?? items[0];
+      setSelectedId(activeOrganization?.id ?? '');
+      rememberActiveOrganization(activeOrganization?.id);
       setAuthState(items.length ? 'ready' : 'onboarding');
       setAuthError('');
     } catch (error) {
+      setSelectedId(''); rememberActiveOrganization(undefined);
       setAuthError(error instanceof Error ? error.message : 'Cannot reach API');
       setAuthState('signed-out');
     }
@@ -52,6 +72,7 @@ export function App() {
     function handleSessionExpired() {
       setOrganizations([]);
       setSelectedId('');
+      rememberActiveOrganization(undefined);
       setAuthError('Your session expired. Sign in again to continue.');
       setAuthState('signed-out');
     }
@@ -88,7 +109,12 @@ export function App() {
             aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}><MenuIcon /></Button>
           <Box sx={{ flexGrow: 1, minWidth: 0 }}>
             {organizations.length > 1 ? <select aria-label="Active organization" value={organization.id}
-              onChange={e => setSelectedId(e.target.value)}>{organizations.map(org =>
+              onChange={e => {
+                const nextId = e.target.value;
+                if (!organizations.some(org => org.id === nextId)) return;
+                rememberActiveOrganization(nextId);
+                setSelectedId(nextId);
+              }}>{organizations.map(org =>
                 <option key={org.id} value={org.id}>{org.name}</option>)}</select> : <Typography fontWeight={700}>{organization.name}</Typography>}
           </Box>
           <Button size="small" onClick={() => { void api.signOut().then(refreshSession).catch(() => setAuthError("Sign out failed")); }}>Sign out</Button>

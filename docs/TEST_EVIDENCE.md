@@ -12,6 +12,20 @@
 - Python/Playwright is not available locally. Hosted Browser #284/#285 passed at `817892e`.
 - A new CI workflow change adds the lint and high-severity audit commands; exact-SHA verification for that change is pending publication and workflow completion.
 
+## CI hardening — exact SHA `ddfb53707e3ea7a8a71c884356e94fa5489dedc5`
+
+- All six exact-SHA workflows passed: [CI push #567](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42170945057), [CI PR #568](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42170949398), [MongoDB push #502](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42170945066), [MongoDB PR #503](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42170949387), [Browser push #286](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42170945042), and [Browser PR #287](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42170949372).
+- Hosted CI passed with the new ESLint and `pnpm audit --audit-level=high` steps enabled.
+
+## Active local feature — remembered organization preference (not yet published)
+
+- `pnpm exec turbo run typecheck --force`: passed all 3 packages.
+- `pnpm lint`: passed.
+- `pnpm --filter @aslibooks/web test`: passed, 8/8.
+- `pnpm exec turbo run build --force`: passed all 3 packages; Vite produced the web bundle.
+- `git diff --check`: passed before the latest documentation edits; rerun before commit.
+- The local Python command resolves only to the Windows App Execution Alias; local Playwright E2E is unavailable. The modified browser test must be verified by the hosted Browser workflow before describing the reload behavior as verified.
+
 ## Previously verified remote history
 
 - SHA `8d7a994e15bd4a4af3244411096113a1f8c1e41b`: CI #181 and MongoDB #118 succeeded at the time they were observed.
