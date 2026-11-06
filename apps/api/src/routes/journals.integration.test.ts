@@ -126,6 +126,17 @@ describe.skipIf(!enabled)('authenticated manual journal API', () => {
     await request(app).post(`${path}/drafts`).set(accountant).send({ ...input, lines: [
       { ...input.lines[0], accountId: String(foreignDebit) }, input.lines[1],
     ] }).expect(422);
+    const foreignDraft = await request(app).post(`/orgs/${foreignOrg}/journals/drafts`).set({ 'x-fixture-actor': 'journal-foreign' })
+      .send({ idempotencyKey: `foreign-draft:${suffix}`, description: 'Foreign tenant draft', lines: [
+        { accountId: String(foreignDebit), debitPaise: 100, creditPaise: 0 },
+        { accountId: String(foreignCredit), debitPaise: 0, creditPaise: 100 },
+      ] }).expect(201);
+    const foreignDraftAudits = await AuditEventModel.countDocuments({ organizationId: foreignOrg });
+    await request(app).patch(`${path}/drafts/${foreignDraft.body.draftId}`).set(accountant).send({ description: 'Cross-tenant edit', lines: valid.lines }).expect(404);
+    await request(app).post(`${path}/drafts/${foreignDraft.body.draftId}/post`).set(accountant).send({}).expect(404);
+    expect(await JournalDraftModel.findById(foreignDraft.body.draftId).lean()).toMatchObject({ organizationId: foreignOrg, status: 'draft' });
+    expect(await AuditEventModel.countDocuments({ organizationId: foreignOrg })).toBe(foreignDraftAudits);
+    expect(await JournalModel.countDocuments({ organizationId: org })).toBe(beforeJournals);
     const created = await request(app).post(`${path}/drafts`).set(accountant).send(input).expect(201);
     expect(created.body).toMatchObject({ replayed: false });
     const replay = await request(app).post(`${path}/drafts`).set(accountant).send(input).expect(200);
