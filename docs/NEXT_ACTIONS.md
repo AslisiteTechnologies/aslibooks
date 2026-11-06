@@ -2,7 +2,7 @@
 
 ## Active checkpoint — manual journal and vendor credit reference isolation
 
-Foreign-invoice receipt allocation passed all six workflows at `a44697f7`. Local changes now cover manual journal direct post and draft create/edit with foreign account IDs, foreign-bill vendor-credit denial, and foreign journal detail denial; typecheck/lint/diff are green. The latest local commit `b39fa20` and follow-up changes are not on the remote because Git Credential Manager requires interactive GitHub sign-in and the noninteractive retry confirms no cached credentials. After authentication is restored, push and verify exact-SHA CI/MongoDB/Browser. The local replica set and Docker are unavailable, so hosted MongoDB remains necessary. Continue independent route/role review while publishing is blocked. Acceptance criteria remain Partial.
+Foreign-invoice receipt allocation passed all six workflows at `a44697f7`. Local branch head `d4300de` adds manual journal post/draft create/edit foreign-account denial, foreign-bill vendor-credit denial, and foreign journal detail denial; typecheck/lint/diff are green. Commits `b39fa20` and `d4300de` are not on the remote because Git Credential Manager requires interactive GitHub sign-in and the noninteractive retry confirms no cached credentials. After authentication is restored, push and verify exact-SHA CI/MongoDB/Browser. The local replica set and Docker are unavailable, so hosted MongoDB remains necessary. Continue independent route/role review while publishing is blocked. Acceptance criteria remain Partial.
 
 ## Active checkpoint — route-driven report reconciliation
 
