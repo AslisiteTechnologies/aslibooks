@@ -1,6 +1,6 @@
 # Local and staging operations
 
-Use [STAGING_RUNBOOK.md](STAGING_RUNBOOK.md) for the full staging configuration, explicit model-index preparation command, backup/restore rehearsal, monitoring checks, rollback order and honest gate status. The current repository has no versioned data-migration framework and no staging rehearsal has been completed.
+Use [STAGING_RUNBOOK.md](STAGING_RUNBOOK.md) for the full staging configuration, explicit index and versioned migration commands, backup/restore rehearsal, monitoring checks, rollback order and honest gate status. The migration registry is currently empty and no staging rehearsal has been completed.
 
 1. Install Node 22 and pnpm 10.18.0. From the repository root run `pnpm install`, `pnpm typecheck`, `pnpm test` and `pnpm build`. Integration tests skip without a test-only database. Use [integration-testing.md](integration-testing.md) for the separate replica-set suite.
 2. Start a disposable replica set for development. Copy the root `.env.example` to `apps/api/.env`. Set the database URI and name, a unique high-entropy Better Auth secret, API base URL, and exact web origin. Never reuse development credentials in staging. The CI workflow contains a full Docker-based replica-set bootstrap.

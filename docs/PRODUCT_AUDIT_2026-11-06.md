@@ -62,7 +62,7 @@ The same audit found the API already supports multiple bill allocations in a ven
 
 ## Operational tooling and verification
 
-The API now provides `pnpm --filter @aslibooks/api db:ensure-indexes`; it successfully ensured indexes for all 26 declared Mongoose models against a disposable replica-set database. It creates missing declared indexes without dropping indexes or rewriting data. A complete versioned data-migration system does not exist; the staging runbook explicitly records this gap and the safe pre-deploy procedure.
+The API provides `pnpm --filter @aslibooks/api db:ensure-indexes`; it successfully ensured indexes for the declared Mongoose models against a disposable replica-set database. It creates missing declared indexes without dropping indexes or rewriting data. A versioned forward-only migration runner is now implemented locally, with database-target confirmation, version ledger, unknown-version protection, and restart-safe replay tests. The registry remains empty because no current data transformation is needed; no migration was run outside a disposable database.
 
 The complete API replica-set suite passed 35 files / 142 tests with an increased 20-second timeout. Accounting passed 5/5, web passed 8/8, and typecheck, meaningful lint, production build, high-severity audit and `git diff --check` passed locally. An initial concurrent run produced one five-second test timeout while the new multi-line bank import test passed; the focused serial bank suite then passed 2/2, and the complete API suite passed serially. Exact-SHA Actions for the new local changes are pending.
 

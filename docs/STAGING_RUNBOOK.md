@@ -30,7 +30,16 @@ pnpm --filter @aslibooks/api db:ensure-indexes
 
 `db:ensure-indexes` imports the registered Aslibooks Mongoose models and calls `createIndexes()` for each. It only ensures declared indexes; it does not drop indexes or mutate ledger documents. A duplicate-key failure is a stop condition: inspect the index and data safely, write and review a specific repair/migration, back up first, then retry. Do not use `syncIndexes()` as a production migration.
 
-There is currently no versioned application data-migration framework. No data migration is required by the current release. Any future schema change that transforms stored records must add a reviewed, forward-only, restart-safe migration with an explicit version record and test on a restored staging copy before the application rollout. Keep old and new code compatible during rolling deploys; remove obsolete fields or indexes only in a separately reviewed later release.
+The API now includes a versioned forward-only runner in `apps/api/src/migrations/runner.ts`, with migration declarations in `apps/api/src/migrations/registry.ts`. No data migration is required by the current release, so the registry is deliberately empty and the command records no applied versions. Each future migration must have a date-prefixed unique ID, a description, a restart-safe `up` operation, and an isolated replica-set integration rehearsal. The runner applies migrations in ID order, records successful versions in `aslibooks_schema_migrations`, skips recorded versions, rejects unknown historical versions, and permits safe retry after an operation stops before version recording. It never implements automatic down migrations: correct data forward with a reviewed migration or use the application’s linked journal reversal for financial postings.
+
+Run the command with a short-lived maintenance identity and explicitly confirm the exact database name:
+
+```sh
+export ASLIBOOKS_MIGRATION_DATABASE="$MONGODB_DB_NAME"
+pnpm --filter @aslibooks/api db:migrate
+```
+
+Run one migration operator per target database at a time. Keep old and new code compatible during rolling deploys; remove obsolete fields or indexes only in a separately reviewed later release. A registry/code mismatch, migration error, or unreviewed duplicate-key condition is a stop condition; inspect the database and logs before retrying.
 
 Build and local quality gate:
 
