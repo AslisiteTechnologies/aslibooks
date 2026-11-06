@@ -438,6 +438,6 @@ Current local slice tests account/contact update and archive paths using real pe
 
 ## Immediate next actions
 
-1. Commit and push the Browser selector correction for SHA `891989aaeae5c4039dfdd36f0bbefc11b2eec22e` to `develop/phase-1-foundation`; never stage the owner vision file.
-2. Verify exact-SHA CI, MongoDB, and Browser workflows on both push and PR events; fix any failure and repeat.
-3. Continue the highest-impact unblocked MVP workflow from the acceptance matrix. Staging secrets/infrastructure, backup/restore rehearsal, monitoring integration and rollback exercise remain unverified and owner/environment dependent; do not merge `main` or deploy production.
+1. Reconcile this status record with the pending documentation commit; source candidate `e8b06668b4ee31bdeea8cebae5e42e0ac45df48f` passed all six exact-SHA workflows: CI #629/#630, MongoDB #564/#565, Browser #348/#349.
+2. Continue the remaining independently executable acceptance gaps; keep staging deployment, backup/restore exercise, monitoring/rollback exercise and independent tax/accounting review explicitly unverified until owner environment/access is provided.
+3. Never merge `main` or deploy production without explicit authorization.
