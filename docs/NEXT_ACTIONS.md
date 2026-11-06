@@ -2,7 +2,11 @@
 
 ## Active checkpoint — viewer source-report access (2026-11-06)
 
-`financialWorkflowReports.integration.test.ts` now seeds an active viewer and asserts read access to the customer ledger, trial balance, P&L, balance sheet, AR/AP aging, and control reconciliation with exact source-derived totals. Local API typecheck/lint pass; focused test is skipped because local MongoDB is unavailable. The owner-demotion/admin-invitation regression passed at `f79b61b` (#583/#584 CI, #518/#519 MongoDB, #302/#303 Browser). Commit/push the viewer regression and verify exact-SHA workflows, then continue remaining route × role × reference cases.
+The viewer source-report regression passed hosted MongoDB #522/#523 and CI #587/#588 at `ca394f6`; Browser PR #307 passed and Browser push #306 was still running at last check. It verifies customer-ledger, trial-balance, P&L, balance-sheet, AR/AP aging, and control-reconciliation access at source-derived exact totals. Local focused run skips without MongoDB; API typecheck/lint pass. Owner-demotion/admin-invitation race also passed all six workflows at `f79b61b`.
+
+## Active checkpoint — frontend production chunking (2026-11-06)
+
+`apps/web/vite.config.ts` now splits React, MUI, Emotion and icon vendors into separate chunks. Local `pnpm build` passes with no chunk warning: entry 24.54 kB (7.37 kB gzip), React 223.66 kB (69.42 kB gzip), MUI 247.88 kB (71.72 kB gzip), Emotion 26.81 kB (11.18 kB gzip); web tests 8/8, lint and diff check pass. Commit/push and verify all six exact-SHA workflows, then continue remaining route × role × reference cases and manual accessibility review.
 
 ## Active checkpoint — organization-management race guard (2026-11-06)
 

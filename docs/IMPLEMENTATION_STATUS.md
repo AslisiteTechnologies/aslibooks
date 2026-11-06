@@ -194,3 +194,6 @@ Membership authorization concurrency case now verified at exact SHA f79b61b: CI 
 
 
 Viewer reporting-role regression (pending hosted verification): the route-driven golden financial workflow now creates an active viewer and verifies that viewer can read the customer ledger, trial balance, P&L, balance sheet, AR/AP aging, and control-account reconciliation at the same exact totals as the owner. Local API typecheck/lint pass; focused test skipped because the local replica set is absent. Exact-SHA MongoDB/CI verification is required before counting this coverage.
+
+
+Viewer report access verified at ca394f6: hosted MongoDB #522/#523 pass exact source-ledger totals for viewer customer statement, TB, P&L, balance sheet, aging and AR/AP control reports. CI #587/#588 and Browser PR #307 pass; Browser push #306 was still running. The source-reconciled fixture now covers both owner writes and viewer reads. pps/web/vite.config.ts was subsequently changed locally to split React/MUI/Emotion vendor chunks; local build now has no >500 kB warning and outputs a 24.54 kB app entry, 223.66 kB React chunk, 247.88 kB MUI chunk, 26.81 kB Emotion chunk. Web suite 8/8, lint and diff check pass; exact-SHA verification is pending.
