@@ -344,3 +344,5 @@ pnpm build
 pnpm audit --audit-level=high
 git diff --check
 ```
+
+The product object-reference test is the active local slice. Once published, require exact-SHA MongoDB and CI success; then continue checking other route families for persisted foreign object IDs, especially operation routes that combine a local parent record with foreign child references. Keep report, navigation, and workflow results tied to their actual verified SHA.

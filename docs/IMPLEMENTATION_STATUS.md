@@ -145,3 +145,5 @@ Accessibility follow-up: `apps/web/e2e/chart.py` now moves from Overview to Sale
 Navigation semantics follow-up: the primary navigation landmark is named and the current section exposes `aria-current="page"`; E2E assertions cover the landmark, keyboard focus/activation and updated current-page state. Web unit tests (8/8), typecheck, lint, production build and diff checks pass locally. Browser verification is pending publication.
 
 Mobile navigation follow-up adds `aria-expanded`, checks the accessible primary-navigation region at 390px width, and verifies Escape closes the drawer. Local web tests/typecheck/lint/build pass; Browser runs on the candidate SHA are the required verification.
+
+Catalog reference follow-up: a regression test now submits a real peer-tenant product ID to current-tenant update/archive operations and verifies 404, unchanged product state, and no audit side effect. Hosted replica-set verification is pending.

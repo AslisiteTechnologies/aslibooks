@@ -57,6 +57,16 @@ describe.skipIf(!enabled)('product catalog API', () => {
     await request(app).get(otherPath).set(owner).expect(403);
     await request(app).patch(otherPath + '/' + body.id).set('x-fixture-actor', 'catalog-other')
       .send({ name: 'Leak' }).expect(404);
+    const foreignProduct = await ProductModel.create({
+      organizationId: foreign, code: 'PEER-SVC', name: 'Other tenant service', unitPricePaise: 4000,
+    });
+    const auditCount = await AuditEventModel.countDocuments({ organizationId: org });
+    await request(app).patch(path + '/' + foreignProduct.id).set(owner).send({ name: 'Cross-tenant edit' }).expect(404);
+    await request(app).patch(path + '/' + foreignProduct.id).set(owner).send({ active: false }).expect(404);
+    expect(await ProductModel.findById(foreignProduct.id)).toMatchObject({
+      organizationId: foreign, name: 'Other tenant service', active: true,
+    });
+    expect(await AuditEventModel.countDocuments({ organizationId: org })).toBe(auditCount);
     const listing = await request(app).get(path + '?q=Consult&limit=1')
       .set('x-fixture-actor', 'catalog-reader').expect(200);
     expect(listing.body.products[0]).toMatchObject({ _id: body.id, unitPricePaise: 12550 });

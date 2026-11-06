@@ -360,3 +360,7 @@ Paginated GST SHA `15aef1f498405d645843b4a7bd4fc40484aa49c6` passed exact-SHA CI
 - Primary navigation now has an accessible landmark name and exposes the current section through `aria-current="page"`. E2E asserts landmark discovery, Overview-to-Sales Tab focus, Enter activation, and active-page state. Web tests pass 8/8; typecheck, lint, build, and diff checks pass. E2E Browser verification awaits publication.
 - Keyboard primary navigation SHA `4b2ce7129c764873b311530070db1dddb312e44d` passed exact-SHA CI #531/#532, MongoDB #466/#467, and Browser #250/#251. This verifies Tab focus from Overview to Sales and Enter activation. Its follow-up landmark/current-page semantics remain pending hosted Browser verification.
 - Mobile navigation now reports its expanded state, and the E2E path asserts navigation visibility and Escape dismissal before continuing the narrow-viewport workflow. The web tests pass 8/8; typecheck, lint, production build, and diff checks pass locally. Exact-SHA Browser verification remains pending.
+
+## Cross-tenant catalog reference regression
+- `products.integration.test.ts` now creates a real product in a peer tenant, attempts update and archive by that foreign ID under the current tenant path, and asserts 404 responses, unchanged foreign product state, and no new audit event.
+- Local typecheck/lint/diff checks pass. The isolated local MongoDB replica set is unavailable, so verify the route assertion through exact-SHA MongoDB workflows after publication.
