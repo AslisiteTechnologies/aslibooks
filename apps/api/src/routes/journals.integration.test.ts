@@ -144,6 +144,15 @@ describe.skipIf(!enabled)('authenticated manual journal API', () => {
     await request(app).patch(`${path}/drafts/${created.body.draftId}`).set(accountant).send(edited).expect(200);
     await request(app).post(`${path}/drafts/${created.body.draftId}/post`).set({ 'x-fixture-actor': 'journal-viewer' }).send({}).expect(403);
     expect(await JournalModel.countDocuments({ organizationId: org })).toBe(beforeJournals);
+    const period = await FiscalPeriodModel.findOne({ organizationId: org, status: 'open' });
+    expect(period).not.toBeNull();
+    await FiscalPeriodModel.updateOne({ _id: period?._id }, { $set: { status: 'closed' } });
+    await request(app).post(`${path}/drafts/${created.body.draftId}/post`).set(accountant).send({})
+      .expect(409, { error: 'The current fiscal period is closed' });
+    expect(await JournalDraftModel.findById(created.body.draftId)).toMatchObject({ status: 'draft', postedJournalId: undefined });
+    expect(await JournalModel.countDocuments({ organizationId: org })).toBe(beforeJournals);
+    expect(await AuditEventModel.countDocuments({ organizationId: org })).toBe(beforeAudits + 2);
+    await FiscalPeriodModel.updateOne({ _id: period?._id }, { $set: { status: 'open' } });
     const posted = await request(app).post(`${path}/drafts/${created.body.draftId}/post`).set(accountant).send({}).expect(201);
     expect(posted.body.replayed).toBe(false);
     const journal = await JournalModel.findById(posted.body.journalId).lean<{
