@@ -153,6 +153,10 @@ describe.skipIf(!enabled)('authenticated manual journal API', () => {
       { ...input.lines[0], debitPaise: 4567 }, { ...input.lines[1], creditPaise: 4567 },
     ] };
     await request(app).patch(`${path}/drafts/${created.body.draftId}`).set(accountant).send(edited).expect(200);
+    const incompletePost = await JournalDraftModel.findById(created.body.draftId);
+    incompletePost!.status = 'posted';
+    await expect(incompletePost!.save()).rejects.toThrow('Posted journal drafts require a source journal and posting time');
+    expect(await JournalDraftModel.findById(created.body.draftId)).toMatchObject({ status: 'draft', postedJournalId: undefined });
     await request(app).post(`${path}/drafts/${created.body.draftId}/post`).set({ 'x-fixture-actor': 'journal-viewer' }).send({}).expect(403);
     expect(await JournalModel.countDocuments({ organizationId: org })).toBe(beforeJournals);
     const period = await FiscalPeriodModel.findOne({ organizationId: org, status: 'open' });
@@ -164,15 +168,21 @@ describe.skipIf(!enabled)('authenticated manual journal API', () => {
     expect(await JournalModel.countDocuments({ organizationId: org })).toBe(beforeJournals);
     expect(await AuditEventModel.countDocuments({ organizationId: org })).toBe(beforeAudits + 2);
     await FiscalPeriodModel.updateOne({ _id: period?._id }, { $set: { status: 'open' } });
-    const posted = await request(app).post(`${path}/drafts/${created.body.draftId}/post`).set(accountant).send({}).expect(201);
-    expect(posted.body.replayed).toBe(false);
-    const journal = await JournalModel.findById(posted.body.journalId).lean<{
+    const postAttempts = await Promise.all([
+      request(app).post(`${path}/drafts/${created.body.draftId}/post`).set(accountant).send({}),
+      request(app).post(`${path}/drafts/${created.body.draftId}/post`).set(accountant).send({}),
+    ]);
+    expect(postAttempts.map(response => response.status).sort()).toEqual([200, 201]);
+    const posted = postAttempts.find(response => response.status === 201);
+    const postedReplay = postAttempts.find(response => response.status === 200);
+    expect(posted).toBeDefined(); expect(postedReplay).toBeDefined();
+    expect(posted!.body.replayed).toBe(false);
+    expect(postedReplay!.body).toMatchObject({ journalId: posted!.body.journalId, replayed: true });
+    const journal = await JournalModel.findById(posted!.body.journalId).lean<{
       _id: Types.ObjectId; description: string; sourceDraftId?: Types.ObjectId;
     } | null>();
     expect(journal).toMatchObject({ description: edited.description, sourceDraftId: new Types.ObjectId(created.body.draftId) });
     expect(await JournalDraftModel.findById(created.body.draftId)).toMatchObject({ status: 'posted', postedJournalId: journal?._id });
-    const postedReplay = await request(app).post(`${path}/drafts/${created.body.draftId}/post`).set(accountant).send({}).expect(200);
-    expect(postedReplay.body).toMatchObject({ journalId: posted.body.journalId, replayed: true });
     await request(app).patch(`${path}/drafts/${created.body.draftId}`).set(accountant).send(edited).expect(404);
     expect(await JournalModel.countDocuments({ organizationId: org })).toBe(beforeJournals + 1);
     expect(await AuditEventModel.countDocuments({ organizationId: org })).toBe(beforeAudits + 4);
