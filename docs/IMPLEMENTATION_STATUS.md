@@ -197,3 +197,6 @@ Viewer reporting-role regression (pending hosted verification): the route-driven
 
 
 Viewer report access verified at ca394f6: hosted MongoDB #522/#523 pass exact source-ledger totals for viewer customer statement, TB, P&L, balance sheet, aging and AR/AP control reports. CI #587/#588 and Browser PR #307 pass; Browser push #306 was still running. The source-reconciled fixture now covers both owner writes and viewer reads. pps/web/vite.config.ts was subsequently changed locally to split React/MUI/Emotion vendor chunks; local build now has no >500 kB warning and outputs a 24.54 kB app entry, 223.66 kB React chunk, 247.88 kB MUI chunk, 26.81 kB Emotion chunk. Web suite 8/8, lint and diff check pass; exact-SHA verification is pending.
+
+
+Cross-tenant export/attachment E2E follow-up (pending hosted verification): after creating a second org and confirming no first-org journals, the browser now visits Contacts and Sales and asserts no customer/vendor statement export or invoice attachment actions are present there. Local Python compilation, web tests 8/8, lint, typecheck, production build and diff check pass. Hosted Browser run must execute before recording this path complete.

@@ -8,6 +8,10 @@ The viewer source-report regression passed hosted MongoDB #522/#523 and CI #587/
 
 `apps/web/vite.config.ts` now splits React, MUI, Emotion and icon vendors into separate chunks. Local `pnpm build` passes with no chunk warning: entry 24.54 kB (7.37 kB gzip), React 223.66 kB (69.42 kB gzip), MUI 247.88 kB (71.72 kB gzip), Emotion 26.81 kB (11.18 kB gzip); web tests 8/8, lint and diff check pass. Commit/push and verify all six exact-SHA workflows, then continue remaining route × role × reference cases and manual accessibility review.
 
+## Active checkpoint — browser export and attachment tenant isolation (2026-11-06)
+
+The browser E2E now switches to a freshly created second organization and asserts there are no customer/vendor statement export actions or invoice attachment actions there, in addition to no first-tenant journal activity. Python syntax, web tests 8/8, lint, typecheck, production build and diff check pass locally. The full browser test requires hosted MongoDB and Browser workflows; publish and verify exact-SHA results before claiming this isolation path.
+
 ## Active checkpoint — organization-management race guard (2026-11-06)
 
 Organization-management concurrency regression passed all six exact-SHA workflows at `f79b61b`: CI #583/#584, MongoDB #518/#519, Browser #302/#303. The owner-demotion/admin-invitation race commits only a pre-demotion invitation or rejects after demotion; subsequent attempts are denied and audit counts match. Local API typecheck/lint pass; focused test skips locally without a replica set, and hosted MongoDB verified it. Next: continue the remaining endpoint × role × reference audit and manual accessibility review. Automated accessibility and the complete browser flow passed at `01e3232` (#579/#580, #514/#515, #298/#299).
