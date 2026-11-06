@@ -84,7 +84,8 @@ export function App() {
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <AppBar position="fixed" color="inherit" elevation={0} sx={{ borderBottom: '1px solid', borderColor: 'divider', ml: { md: `${drawerWidth}px` }, width: { md: `calc(100% - ${drawerWidth}px)` } }}>
         <Toolbar>
-          <Button sx={{ display: { md: 'none' }, minWidth: 40, mr: 1 }} aria-label="Open navigation" onClick={() => setMobileOpen(true)}><MenuIcon /></Button>
+          <Button sx={{ display: { md: 'none' }, minWidth: 40, mr: 1 }} aria-label="Open navigation"
+            aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}><MenuIcon /></Button>
           <Box sx={{ flexGrow: 1, minWidth: 0 }}>
             {organizations.length > 1 ? <select aria-label="Active organization" value={organization.id}
               onChange={e => setSelectedId(e.target.value)}>{organizations.map(org =>
