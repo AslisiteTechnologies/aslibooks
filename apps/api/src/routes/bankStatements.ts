@@ -69,7 +69,10 @@ export function bankStatementRouter() {
         const found = await BankTransactionModel.find({ organizationId, accountId: account._id, fingerprint: { $in: [...unique] } }).select('fingerprint').session(session).lean();
         const existing = new Set(found.map(row => row.fingerprint));
         const fresh = rows.filter(row => !existing.has(row.fingerprint));
-        if (fresh.length) await BankTransactionModel.create(fresh.map(row => ({ ...row, organizationId, accountId: account._id, importedBy: authUserId })), { session });
+        if (fresh.length) await BankTransactionModel.create(
+          fresh.map(row => ({ ...row, organizationId, accountId: account._id, importedBy: authUserId })),
+          { session, ordered: true },
+        );
         await AuditEventModel.create([{ organizationId, actorAuthUserId: authUserId, action: 'bank_statement.imported', resourceType: 'bank_account', resourceId: String(account._id) }], { session });
         return { imported: fresh.length, duplicates: rows.length - fresh.length };
       });

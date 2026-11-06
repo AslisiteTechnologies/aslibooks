@@ -74,5 +74,17 @@ describe.skipIf(!enabled)('bank statement import and reconciliation HTTP', () =>
     await request(app).post(path + '/import').set({ 'x-fixture-actor': 'viewer' }).send(payload).expect(403);
     await request(app).post(path + '/import').set(owner).send({ ...payload, organizationId: String(other) }).expect(400);
   });
+
+  it('imports and de-duplicates multiple CSV rows in one transaction', async () => {
+    const transactions = [
+      { ...row, amountPaise: 2500, description: 'Second-row bank deposit' },
+      { ...row, amountPaise: -1000, description: 'Second-row bank withdrawal' },
+    ];
+    await request(app).post(path + '/import').set(accountant).send({ accountId: String(bank), transactions })
+      .expect(201, { imported: 2, duplicates: 0 });
+    await request(app).post(path + '/import').set(accountant).send({ accountId: String(bank), transactions })
+      .expect(201, { imported: 0, duplicates: 2 });
+    expect(await BankTransactionModel.countDocuments({ organizationId: org, description: { $in: transactions.map(item => item.description) } })).toBe(2);
+  });
   afterAll(async () => { await mongoose.disconnect(); });
 });

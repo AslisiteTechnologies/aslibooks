@@ -1,5 +1,9 @@
 # Next actions
 
+## Active checkpoint — product audit, bank import correction, multi-invoice receipt UI (2026-11-06)
+
+Repository/worktree/remote audit is recorded in [PRODUCT_AUDIT_2026-11-06.md](PRODUCT_AUDIT_2026-11-06.md). Base SHA `4e3dd782f42b173eba2b1a3c4ba1e94d1006e808` is the remote development head; all six exact-SHA Actions workflows are green. A synthetic real-UI business scenario reconciled invoice → two receipts → vendor bill/payment → bank transfer → two-row bank import/match/reconciliation to GL, trial balance, P&L, balance sheet, aging and control totals. The scenario exposed the multi-row import transaction error; local fix and focused replica-set regression pass (2/2). The receipt UI now supports one remittance allocated across multiple invoices; its Browser regression is added to `chart.py`. Full API replica-set suite passes 142/142; accounting 5/5 and web 8/8; typecheck, lint, build, audit, diff checks and disposable index preparation pass. Next: publish only scoped files to the existing development branch, verify all six exact-SHA workflows, then start the next customer-facing workflow gap. Do not include the untracked owner vision file or alter other worktrees.
+
 ## Active checkpoint — viewer access to customer receipt records (2026-11-06)
 
 Added a positive viewer GET assertion after a customer receipt is recorded, including the receipt identity, organization ID and amount. Local typecheck, lint, production build and diff check pass; the focused receipt integration file skips because no local replica set is available. Commit/push and verify all six exact-SHA workflows, then continue endpoint × role × reference coverage.

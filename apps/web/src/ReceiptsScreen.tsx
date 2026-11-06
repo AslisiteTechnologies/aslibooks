@@ -15,9 +15,8 @@ export function ReceiptsScreen({ organization }: { organization: Organization })
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [customers, setCustomers] = useState<Contact[]>([]); const [advances, setAdvances] = useState<CustomerAdvance[]>([]);
-  const [invoiceId, setInvoiceId] = useState('');
+  const [receiptAllocations, setReceiptAllocations] = useState<Array<{ invoiceId: string; amount: string }>>([{ invoiceId: '', amount: '' }]);
   const [cashAccountId, setCashAccountId] = useState('');
-  const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(true);
@@ -33,9 +32,16 @@ export function ReceiptsScreen({ organization }: { organization: Organization })
   const outstandingInvoices = useMemo(() => invoices.filter(invoice =>
     ['issued', 'partially_paid', 'partially_credited'].includes(invoice.status) && invoice.totalPaise > invoice.amountPaidPaise + (invoice.amountCreditedPaise ?? 0),
   ), [invoices]);
-  const selectedInvoice = outstandingInvoices.find(invoice => invoice.id === invoiceId);
-  const outstanding = selectedInvoice ? selectedInvoice.totalPaise - selectedInvoice.amountPaidPaise - (selectedInvoice.amountCreditedPaise ?? 0) : 0;
-  const parsedAmount = parsePaise(amount);
+  const parsedReceiptAllocations = useMemo(() => receiptAllocations.map(row => ({
+    invoice: outstandingInvoices.find(invoice => invoice.id === row.invoiceId),
+    amountPaise: parsePaise(row.amount),
+  })), [receiptAllocations, outstandingInvoices]);
+  const receiptTotalPaise = parsedReceiptAllocations.reduce((sum, row) => sum + (row.amountPaise ?? 0), 0);
+  const receiptAllocationValid = parsedReceiptAllocations.length > 0 &&
+    parsedReceiptAllocations.every(row => row.invoice && row.amountPaise !== null && row.amountPaise <= row.invoice.totalPaise - row.invoice.amountPaidPaise - (row.invoice.amountCreditedPaise ?? 0)) &&
+    new Set(receiptAllocations.map(row => row.invoiceId).filter(Boolean)).size === receiptAllocations.length &&
+    new Set(parsedReceiptAllocations.map(row => row.invoice?.customerId)).size === 1 &&
+    Number.isSafeInteger(receiptTotalPaise) && receiptTotalPaise > 0;
   const selectedAdvance = advances.find(row => row.id === advanceId);
   const advanceInvoices = outstandingInvoices.filter(invoice => invoice.customerId === selectedAdvance?.customerId);
   const selectedAllocationInvoice = advanceInvoices.find(invoice => invoice.id === allocationInvoiceId);
@@ -53,7 +59,12 @@ export function ReceiptsScreen({ organization }: { organization: Organization })
         if (!active) return;
         setInvoices(invoiceResult.invoices); setAccounts(accountResult.accounts); setReceipts(receiptResult.receipts); setAdvances(advanceResult.advances); setCustomers(allCustomers);
         const open = invoiceResult.invoices.find(invoice => ['issued', 'partially_paid', 'partially_credited'].includes(invoice.status) && invoice.totalPaise > invoice.amountPaidPaise + (invoice.amountCreditedPaise ?? 0));
-        if (!invoiceId && open) { setInvoiceId(open.id); setAmount(((open.totalPaise - open.amountPaidPaise - (open.amountCreditedPaise ?? 0)) / 100).toFixed(2)); }
+        const selectedInvoiceIsOpen = invoiceResult.invoices.some(invoice => invoice.id === receiptAllocations[0]?.invoiceId &&
+          ['issued', 'partially_paid', 'partially_credited'].includes(invoice.status) && invoice.totalPaise > invoice.amountPaidPaise + (invoice.amountCreditedPaise ?? 0));
+        if (!selectedInvoiceIsOpen) setReceiptAllocations([open
+          ? { invoiceId: open.id, amount: ((open.totalPaise - open.amountPaidPaise - (open.amountCreditedPaise ?? 0)) / 100).toFixed(2) }
+          : { invoiceId: '', amount: '' },
+        ]);
         const cash = accountResult.accounts.find(account => account.active && ['1000', '1010'].includes(account.code));
         if (!cashAccountId && cash) setCashAccountId(cash.id);
         if (!advanceCustomerId && allCustomers[0]) setAdvanceCustomerId(allCustomers[0]._id);
@@ -63,30 +74,33 @@ export function ReceiptsScreen({ organization }: { organization: Organization })
     return () => { active = false; };
   }, [organization.id, revision]);
 
-  function selectInvoice(id: string) {
+  function selectInvoice(index: number, id: string) {
     const selected = outstandingInvoices.find(invoice => invoice.id === id);
-    setInvoiceId(id); setAmount(selected ? ((selected.totalPaise - selected.amountPaidPaise - (selected.amountCreditedPaise ?? 0)) / 100).toFixed(2) : '');
+    setReceiptAllocations(rows => rows.map((row, rowIndex) => rowIndex === index ? {
+      invoiceId: id,
+      amount: selected ? ((selected.totalPaise - selected.amountPaidPaise - (selected.amountCreditedPaise ?? 0)) / 100).toFixed(2) : '',
+    } : row));
     setIdempotencyKey(''); setError('');
   }
 
   function review(event: FormEvent) {
     event.preventDefault(); setError('');
-    if (!selectedInvoice || !cashAccountId || parsedAmount === null || parsedAmount > outstanding) {
-      setError('Choose an eligible invoice and cash/bank account, then enter a positive amount within its outstanding balance.'); return;
+    if (!receiptAllocationValid || !cashAccountId) {
+      setError('Choose unique outstanding invoices for one customer, enter a positive amount within each balance, and select a cash or bank account.'); return;
     }
     setConfirm(true);
   }
 
   async function record() {
-    if (!selectedInvoice || parsedAmount === null) return;
+    if (!receiptAllocationValid) return;
     const key = idempotencyKey || `receipt:${crypto.randomUUID()}`;
     setIdempotencyKey(key); setSaving(true); setError(''); setNotice('');
     try {
       const result = await api.recordReceipt(organization.id, {
         idempotencyKey: key, cashAccountId,
-        allocations: [{ invoiceId: selectedInvoice.id, amountPaise: parsedAmount }],
+        allocations: parsedReceiptAllocations.map(row => ({ invoiceId: row.invoice!.id, amountPaise: row.amountPaise! })),
       });
-      setNotice(`${formatMoney(result.amountPaise)} received and allocated to ${selectedInvoice.invoiceNumber}.`);
+      setNotice(`${formatMoney(result.amountPaise)} received and allocated across ${parsedReceiptAllocations.length} invoice${parsedReceiptAllocations.length === 1 ? '' : 's'}.`);
       setConfirm(false); setIdempotencyKey(''); setRevision(value => value + 1);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Receipt could not be recorded.'); }
     finally { setSaving(false); }
@@ -127,18 +141,22 @@ export function ReceiptsScreen({ organization }: { organization: Organization })
     {canWrite && <Paper variant="outlined" sx={{ p: 2 }}>
       <Stack component="form" spacing={2} onSubmit={review}>
         <Typography variant="h6">Record a customer payment</Typography>
-        <TextField select required disabled={loading || saving} label="Invoice" value={invoiceId} onChange={event => selectInvoice(event.target.value)}>
-          {outstandingInvoices.map(invoice => <MenuItem key={invoice.id} value={invoice.id}>
-            {invoice.invoiceNumber} · {invoice.customerName} · outstanding {formatMoney(invoice.totalPaise - invoice.amountPaidPaise - (invoice.amountCreditedPaise ?? 0))}
-          </MenuItem>)}
-        </TextField>
+        {receiptAllocations.map((allocation, index) => <Stack key={index} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+          <TextField select required disabled={loading || saving} label={`Invoice ${index + 1}`} value={allocation.invoiceId} onChange={event => selectInvoice(index, event.target.value)}>
+            {outstandingInvoices.filter(invoice => !receiptAllocations.some((row, rowIndex) => rowIndex !== index && row.invoiceId === invoice.id) && (!receiptAllocations.some(row => row.invoiceId) || outstandingInvoices.find(row => row.id === receiptAllocations.find(row => row.invoiceId)?.invoiceId)?.customerId === invoice.customerId)).map(invoice => <MenuItem key={invoice.id} value={invoice.id}>
+              {invoice.invoiceNumber} · {invoice.customerName} · outstanding {formatMoney(invoice.totalPaise - invoice.amountPaidPaise - (invoice.amountCreditedPaise ?? 0))}
+            </MenuItem>)}
+          </TextField>
+          <TextField required disabled={loading || saving} label="Amount received (₹)" inputProps={{ inputMode: 'decimal' }} value={allocation.amount}
+            onChange={event => { setReceiptAllocations(rows => rows.map((row, rowIndex) => rowIndex === index ? { ...row, amount: event.target.value } : row)); setIdempotencyKey(''); }} />
+          {receiptAllocations.length > 1 && <Button color="inherit" onClick={() => { setReceiptAllocations(rows => rows.filter((_row, rowIndex) => rowIndex !== index)); setIdempotencyKey(''); }}>Remove</Button>}
+        </Stack>)}
+        <Button disabled={saving || loading || receiptAllocations.length >= 50 || !receiptAllocations.every(row => row.invoiceId)} onClick={() => { setReceiptAllocations(rows => [...rows, { invoiceId: '', amount: '' }]); setIdempotencyKey(''); }}>Add invoice allocation</Button>
         <TextField select required disabled={loading || saving} label="Deposit to" value={cashAccountId} onChange={event => { setCashAccountId(event.target.value); setIdempotencyKey(''); }}>
           {accounts.filter(account => account.active && ['1000', '1010'].includes(account.code)).map(account =>
             <MenuItem key={account.id} value={account.id}>{account.code} · {account.name}</MenuItem>)}
         </TextField>
-        <TextField required disabled={loading || saving} label="Amount received (₹)" inputProps={{ inputMode: 'decimal' }} value={amount}
-          onChange={event => { setAmount(event.target.value); setIdempotencyKey(''); }} />
-        {selectedInvoice && <Typography>Outstanding after receipt: {formatMoney(outstanding - (parsedAmount ?? 0))}</Typography>}
+        <Typography>Total receipt: {formatMoney(receiptTotalPaise)}</Typography>
         <Button type="submit" variant="contained" disabled={saving || loading || !outstandingInvoices.length || !cashAccountId}>Review receipt</Button>
         {!outstandingInvoices.length && <Typography color="text.secondary">No issued invoices have an outstanding balance.</Typography>}
       </Stack>
@@ -198,7 +216,7 @@ export function ReceiptsScreen({ organization }: { organization: Organization })
     <Dialog open={confirm} onClose={() => { if (!saving) setConfirm(false); }}>
       <DialogTitle>Confirm receipt allocation</DialogTitle>
       <DialogContent><DialogContentText>
-        {selectedInvoice && `${formatMoney(parsedAmount ?? 0)} to ${cashAccountId === accounts.find(account => account.code === '1000')?.id ? 'cash' : 'bank'}, allocated to ${selectedInvoice.invoiceNumber}. The receipt and balanced cash/receivables journal post together.`}
+        {`${formatMoney(receiptTotalPaise)} to ${cashAccountId === accounts.find(account => account.code === '1000')?.id ? 'cash' : 'bank'}, allocated across ${parsedReceiptAllocations.map(row => row.invoice?.invoiceNumber).join(', ')}. The receipt and balanced cash/receivables journal post together.`}
       </DialogContentText></DialogContent>
       <DialogActions>
         <Button disabled={saving} onClick={() => setConfirm(false)}>Back</Button>
