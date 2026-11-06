@@ -732,7 +732,7 @@ def test_chart():
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Expenses", exact=True).click()
             for index, bill_amount in enumerate(("1.00", "2.00"), start=1):
-                page.get_by_label("Vendor").click()
+                page.get_by_label("Vendor").first.click()
                 page.get_by_role("option", name="Payment Allocation Vendor").click()
                 page.get_by_label("Vendor bill reference").fill(f"MULTI-PAY-{index}-{run}")
                 page.get_by_label("Expense category").click()
