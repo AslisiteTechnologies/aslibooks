@@ -1,5 +1,9 @@
 # Implementation status
 
+## Receipt attachment gap — local verification in progress (2026-11-06)
+
+Immediate paid-now expenses now accept private receipt documents through the existing tenant-scoped PDF/PNG/JPEG attachment service. Authorization rechecks the cash-expense source inside the storage transaction; the Expenses history exposes an attachment panel. The focused disposable-replica API test verifies upload, viewer listing and cross-tenant 404. Locally verified: focused API 1/1, web 8/8, typecheck, lint, production build, dependency audit and diff check. The desktop/mobile hosted Browser scenario now uploads a synthetic receipt to the immediate expense; exact-SHA hosted verification is pending. Current source is uncommitted; preserve the owner-supplied vision file. Staging and production remain unverified/unapproved.
+
 ## Current verification checkpoint — 2026-11-06
 
 Product audit and synthetic local UI scenario: see [PRODUCT_AUDIT_2026-11-06.md](PRODUCT_AUDIT_2026-11-06.md). The audited base SHA `4e3dd782f42b173eba2b1a3c4ba1e94d1006e808` has all six GitHub Actions workflows green. The local UI scenario reconciled invoice, two receipts, vendor bill/payment, cash-to-bank transfer, two imported/matched/reconciled bank rows, GL, trial balance, P&L, balance sheet, aging, and AR/AP controls to exact source journals. It found and locally fixed a multi-row transactional bank import defect; focused replica-set verification passed 2/2. The complete API suite passes 142/142, accounting 5/5 and web 8/8; typecheck, lint, build, high-severity audit and diff check pass. Receipt and vendor-payment UIs now support one remittance across multiple invoices/bills; the first receipt Browser run failed on a stale test fixture, and the corrected fresh-contact scenario awaits hosted verification. Non-destructive index preparation passed against a disposable database. None of this is staging-tested or production-approved.

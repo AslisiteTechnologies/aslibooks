@@ -430,6 +430,13 @@ The current focused route-security slice tests foreign invoice/bill allocation I
 Current local slice tests account/contact update and archive paths using real peer-tenant IDs, expecting 404 with the foreign record and tenant audit counts unchanged. Typecheck/lint/diff pass. Hosted replica-set verification awaits publication. Then resume route-reference checks or proceed to wider responsive accessibility coverage.
 # Next: publish and verify pagination change
 
+## Current active slice — private receipts for immediate expenses (2026-11-06)
+
+1. Finish checking exact-HEAD Actions for `92e8e5678c11d4a1bb2155ec767a68e74e68561f`; doc-only CI and MongoDB passed, with PR Browser still in progress at last check.
+2. Commit the immediate-expense attachment API/model/UI, focused tenant test, hosted Browser receipt flow and status records above. Never stage `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`.
+3. Push only to `origin/develop/phase-1-foundation`; require push and PR CI, MongoDB and Browser success on the exact feature SHA. Fix any failures before closing this slice.
+4. Continue the audit’s independently executable gaps: reconcile the synthetic UI receipt artifact against its source expense and financial statements, then review mounted route/object-reference gaps and make backup/restore/monitoring procedures runnable without performing deployment.
+
 1. Finish the current `pnpm build`; rerun `git diff --check` and `pnpm lint` if edits change.
 2. Push a feature commit to `origin/develop/phase-1-foundation` without staging the owner-provided vision document.
 3. Verify exact-SHA CI, MongoDB, and Browser push/PR Actions; diagnose and repair any failure on a new commit.

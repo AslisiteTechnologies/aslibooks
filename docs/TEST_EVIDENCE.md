@@ -467,3 +467,9 @@ Paginated GST SHA `15aef1f498405d645843b4a7bd4fc40484aa49c6` passed exact-SHA CI
 - Browser test now exercises the synthetic immediate-expense confirmation and history. The workstation has no Python runtime for the repository Browser runner; hosted Browser passed at `e8b06668b4ee31bdeea8cebae5e42e0ac45df48f` (push #348, PR #349).
 - At SHA `891989aaeae5c4039dfdd36f0bbefc11b2eec22e`, CI and MongoDB push/PR runs passed. Browser exposed an unscoped selector in the pre-existing bill path after the new immediate-expense form introduced a second category/description field. The test now targets the bill form's final matching controls; the correction passed all six exact-SHA workflows at `e8b06668b4ee31bdeea8cebae5e42e0ac45df48f`.
 - Full local API replica-set suite at the immediate-expense source slice: 36 files / 144 tests passed with `--testTimeout=20000`. This includes the new direct cash-expense permission, tenant, idempotency and journal-balance case.
+
+## Immediate expense source receipt attachment (local work slice)
+- Extended the private attachment resource types to immediate cash-expense records and rendered `AttachmentsPanel` on those history rows.
+- Focused disposable-replica API coverage uploads a synthetic PDF against an owned immediate expense, verifies viewer listing, and proves a peer tenant cannot resolve the source. Cleanup removes GridFS fixture bytes directly because attachment metadata is immutable.
+- Local focused API test passes 1/1 with `--testTimeout=20000 --hookTimeout=20000`; web suite 8/8, workspace typecheck/lint/build, high-severity dependency audit and `git diff --check` pass.
+- Hosted Browser flow now attaches a synthetic PDF during the business scenario. Exact-SHA push/PR Browser plus CI/MongoDB checks are pending; this work has not yet been published or staging-tested.

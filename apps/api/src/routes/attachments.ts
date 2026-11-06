@@ -7,11 +7,12 @@ import { z } from 'zod';
 import { AuditEventModel } from '../models/auditEvent.js';
 import { AttachmentModel } from '../models/attachment.js';
 import { BillModel } from '../models/bill.js';
+import { CashExpenseModel } from '../models/cashExpense.js';
 import { InvoiceModel } from '../models/invoice.js';
 import { JournalModel } from '../models/journal.js';
 import { fenceLedgerPermission, hasPermission } from '../security/authorization.js';
 
-const resourceTypes = ['invoice', 'bill', 'journal'] as const;
+const resourceTypes = ['invoice', 'bill', 'journal', 'cash_expense'] as const;
 const contentTypes = ['application/pdf', 'image/png', 'image/jpeg'] as const;
 const maxBytes = 10 * 1024 * 1024;
 const resourceTypeSchema = z.enum(resourceTypes);
@@ -38,7 +39,7 @@ export function attachmentRouter() {
     if (!await hasPermission(authUserId, String(organizationId), 'ledger:read')) { res.status(403).json({ error: 'Attachment access denied' }); return; }
     const type = resourceTypeSchema.safeParse(req.query.resourceType);
     const id = resourceIdSchema.safeParse(req.query.resourceId);
-    if (!type.success || !id.success) { res.status(400).json({ error: 'Choose a valid invoice, bill or journal resource' }); return; }
+    if (!type.success || !id.success) { res.status(400).json({ error: 'Choose a valid invoice, bill, immediate expense or journal resource' }); return; }
     const resourceId = new Types.ObjectId(id.data);
     if (!await resourceExists(type.data, resourceId, organizationId)) { res.status(404).json({ error: 'Accounting resource not found' }); return; }
     const rows = await AttachmentModel.find({ organizationId, resourceType: type.data, resourceId }).sort({ createdAt: -1, _id: -1 }).limit(100).lean<AttachmentRecord[]>();
@@ -139,6 +140,7 @@ export function attachmentRouter() {
 async function resourceExists(type: typeof resourceTypes[number], resourceId: Types.ObjectId, organizationId: Types.ObjectId, session?: import('mongoose').ClientSession) {
   if (type === 'invoice') return !!await InvoiceModel.exists({ _id: resourceId, organizationId }).session(session ?? null);
   if (type === 'bill') return !!await BillModel.exists({ _id: resourceId, organizationId }).session(session ?? null);
+  if (type === 'cash_expense') return !!await CashExpenseModel.exists({ _id: resourceId, organizationId }).session(session ?? null);
   return !!await JournalModel.exists({ _id: resourceId, organizationId }).session(session ?? null);
 }
 

@@ -3,7 +3,7 @@ const { Schema } = mongoose;
 
 const attachmentSchema = new Schema({
   organizationId: { type: Schema.Types.ObjectId, required: true, immutable: true },
-  resourceType: { type: String, enum: ['invoice', 'bill', 'journal'], required: true, immutable: true },
+  resourceType: { type: String, enum: ['invoice', 'bill', 'journal', 'cash_expense'], required: true, immutable: true },
   resourceId: { type: Schema.Types.ObjectId, required: true, immutable: true },
   uploadedBy: { type: String, required: true, immutable: true },
   idempotencyKey: { type: String, required: true, maxlength: 128, immutable: true },

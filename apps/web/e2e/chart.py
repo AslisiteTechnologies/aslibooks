@@ -741,6 +741,14 @@ def test_chart():
             page.get_by_role("button", name="Confirm and record").click()
             expect(page.get_by_text("₹1.00 immediate expense recorded and posted to the ledger.", exact=True)).to_be_visible()
             expect(page.get_by_text("Immediate office supplies · ₹1.00", exact=False)).to_be_visible()
+            page.get_by_role("button", name="Attachments", exact=True).last.click()
+            page.get_by_label("Choose file").last.set_input_files({
+                "name": "expense-receipt.pdf",
+                "mimeType": "application/pdf",
+                "buffer": b"%PDF-1.7\nSynthetic expense receipt\n%%EOF",
+            })
+            page.get_by_role("button", name="Upload privately").last.click()
+            expect(page.get_by_text("expense-receipt.pdf uploaded privately.", exact=True)).to_be_visible()
             for index, bill_amount in enumerate(("1.00", "2.00"), start=1):
                 page.get_by_label("Vendor").first.click()
                 page.get_by_role("option", name="Payment Allocation Vendor").click()
