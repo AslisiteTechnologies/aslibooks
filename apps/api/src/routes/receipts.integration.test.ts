@@ -40,11 +40,14 @@ describe.skipIf(!enabled)('customer receipts HTTP lifecycle', () => {
   const customerId = new Types.ObjectId();
   const peerCustomerId = new Types.ObjectId();
   const productId = new Types.ObjectId();
+  const peerProductId = new Types.ObjectId();
   const cashId = new Types.ObjectId();
   const peerCashId = new Types.ObjectId();
   const bankId = new Types.ObjectId();
   const arId = new Types.ObjectId();
   const incomeId = new Types.ObjectId();
+  const peerArId = new Types.ObjectId();
+  const peerIncomeId = new Types.ObjectId();
   const owner = { 'x-fixture-actor': 'receipt-owner' };
   const path = `/orgs/${organizationId}/receipts`;
   let issuedInvoiceId = '';
@@ -71,12 +74,15 @@ describe.skipIf(!enabled)('customer receipts HTTP lifecycle', () => {
       { _id: peerCustomerId, organizationId: peerId, displayName: 'Peer Customer', roles: ['customer'] },
     ]);
     await ProductModel.create({ _id: productId, organizationId, code: 'SERVICE', name: 'Service', unitPricePaise: 10000 });
+    await ProductModel.create({ _id: peerProductId, organizationId: peerId, code: 'PEER-SERVICE', name: 'Peer service', unitPricePaise: 10000 });
     await AccountModel.create([
       { _id: cashId, organizationId, code: '1000', name: 'Cash', type: 'asset' },
       { _id: peerCashId, organizationId: peerId, code: '1000', name: 'Peer cash', type: 'asset' },
       { _id: bankId, organizationId, code: '1010', name: 'Bank', type: 'asset' },
       { _id: arId, organizationId, code: '1100', name: 'Receivables', type: 'asset' },
       { _id: incomeId, organizationId, code: '4000', name: 'Sales', type: 'income' },
+      { _id: peerArId, organizationId: peerId, code: '1100', name: 'Peer receivables', type: 'asset' },
+      { _id: peerIncomeId, organizationId: peerId, code: '4000', name: 'Peer sales', type: 'income' },
     ]);
   });
 
@@ -133,6 +139,26 @@ describe.skipIf(!enabled)('customer receipts HTTP lifecycle', () => {
 
   it('rejects cross-tenant invoice references, unsupported cash accounts and closed periods', async () => {
     const invoiceId = await createIssuedInvoice();
+    const peerInvoicesPath = `/orgs/${peerId}/invoices`;
+    const peerInvoiceDraft = await request(app).post(peerInvoicesPath).set({ 'x-fixture-actor': 'receipt-peer' })
+      .send({ idempotencyKey: 'receipt-peer-invoice-draft-01', customerId: String(peerCustomerId), lines: [{ productId: String(peerProductId), quantity: 1 }] }).expect(201);
+    const peerInvoiceId = peerInvoiceDraft.body.id as string;
+    await request(app).post(`${peerInvoicesPath}/${peerInvoiceId}/issue`).set({ 'x-fixture-actor': 'receipt-peer' })
+      .send({ idempotencyKey: 'receipt-peer-invoice-issue-01' }).expect(201);
+    const peerInvoiceBeforeForeignReceipt = await InvoiceModel.findById(peerInvoiceId).lean();
+    const currentStateBeforeForeignReceipt = {
+      receipts: await ReceiptModel.countDocuments({ organizationId }), journals: await JournalModel.countDocuments({ organizationId }),
+      audits: await AuditEventModel.countDocuments({ organizationId }),
+    };
+    await request(app).post(path).set(owner).send({
+      idempotencyKey: 'receipt-current-foreign-invoice-01', cashAccountId: String(cashId),
+      allocations: [{ invoiceId: peerInvoiceId, amountPaise: 1000 }],
+    }).expect(404);
+    expect(await InvoiceModel.findById(peerInvoiceId).lean()).toEqual(peerInvoiceBeforeForeignReceipt);
+    expect({
+      receipts: await ReceiptModel.countDocuments({ organizationId }), journals: await JournalModel.countDocuments({ organizationId }),
+      audits: await AuditEventModel.countDocuments({ organizationId }),
+    }).toEqual(currentStateBeforeForeignReceipt);
     const peerPath = `/orgs/${peerId}/receipts`;
     await request(app).post(peerPath).set({ 'x-fixture-actor': 'receipt-peer' }).send({
       idempotencyKey: 'receipt-foreign-0001', cashAccountId: String(cashId),

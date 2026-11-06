@@ -2,7 +2,7 @@
 
 ## Active checkpoint — foreign vendor bill route isolation
 
-MongoDB #492/#493 failed at `f63dbcf6` on a stale test expectation: the test now intentionally creates one peer-tenant bill, but its older list assertion still expected zero. The assertion now expects exactly the seeded bill. Local changes also verify guessed peer invoice IDs cannot be read, edited, issued or credited through the current tenant path without altering peer records or local audits. Re-run typecheck/lint, diff-check, commit/push, then inspect exact-SHA CI, MongoDB and Browser workflows. Local replica set is unavailable; hosted integration is required. Acceptance criteria remain Partial.
+At `a2918108`, the corrected peer-list assertion and peer bill/invoice guessed-ID access checks passed CI #559/#560 and MongoDB #494/#495; Browser #278/#279 is still running. Current local change tests a customer receipt using a real foreign issued invoice ID and asserts no receipt, journal, audit, or invoice mutation. Run typecheck/lint, diff-check, commit/push, verify exact-SHA CI/MongoDB/Browser, then continue financial reference and role review. Local replica set is unavailable; hosted MongoDB is required. Acceptance criteria remain Partial.
 
 ## Active checkpoint — route-driven report reconciliation
 
