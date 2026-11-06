@@ -19,7 +19,7 @@ const enabled = !!uri && !!dbName && /^aslibooks_test_[a-z0-9_]+$/i.test(dbName)
 describe.skipIf(!enabled)('vendor advances', () => {
   const app = express(); app.use(express.json());
   app.use('/orgs', organizationRouter(async headers => { const id = headers.get('x-fixture-actor'); return id ? { id } : null; }));
-  const org = new Types.ObjectId(); const foreignOrg = new Types.ObjectId(); const foreignAdvanceId = new Types.ObjectId();
+  const org = new Types.ObjectId(); const foreignOrg = new Types.ObjectId(); const foreignAdvanceId = new Types.ObjectId(); const foreignBillId = new Types.ObjectId();
   const vendor = new Types.ObjectId(); const otherVendor = new Types.ObjectId(); const foreignVendor = new Types.ObjectId();
   const cash = new Types.ObjectId(); const prepayment = new Types.ObjectId(); const payables = new Types.ObjectId(); const expense = new Types.ObjectId();
   const path = `/orgs/${org}/vendor-advances`; const owner = { 'x-fixture-actor': 'vendor-advance-owner' }; const accountant = { 'x-fixture-actor': 'vendor-advance-accountant' };
@@ -39,6 +39,10 @@ describe.skipIf(!enabled)('vendor advances', () => {
       vendorName: 'Foreign vendor', idempotencyKey: `foreign-vendor-advance-${foreignOrg}`, cashAccountId: new Types.ObjectId(),
       prepaymentAccountId: new Types.ObjectId(), amountPaise: 5000, allocatedPaise: 0,
       paidAt: new Date(), journalId: new Types.ObjectId() });
+    await BillModel.create({ _id: foreignBillId, organizationId: foreignOrg, vendorId: foreignVendor, vendorName: 'Foreign Vendor',
+      vendorReference: `FOREIGN-${foreignOrg}`, expenseAccountId: new Types.ObjectId(), expenseAccountName: 'Foreign expense',
+      description: 'Foreign bill', status: 'posted', amountPaise: 5000, amountPaidPaise: 0, amountCreditedPaise: 0,
+      postIdempotencyKey: `foreign-bill-${foreignOrg}`, journalId: new Types.ObjectId(), postedAt: new Date() });
   });
   it('books prepayments as assets and applies them once to posted bills of the same vendor', async () => {
     const payload = { idempotencyKey: `vendor-advance-${org}`, vendorId: String(vendor), cashAccountId: String(cash), amountPaise: 12000 };
@@ -61,6 +65,17 @@ describe.skipIf(!enabled)('vendor advances', () => {
     const advanceResponse = advanceAttempts.find(response => response.status === 201)!; const advanceId = advanceResponse.body.id as string;
     await request(app).post(path).set(accountant).send(payload).expect(200, { ...advanceResponse.body, replayed: true });
     await request(app).post(path).set(accountant).send({ ...payload, amountPaise: 13000 }).expect(409);
+    const beforeForeignBill = {
+      allocations: await VendorAdvanceAllocationModel.countDocuments({ organizationId: org }),
+      journals: await JournalModel.countDocuments({ organizationId: org }),
+      audits: await AuditEventModel.countDocuments({ organizationId: org }),
+    };
+    await request(app).post(`${path}/${advanceId}/allocations`).set(accountant).send({
+      idempotencyKey: `foreign-bill-allocation-${org}`, billId: String(foreignBillId), amountPaise: 1,
+    }).expect(404);
+    expect(await VendorAdvanceAllocationModel.countDocuments({ organizationId: org })).toBe(beforeForeignBill.allocations);
+    expect(await JournalModel.countDocuments({ organizationId: org })).toBe(beforeForeignBill.journals);
+    expect(await AuditEventModel.countDocuments({ organizationId: org })).toBe(beforeForeignBill.audits);
     const billDraft = await request(app).post(`/orgs/${org}/bills`).set(owner).send({ idempotencyKey: `bill-advance-draft-${org}`, vendorId: String(vendor), vendorReference: `ADV-${org}`, expenseAccountId: String(expense), description: 'Materials', amountPaise: 10000 }).expect(201);
     const billPosted = await request(app).post(`/orgs/${org}/bills/${billDraft.body.id}/post`).set(owner).send({ idempotencyKey: `vendor-advance-bill-${org}` }).expect(201);
     const allocation = { idempotencyKey: `vendor-advance-allocation-${org}`, billId: billPosted.body.id, amountPaise: 6000 };
@@ -98,7 +113,7 @@ describe.skipIf(!enabled)('vendor advances', () => {
   });
   afterAll(async () => {
     if (!enabled) return;
-    await JournalModel.collection.deleteMany({ organizationId: org }); await BillModel.collection.deleteMany({ organizationId: org });
+    await JournalModel.collection.deleteMany({ organizationId: { $in: [org, foreignOrg] } }); await BillModel.collection.deleteMany({ organizationId: { $in: [org, foreignOrg] } });
     await VendorAdvanceAllocationModel.collection.deleteMany({ organizationId: org }); await VendorAdvanceModel.collection.deleteMany({ organizationId: org });
     await AuditEventModel.deleteMany({ organizationId: org }); await FiscalPeriodModel.deleteMany({ organizationId: org });
     await ContactModel.deleteMany({ organizationId: { $in: [org, foreignOrg] } }); await AccountModel.deleteMany({ organizationId: org });

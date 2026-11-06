@@ -20,7 +20,7 @@ const enabled = !!uri && !!dbName && /^aslibooks_test_[a-z0-9_]+$/i.test(dbName)
 describe.skipIf(!enabled)('customer advances', () => {
   const app = express(); app.use(express.json());
   app.use('/orgs', organizationRouter(async headers => { const id = headers.get('x-fixture-actor'); return id ? { id } : null; }));
-  const org = new Types.ObjectId(); const foreignOrg = new Types.ObjectId(); const foreignAdvanceId = new Types.ObjectId();
+  const org = new Types.ObjectId(); const foreignOrg = new Types.ObjectId(); const foreignAdvanceId = new Types.ObjectId(); const foreignInvoiceId = new Types.ObjectId();
   const customer = new Types.ObjectId(); const peerCustomer = new Types.ObjectId(); const foreignCustomer = new Types.ObjectId();
   const product = new Types.ObjectId(); const cash = new Types.ObjectId(); const ar = new Types.ObjectId(); const liability = new Types.ObjectId(); const income = new Types.ObjectId();
   const path = `/orgs/${org}/customer-advances`; const owner = { 'x-fixture-actor': 'advance-owner' }; const accountant = { 'x-fixture-actor': 'advance-accountant' };
@@ -40,6 +40,11 @@ describe.skipIf(!enabled)('customer advances', () => {
       customerName: 'Foreign customer', idempotencyKey: `foreign-advance-${foreignOrg}`, cashAccountId: new Types.ObjectId(),
       liabilityAccountId: new Types.ObjectId(), amountPaise: 5000, allocatedPaise: 0, refundedPaise: 0,
       receivedAt: new Date(), journalId: new Types.ObjectId() });
+    await InvoiceModel.create({ _id: foreignInvoiceId, organizationId: foreignOrg, customerId: new Types.ObjectId(), customerName: 'Foreign invoice customer',
+      status: 'issued', lines: [{ productId: new Types.ObjectId(), name: 'Foreign service', unit: 'unit', quantity: 1,
+        unitPricePaise: 5000, lineTotalPaise: 5000, taxablePaise: 5000, cgstPaise: 0, sgstPaise: 0, igstPaise: 0 }],
+      totalPaise: 5000, invoiceNumber: `FOREIGN-${foreignOrg}`, amountPaidPaise: 0, amountCreditedPaise: 0,
+      issuedAt: new Date(), journalId: new Types.ObjectId() });
   });
   it('records customer money as a liability and allocates it exactly once against that customer’s invoice', async () => {
     const advancePayload = { idempotencyKey: `advance-${org}`, customerId: String(customer), cashAccountId: String(cash), amountPaise: 12000 };
@@ -63,6 +68,17 @@ describe.skipIf(!enabled)('customer advances', () => {
     const advanceId = advanceResponse.body.id as string;
     await request(app).post(path).set(accountant).send(advancePayload).expect(200, { ...advanceResponse.body, replayed: true });
     await request(app).post(path).set(accountant).send({ ...advancePayload, amountPaise: 13000 }).expect(409);
+    const beforeForeignInvoice = {
+      allocations: await CustomerAdvanceAllocationModel.countDocuments({ organizationId: org }),
+      journals: await JournalModel.countDocuments({ organizationId: org }),
+      audits: await AuditEventModel.countDocuments({ organizationId: org }),
+    };
+    await request(app).post(`${path}/${advanceId}/allocations`).set(accountant).send({
+      idempotencyKey: `foreign-invoice-allocation-${org}`, invoiceId: String(foreignInvoiceId), amountPaise: 1,
+    }).expect(404);
+    expect(await CustomerAdvanceAllocationModel.countDocuments({ organizationId: org })).toBe(beforeForeignInvoice.allocations);
+    expect(await JournalModel.countDocuments({ organizationId: org })).toBe(beforeForeignInvoice.journals);
+    expect(await AuditEventModel.countDocuments({ organizationId: org })).toBe(beforeForeignInvoice.audits);
     const advanceJournal = await JournalModel.findById(advanceResponse.body.journalId).lean<{ lines: Array<{ accountId: Types.ObjectId; debitPaise: number; creditPaise: number }> } | null>();
     expect(advanceJournal?.lines.map(line => [String(line.accountId), line.debitPaise, line.creditPaise]))
       .toEqual([[String(cash), 12000, 0], [String(liability), 0, 12000]]);
@@ -125,7 +141,7 @@ describe.skipIf(!enabled)('customer advances', () => {
   });
   afterAll(async () => {
     if (!enabled) return;
-    await JournalModel.collection.deleteMany({ organizationId: org }); await InvoiceModel.collection.deleteMany({ organizationId: org });
+    await JournalModel.collection.deleteMany({ organizationId: { $in: [org, foreignOrg] } }); await InvoiceModel.collection.deleteMany({ organizationId: { $in: [org, foreignOrg] } });
     await CustomerAdvanceAllocationModel.collection.deleteMany({ organizationId: org }); await CustomerAdvanceRefundModel.collection.deleteMany({ organizationId: org }); await CustomerAdvanceModel.collection.deleteMany({ organizationId: org });
     await AuditEventModel.deleteMany({ organizationId: org }); await FiscalPeriodModel.deleteMany({ organizationId: org });
     await ProductModel.deleteMany({ organizationId: org }); await ContactModel.deleteMany({ organizationId: { $in: [org, foreignOrg] } });

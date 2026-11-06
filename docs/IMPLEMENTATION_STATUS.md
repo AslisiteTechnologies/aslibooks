@@ -159,3 +159,5 @@ Verified production-origin configuration SHA `24b592ea190415108e77247f4bbe3dda61
 Opening-balance object-reference regression passed MongoDB #478/#479 and CI #543/#544 at SHA `a304d65485475603709d4aadc7e4369259318950`; Browser was pending. The next change adds customer-advance creation denial for a foreign contact ID and verifies no financial/audit side effects.
 
 Customer/vendor advance reference follow-up: both creation routes now have tests for foreign contact IDs with no advance, journal, or audit writes. The first customer test run showed the intended tenant-scoped `404` response while the test expected `422`; this is corrected. Typecheck/lint/diff pass locally. Hosted replica-set rerun pending.
+
+Advance contact isolation passed MongoDB #482/#483 and CI #547/#548 at SHA `7351e7bed77bd735de770aa32c1573a50547cbe2`; Browser was pending. Current follow-up tests foreign invoice/bill IDs on allocation routes and asserts no allocation, journal or audit writes.
