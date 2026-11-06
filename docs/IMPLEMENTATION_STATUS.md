@@ -188,3 +188,6 @@ Automated accessibility checkpoint: exact SHA 01e3232 passed all six hosted work
 
 
 Organization-management concurrency follow-up (pending hosted verification): membership integration now races owner demotion of an admin against that admin inviting a viewer. It accepts only an invite committed before demotion or a 403 after the role fence, verifies future attempts are denied, and checks the corresponding audit event count. Local API typecheck and lint passed; focused membership test skipped because MongoDB replica set/container is unavailable locally. Do not count this case as verified until exact-SHA MongoDB Actions passes.
+
+
+Membership authorization concurrency case now verified at exact SHA f79b61b: CI #583/#584, MongoDB integration #518/#519, Browser #302/#303 all passed. The test races owner demotion against admin invitation, checks successful invitations precede demotion or else return 403, verifies subsequent denial, and asserts matching audit state. Local replica set unavailable so focused local test skipped; hosted MongoDB workflow executed it. The full route × role matrix remains partial; next concrete work is review of unmapped endpoint/reference combinations and manual accessibility review.

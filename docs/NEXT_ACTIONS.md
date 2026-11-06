@@ -2,7 +2,7 @@
 
 ## Active checkpoint — organization-management race guard (2026-11-06)
 
-Added a replica-set regression racing an owner demoting an admin against that admin inviting a viewer. The result must be either an invite committed before demotion or a 403 after demotion; subsequent invitation attempts must be denied and audit counts must match. `pnpm --filter @aslibooks/api exec vitest run src/routes/memberships.integration.test.ts` skipped locally because no MongoDB replica set/container engine is available; API typecheck and lint pass. Hosted MongoDB exact-SHA verification is required. Commit/push, inspect exact CI/MongoDB/Browser workflows, then continue the remaining endpoint × role × reference audit. Automated accessibility is green at `01e3232`; manual accessibility review remains open.
+Organization-management concurrency regression passed all six exact-SHA workflows at `f79b61b`: CI #583/#584, MongoDB #518/#519, Browser #302/#303. The owner-demotion/admin-invitation race commits only a pre-demotion invitation or rejects after demotion; subsequent attempts are denied and audit counts match. Local API typecheck/lint pass; focused test skips locally without a replica set, and hosted MongoDB verified it. Next: continue the remaining endpoint × role × reference audit and manual accessibility review. Automated accessibility and the complete browser flow passed at `01e3232` (#579/#580, #514/#515, #298/#299).
 
 ## Active checkpoint — warning contrast and expanded a11y coverage (2026-11-06)
 
