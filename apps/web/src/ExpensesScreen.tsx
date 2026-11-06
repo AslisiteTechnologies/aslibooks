@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Alert, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControlLabel, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
-import { api, type Account, type Bill, type Contact, type Organization, type VendorAdvance, type VendorPayment } from './api';
+import { api, type Account, type Bill, type CashExpense, type Contact, type Organization, type VendorAdvance, type VendorPayment } from './api';
 import { AttachmentsPanel } from './AttachmentsPanel';
 
 const formatMoney = (paise: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(paise / 100);
@@ -14,6 +14,9 @@ export function ExpensesScreen({ organization }: { organization: Organization })
   const [paymentNext, setPaymentNext] = useState<string | null>(null);
   const [loadingMorePayments, setLoadingMorePayments] = useState(false);
   const [advances, setAdvances] = useState<VendorAdvance[]>([]);
+  const [cashExpenses, setCashExpenses] = useState<CashExpense[]>([]);
+  const [cashExpenseNext, setCashExpenseNext] = useState<string | null>(null);
+  const [loadingMoreCashExpenses, setLoadingMoreCashExpenses] = useState(false);
   const [vendorId, setVendorId] = useState(''); const [expenseAccountId, setExpenseAccountId] = useState('');
   const [reference, setReference] = useState(''); const [description, setDescription] = useState('');
   const [amount, setAmount] = useState(''); const [dueDate, setDueDate] = useState('');
@@ -25,7 +28,10 @@ export function ExpensesScreen({ organization }: { organization: Organization })
   const draftRetry = useRef<{ signature: string; key: string } | null>(null);
   const paymentRetry = useRef<{ signature: string; key: string } | null>(null);
   const creditRetry = useRef<{ signature: string; key: string } | null>(null);
+  const cashExpenseRetry = useRef<{ signature: string; key: string } | null>(null);
   const [toPay, setToPay] = useState<Bill | null>(null); const [cashAccountId, setCashAccountId] = useState('');
+  const [cashExpenseAccountId, setCashExpenseAccountId] = useState(''); const [cashExpensePayee, setCashExpensePayee] = useState('');
+  const [cashExpenseDescription, setCashExpenseDescription] = useState(''); const [cashExpenseAmount, setCashExpenseAmount] = useState(''); const [cashExpenseConfirm, setCashExpenseConfirm] = useState(false);
   const [paymentAllocations, setPaymentAllocations] = useState<Array<{ billId: string; amount: string }>>([]);
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [advanceVendorId, setAdvanceVendorId] = useState(''); const [advanceAmount, setAdvanceAmount] = useState(''); const [advanceConfirm, setAdvanceConfirm] = useState(false);
@@ -51,8 +57,8 @@ export function ExpensesScreen({ organization }: { organization: Organization })
     Number.isSafeInteger(paymentTotalPaise) && paymentTotalPaise > 0;
   useEffect(() => {
     let active = true; setLoading(true); setError('');
-    Promise.all([api.contacts(organization.id), api.accounts(organization.id), api.bills(organization.id), api.vendorPayments(organization.id), api.vendorAdvances(organization.id)])
-      .then(([c, a, b, p, advanceResult]) => { if (active) { setVendors(c.contacts); setAccounts(a.accounts); setBills(b.bills); setBillNext(b.next); setPayments(p.payments); setPaymentNext(p.next); setAdvances(advanceResult.advances);
+    Promise.all([api.contacts(organization.id), api.accounts(organization.id), api.bills(organization.id), api.vendorPayments(organization.id), api.vendorAdvances(organization.id), api.cashExpenses(organization.id)])
+      .then(([c, a, b, p, advanceResult, cashExpenseResult]) => { if (active) { setVendors(c.contacts); setAccounts(a.accounts); setBills(b.bills); setBillNext(b.next); setPayments(p.payments); setPaymentNext(p.next); setAdvances(advanceResult.advances); setCashExpenses(cashExpenseResult.expenses); setCashExpenseNext(cashExpenseResult.next);
         const activeVendor = c.contacts.find(contact => contact.roles.includes('vendor') && contact.active);
         if (!advanceVendorId && activeVendor) setAdvanceVendorId(activeVendor._id);
         setAdvanceId(id => advanceResult.advances.some(row => row.id === id && row.availablePaise > 0) ? id : advanceResult.advances.find(row => row.availablePaise > 0)?.id ?? '');
@@ -74,6 +80,31 @@ export function ExpensesScreen({ organization }: { organization: Organization })
     try { const page = await api.vendorPayments(organization.id, paymentNext); setPayments(current => [...current, ...page.payments.filter(payment => !current.some(existing => existing.id === payment.id))]); setPaymentNext(page.next); }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'More vendor payments could not be loaded.'); }
     finally { setLoadingMorePayments(false); }
+  }
+  async function loadMoreCashExpenses() {
+    if (!cashExpenseNext || loadingMoreCashExpenses) return;
+    setLoadingMoreCashExpenses(true); setError('');
+    try { const page = await api.cashExpenses(organization.id, cashExpenseNext); setCashExpenses(current => [...current, ...page.expenses.filter(expense => !current.some(existing => existing.id === expense.id))]); setCashExpenseNext(page.next); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'More expenses could not be loaded.'); }
+    finally { setLoadingMoreCashExpenses(false); }
+  }
+  function reviewCashExpense(event: FormEvent) {
+    event.preventDefault();
+    if (!cashExpenseAccountId || !cashAccountId || !cashExpenseDescription.trim() || parseAmount(cashExpenseAmount) === null) { setError('Choose an expense category and cash/bank account, enter a description, and provide a positive INR amount.'); return; }
+    setError(''); setCashExpenseConfirm(true);
+  }
+  async function recordCashExpense() {
+    const amountPaise = parseAmount(cashExpenseAmount);
+    if (!cashExpenseAccountId || !cashAccountId || !cashExpenseDescription.trim() || amountPaise === null) return;
+    const payload = { expenseAccountId: cashExpenseAccountId, cashAccountId, payeeName: cashExpensePayee.trim(), description: cashExpenseDescription.trim(), amountPaise };
+    const signature = `${organization.id}:${JSON.stringify(payload)}`;
+    const key = cashExpenseRetry.current?.signature === signature ? cashExpenseRetry.current.key : `cash-expense:${crypto.randomUUID()}`;
+    cashExpenseRetry.current = { signature, key }; setSaving(true); setError(''); setNotice('');
+    try {
+      await api.recordCashExpense(organization.id, { ...payload, idempotencyKey: key }); cashExpenseRetry.current = null;
+      setNotice(`${formatMoney(amountPaise)} immediate expense recorded and posted to the ledger.`); setCashExpenseConfirm(false); setCashExpensePayee(''); setCashExpenseDescription(''); setCashExpenseAmount(''); setRevision(value => value + 1);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Cash expense could not be recorded.'); }
+    finally { setSaving(false); }
   }
   async function createDraft(event: FormEvent) {
     event.preventDefault(); const match = /^(\d{1,12})(?:\.(\d{1,2}))?$/.exec(amount.trim());
@@ -165,6 +196,16 @@ export function ExpensesScreen({ organization }: { organization: Organization })
   return <Stack spacing={2}>
     <Typography variant="h5">Vendor bills and expenses</Typography>
     <Alert severity="info">This flow records expense bills without GST or inventory. Drafts do not post; confirming a bill debits its selected expense account and credits accounts payable. Vendor advances are held as prepayments in account 1400 until allocated to a posted bill.</Alert>
+    {canWrite && <Paper variant="outlined" sx={{ p: 2 }}><Stack component="form" spacing={2} onSubmit={reviewCashExpense}>
+      <Typography variant="h6">Record an immediate expense</Typography>
+      <Typography variant="body2" color="text.secondary">For a purchase paid now by cash or bank. Confirmation posts expense debit and cash/bank credit together; use a bill draft for an unpaid supplier invoice.</Typography>
+      <TextField select required disabled={loading || saving} label="Expense category" value={cashExpenseAccountId} onChange={event => setCashExpenseAccountId(event.target.value)}>{expenses.map(account => <MenuItem key={account.id} value={account.id}>{account.code} · {account.name}</MenuItem>)}</TextField>
+      <TextField select required disabled={loading || saving} label="Paid from" value={cashAccountId} onChange={event => setCashAccountId(event.target.value)}>{cashAccounts.map(account => <MenuItem key={account.id} value={account.id}>{account.code} · {account.name}</MenuItem>)}</TextField>
+      <TextField label="Payee (optional)" inputProps={{ maxLength: 160 }} value={cashExpensePayee} onChange={event => setCashExpensePayee(event.target.value)} />
+      <TextField required label="Description" inputProps={{ maxLength: 500 }} value={cashExpenseDescription} onChange={event => setCashExpenseDescription(event.target.value)} />
+      <TextField required label="Amount (INR)" inputProps={{ inputMode: 'decimal' }} value={cashExpenseAmount} onChange={event => setCashExpenseAmount(event.target.value)} />
+      <Button type="submit" variant="contained" disabled={loading || saving || !expenses.length || !cashAccounts.length}>Review immediate expense</Button>
+    </Stack></Paper>}
     {canWrite && <Paper variant="outlined" sx={{ p: 2 }}><Stack component="form" spacing={2} onSubmit={e => { void createDraft(e); }}>
       <Typography variant="h6">New bill draft</Typography>
       <TextField select required label="Vendor" value={vendorId} onChange={e => setVendorId(e.target.value)}>{activeVendors.map(v => <MenuItem key={v._id} value={v._id}>{v.displayName}</MenuItem>)}</TextField>
@@ -225,9 +266,13 @@ export function ExpensesScreen({ organization }: { organization: Organization })
       </>}
     </Stack><AttachmentsPanel organizationId={organization.id} resourceType="bill" resourceId={bill.id} canWrite={canWrite} /></Paper>)}
     {billNext && <Button variant="outlined" disabled={loadingMoreBills} onClick={() => void loadMoreBills()}>{loadingMoreBills ? 'Loading bills…' : 'Load more bills'}</Button>}
+    <Typography variant="h6">Immediate expense history</Typography>
+    {cashExpenses.map(expense => <Paper key={expense.id} variant="outlined" sx={{ p: 2 }}><Typography>{expense.payeeName ? `${expense.payeeName} · ` : ''}{expense.description} · {formatMoney(expense.amountPaise)}</Typography><Typography color="text.secondary">{expense.expenseAccountName} · paid from {expense.cashAccountName} · {new Date(expense.paidAt).toLocaleString('en-IN')}</Typography></Paper>)}
+    {cashExpenseNext && <Button variant="outlined" disabled={loadingMoreCashExpenses} onClick={() => void loadMoreCashExpenses()}>{loadingMoreCashExpenses ? 'Loading expenses…' : 'Load more immediate expenses'}</Button>}
     <Typography variant="h6">Vendor payment history</Typography>
     {payments.map(payment => <Paper key={payment.id} variant="outlined" sx={{ p: 2 }}><Typography>{payment.vendorName} · {formatMoney(payment.amountPaise)} paid · {payment.allocations.map(a => a.vendorReference).join(', ')}</Typography></Paper>)}
     {paymentNext && <Button variant="outlined" disabled={loadingMorePayments} onClick={() => void loadMorePayments()}>{loadingMorePayments ? 'Loading payments…' : 'Load more vendor payments'}</Button>}
+    <Dialog open={cashExpenseConfirm} onClose={() => { if (!saving) setCashExpenseConfirm(false); }}><DialogTitle>Confirm immediate expense</DialogTitle><DialogContent><DialogContentText>{`${formatMoney(parseAmount(cashExpenseAmount) ?? 0)}${cashExpensePayee.trim() ? ` paid to ${cashExpensePayee.trim()}` : ''} from ${cashAccounts.find(account => account.id === cashAccountId)?.name ?? 'cash/bank'}. This posts ${expenses.find(account => account.id === cashExpenseAccountId)?.name ?? 'expense'} against cash/bank now; it does not create a vendor payable.`}</DialogContentText></DialogContent><DialogActions><Button disabled={saving} onClick={() => setCashExpenseConfirm(false)}>Back</Button><Button disabled={saving} variant="contained" onClick={() => void recordCashExpense()}>Confirm and record</Button></DialogActions></Dialog>
     <Dialog open={!!toPost} onClose={() => { if (!saving) setToPost(null); }}><DialogTitle>Post this vendor bill?</DialogTitle><DialogContent><DialogContentText>{toPost && `${toPost.vendorName} · ${toPost.vendorReference} · ${formatMoney(toPost.amountPaise)}. This debits ${toPost.expenseAccountName} and credits accounts payable. Posted bill details cannot be edited; correct mistakes with a reversal.`}</DialogContentText></DialogContent><DialogActions><Button disabled={saving} onClick={() => setToPost(null)}>Keep as draft</Button><Button disabled={saving} variant="contained" onClick={() => { if (toPost) void post(toPost); }}>Confirm and post</Button></DialogActions></Dialog>
     <Dialog open={payDialogOpen} onClose={(_event, reason) => { if (!saving && reason === 'escapeKeyDown') { setPayDialogOpen(false); setToPay(null); setPaymentAllocations([]); } }}><DialogTitle>Record vendor payment</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
       <Typography>{toPay && `${toPay.vendorName} · allocate one payment across this vendor’s posted bills.`}</Typography>

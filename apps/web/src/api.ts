@@ -34,6 +34,7 @@ export type CustomerAdvance = { id: string; customerId: string; customerName: st
 export type Attachment = { id: string; resourceType: 'invoice' | 'bill' | 'journal'; resourceId: string; filename: string; contentType: string; sizeBytes: number; sha256: string; createdAt: string };
 export type Bill = { id: string; vendorId: string; vendorName: string; vendorReference: string; expenseAccountName: string; description: string; status: 'draft' | 'posted' | 'partially_paid' | 'paid' | 'partially_credited' | 'credited'; amountPaise: number; amountPaidPaise: number; amountCreditedPaise?: number; dueDate?: string; overdue?: boolean; journalId?: string };
 export type VendorPayment = { id: string; vendorName: string; amountPaise: number; paidAt: string; journalId: string; allocations: Array<{ billId: string; vendorReference: string; amountPaise: number }> };
+export type CashExpense = { id: string; payeeName?: string; description: string; expenseAccountName: string; cashAccountName: string; amountPaise: number; paidAt: string; journalId: string };
 export type VendorAdvance = { id: string; vendorId: string; vendorName: string; amountPaise: number; allocatedPaise: number; availablePaise: number; paidAt: string; journalId: string };
 export type OpeningBalance = { id: string; asOf: string; totalPaise: number; journalId: string; lines: Array<{ accountId: string; accountCode: string; accountName: string; side: 'debit' | 'credit'; amountPaise: number }> };
 export type Journal = { id: string; description: string; postedAt: string; reversalOf: string | null; lineCount: number };
@@ -149,6 +150,9 @@ export const api = {
   issueVendorCredit: (org: string, id: string, input: { idempotencyKey: string; amountPaise: number; reason: string }) =>
     jsonRequest<{ id: string; journalId: string; replayed: boolean }>(`/api/organizations/${org}/bills/${id}/credit-notes`, { method: 'POST', body: JSON.stringify(input) }),
   vendorPayments: (org: string, after = '') => jsonRequest<{ payments: VendorPayment[]; next: string | null }>(`/api/organizations/${org}/vendor-payments${after ? `?after=${encodeURIComponent(after)}` : ''}`),
+  cashExpenses: (org: string, after = '') => jsonRequest<{ expenses: CashExpense[]; next: string | null }>(`/api/organizations/${org}/cash-expenses${after ? `?after=${encodeURIComponent(after)}` : ''}`),
+  recordCashExpense: (org: string, input: { idempotencyKey: string; expenseAccountId: string; cashAccountId: string; payeeName?: string; description: string; amountPaise: number }) =>
+    jsonRequest<{ id: string; journalId: string; replayed: boolean }>(`/api/organizations/${org}/cash-expenses`, { method: 'POST', body: JSON.stringify(input) }),
   recordVendorPayment: (org: string, input: { idempotencyKey: string; cashAccountId: string; allocations: Array<{ billId: string; amountPaise: number }> }) =>
     jsonRequest<{ id: string; journalId: string; amountPaise: number; replayed: boolean }>(`/api/organizations/${org}/vendor-payments`, { method: 'POST', body: JSON.stringify(input) }),
   vendorAdvances: (org: string) => jsonRequest<{ advances: VendorAdvance[] }>(`/api/organizations/${org}/vendor-advances`),

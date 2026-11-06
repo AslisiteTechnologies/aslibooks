@@ -438,6 +438,7 @@ Current local slice tests account/contact update and archive paths using real pe
 
 ## Immediate next actions
 
-1. Verify all CI, MongoDB, and Browser push/PR runs for 6cf0f15bad9d9b3936b7169bc746b298cc755cf6; fix any failure and repeat.
-2. Continue the audited MVP gap list from docs/PRODUCT_AUDIT_2026-11-06.md, prioritizing customer-visible completion gaps over broad regression expansion.
-3. Staging setup, approved backup/restore rehearsal, monitoring integration, and release/rollback exercise require owner-provided environment/configuration; no production deploy or main merge.
+1. Finish local full test/build/audit checks for the immediate cash expense flow; run `cashExpenses.integration.test.ts` against a disposable replica set.
+2. Commit and push the reviewed source, browser scenario, security matrix, acceptance matrix, and audit updates to `develop/phase-1-foundation`; never stage the owner vision file.
+3. Verify exact-SHA CI, MongoDB, and Browser workflows on both push and PR events; fix any failure and repeat.
+4. Continue the highest-impact unblocked MVP workflow from the acceptance matrix. Staging secrets/infrastructure, backup/restore rehearsal, monitoring integration and rollback exercise remain unverified and owner/environment dependent; do not merge `main` or deploy production.

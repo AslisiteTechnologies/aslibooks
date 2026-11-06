@@ -17,6 +17,7 @@ import { openingBalanceRouter } from './openingBalances.js';
 import { organizationSettingsRouter } from './organizationSettings.js';
 import { bankStatementRouter } from './bankStatements.js';
 import { transferRouter } from './transfers.js';
+import { cashExpenseRouter } from './cashExpenses.js';
 import { customerAdvanceRouter } from './customerAdvances.js';
 import { vendorAdvanceRouter } from './vendorAdvances.js';
 import { attachmentRouter } from './attachments.js';
@@ -97,6 +98,7 @@ export function organizationRouter(resolveUser: (headers: Headers) => Promise<Au
   router.use('/:organizationId/members', requireUser, memberRouter());
   router.use('/:organizationId/bank-statements', requireUser, bankStatementRouter());
   router.use('/:organizationId/transfers', requireUser, transferRouter());
+  router.use('/:organizationId/cash-expenses', requireUser, cashExpenseRouter());
   router.use('/:organizationId/customer-advances', requireUser, customerAdvanceRouter());
   router.use('/:organizationId/vendor-advances', requireUser, vendorAdvanceRouter());
   router.use('/:organizationId/attachments', requireUser, attachmentRouter());

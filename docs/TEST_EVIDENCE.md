@@ -460,3 +460,8 @@ Paginated GST SHA `15aef1f498405d645843b4a7bd4fc40484aa49c6` passed exact-SHA CI
 - Receipt and vendor-payment endpoints now use validated _id cursors; route regression covers bounded first pages and invalid cursors. Local replica-set integration: bills plus receipts/payment suites, 8/8 tests pass.
 - The same integration suites now traverse the actual two-receipt and two-vendor-payment histories over one-record pages and assert unique complete IDs and terminal cursors; focused local replica-set rerun passes 8/8.
 - Sales, receipts, and expenses expose load-more controls; invoice allocation selector can reach older open invoices. Web tests 8/8; workspace typecheck, lint and production build pass.
+
+## Immediate cash expense workflow (local work slice)
+- Added a direct paid-now expense route and UI with an explicit review step. API checks tenant membership, posting role, active tenant expense/cash accounts, integer paise, open fiscal period, idempotency, immutable source record and audit trail. Its single integration test passed 1/1 against a disposable local replica set and asserts balanced journal lines, replay, changed-payload conflict, viewer read/write behavior and cross-tenant account denial.
+- `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm --filter @aslibooks/web test` (8/8), `db:ensure-indexes` (27 models) and `git diff --check` pass locally.
+- Browser test now exercises the synthetic immediate-expense confirmation and history. The workstation has no Python runtime for the repository Browser runner; exact-SHA hosted Browser verification is pending publication.

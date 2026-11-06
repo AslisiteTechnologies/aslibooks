@@ -7,6 +7,7 @@ import './models/auditEvent.js';
 import './models/bankTransaction.js';
 import './models/bill.js';
 import './models/cashTransfer.js';
+import './models/cashExpense.js';
 import './models/contact.js';
 import './models/customerAdvance.js';
 import './models/fiscalPeriod.js';
