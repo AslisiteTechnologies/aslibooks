@@ -10,7 +10,7 @@ The owner-transfer gap from the route/feature review now has an API/UI implement
 
 ## Active checkpoint — viewer reads for documents and source attachments (2026-11-06)
 
-Extended route-role evidence so a viewer can list and inspect an invoice, list vendor bills, and download authorized source attachment bytes with `private, no-store` headers. These positive read-permission assertions complement viewer write denials and tenant-boundary tests. Local typecheck, lint, production build and diff check pass; all eight focused integration tests skip because MongoDB is unavailable locally. Publish and verify all six workflows. Continue with remaining route × role and release gates.
+Extended route-role evidence so a viewer can list and inspect an invoice, list vendor bills, and download authorized source attachment bytes with `private, no-store` headers. These positive read-permission assertions complement viewer write denials and tenant-boundary tests. All six exact-SHA workflows passed at `72ff824`: CI #605/#606, MongoDB #540/#541, Browser #324/#325. Local typecheck, lint, production build and diff check pass; all eight focused integration tests skip because MongoDB is unavailable locally, and hosted MongoDB verified them. Continue with remaining route × role and release gates.
 
 ## Active checkpoint — committed receipt/vendor payment response-loss retries (2026-11-06)
 
