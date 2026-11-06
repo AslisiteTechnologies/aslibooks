@@ -191,3 +191,6 @@ Organization-management concurrency follow-up (pending hosted verification): mem
 
 
 Membership authorization concurrency case now verified at exact SHA f79b61b: CI #583/#584, MongoDB integration #518/#519, Browser #302/#303 all passed. The test races owner demotion against admin invitation, checks successful invitations precede demotion or else return 403, verifies subsequent denial, and asserts matching audit state. Local replica set unavailable so focused local test skipped; hosted MongoDB workflow executed it. The full route × role matrix remains partial; next concrete work is review of unmapped endpoint/reference combinations and manual accessibility review.
+
+
+Viewer reporting-role regression (pending hosted verification): the route-driven golden financial workflow now creates an active viewer and verifies that viewer can read the customer ledger, trial balance, P&L, balance sheet, AR/AP aging, and control-account reconciliation at the same exact totals as the owner. Local API typecheck/lint pass; focused test skipped because the local replica set is absent. Exact-SHA MongoDB/CI verification is required before counting this coverage.

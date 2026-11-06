@@ -55,7 +55,10 @@ describe.skipIf(!enabled)('source transaction report reconciliation', () => {
       ReceiptModel.init(), VendorCreditModel.init(), VendorPaymentModel.init(),
     ]);
     await OrganizationModel.create({ _id: organizationId, name: 'Source report reconciliation', slug: `source-report-${suffix}` });
-    await MembershipModel.create({ organizationId, authUserId: 'source-report-owner', role: 'owner' });
+    await MembershipModel.create([
+      { organizationId, authUserId: 'source-report-owner', role: 'owner' },
+      { organizationId, authUserId: 'source-report-viewer', role: 'viewer' },
+    ]);
     await AccountModel.create([
       { _id: cashId, organizationId, code: '1000', name: 'Cash', type: 'asset' },
       { _id: equityId, organizationId, code: '3000', name: 'Owner equity', type: 'equity' },
@@ -140,6 +143,26 @@ describe.skipIf(!enabled)('source transaction report reconciliation', () => {
     const controls = await request(app).get(`${reportsPath}/control-account-reconciliation`).set(owner).expect(200);
     expect(controls.body.receivables).toMatchObject({ ledgerBalancePaise: 6_000, documentBalancePaise: 6_000, differencePaise: 0, reconciled: true });
     expect(controls.body.payables).toMatchObject({ ledgerBalancePaise: 5_000, documentBalancePaise: 5_000, differencePaise: 0, reconciled: true });
+
+    const viewer = { 'x-fixture-actor': 'source-report-viewer' };
+    await request(app).get(`${organizationPath}/contacts/${customerId}/ledger`).set(viewer).expect(200).then(response => {
+      expect(response.body).toMatchObject({ balancePaise: 6_000, subledger: { openDocumentBalancePaise: 6_000 } });
+    });
+    await request(app).get(`${reportsPath}/trial-balance?asOf=${indiaToday}`).set(viewer).expect(200)
+      .then(response => expect(response.body).toMatchObject({ balanced: true, debitTotalPaise: 64_000, creditTotalPaise: 64_000 }));
+    await request(app).get(`${reportsPath}/profit-and-loss?from=${fiscalYearStart}&to=${indiaToday}`).set(viewer).expect(200)
+      .then(response => expect(response.body).toMatchObject({ totalIncomePaise: 9_000, totalExpensesPaise: 7_000, netProfitPaise: 2_000 }));
+    await request(app).get(`${reportsPath}/balance-sheet?asOf=${indiaToday}`).set(viewer).expect(200)
+      .then(response => expect(response.body).toMatchObject({ totalAssetsPaise: 57_000, liabilitiesAndEquityPaise: 57_000, balanced: true }));
+    await request(app).get(`${reportsPath}/aged-receivables?asOf=${indiaToday}`).set(viewer).expect(200)
+      .then(response => expect(response.body).toMatchObject({ totalOutstandingPaise: 6_000, documentCount: 1 }));
+    await request(app).get(`${reportsPath}/aged-payables?asOf=${indiaToday}`).set(viewer).expect(200)
+      .then(response => expect(response.body).toMatchObject({ totalOutstandingPaise: 5_000, documentCount: 1 }));
+    await request(app).get(`${reportsPath}/control-account-reconciliation`).set(viewer).expect(200)
+      .then(response => expect(response.body).toMatchObject({
+        receivables: { ledgerBalancePaise: 6_000, documentBalancePaise: 6_000, reconciled: true },
+        payables: { ledgerBalancePaise: 5_000, documentBalancePaise: 5_000, reconciled: true },
+      }));
   });
 
   afterAll(async () => {

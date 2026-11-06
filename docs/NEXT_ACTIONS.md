@@ -1,5 +1,9 @@
 # Next actions
 
+## Active checkpoint — viewer source-report access (2026-11-06)
+
+`financialWorkflowReports.integration.test.ts` now seeds an active viewer and asserts read access to the customer ledger, trial balance, P&L, balance sheet, AR/AP aging, and control reconciliation with exact source-derived totals. Local API typecheck/lint pass; focused test is skipped because local MongoDB is unavailable. The owner-demotion/admin-invitation regression passed at `f79b61b` (#583/#584 CI, #518/#519 MongoDB, #302/#303 Browser). Commit/push the viewer regression and verify exact-SHA workflows, then continue remaining route × role × reference cases.
+
 ## Active checkpoint — organization-management race guard (2026-11-06)
 
 Organization-management concurrency regression passed all six exact-SHA workflows at `f79b61b`: CI #583/#584, MongoDB #518/#519, Browser #302/#303. The owner-demotion/admin-invitation race commits only a pre-demotion invitation or rejects after demotion; subsequent attempts are denied and audit counts match. Local API typecheck/lint pass; focused test skips locally without a replica set, and hosted MongoDB verified it. Next: continue the remaining endpoint × role × reference audit and manual accessibility review. Automated accessibility and the complete browser flow passed at `01e3232` (#579/#580, #514/#515, #298/#299).
