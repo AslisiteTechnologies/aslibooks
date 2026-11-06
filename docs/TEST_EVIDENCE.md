@@ -372,3 +372,7 @@ Paginated GST SHA `15aef1f498405d645843b4a7bd4fc40484aa49c6` passed exact-SHA CI
 - `trustedOrigins.test.ts`: 5/5 passed, covering dev fallback, missing production configuration, HTTP rejection in production, origin normalization/deduplication, and path/credential rejection.
 - Full workspace typecheck and lint passed. Production build passed after the origin parser implementation; the only subsequent edit was a test expectation corrected and verified by the focused 5/5 run.
 - Exact-SHA CI/MongoDB/Browser verification is pending publication.
+
+## Production origin validation — 2026-11-06
+- SHA `24b592ea190415108e77247f4bbe3dda6103dc78` passed all six exact-SHA workflows: CI #541/#542, MongoDB #476/#477, Browser #260/#261.
+- `WEB_ORIGIN` now fails startup in production when absent, non-HTTPS, or containing credentials/path/query/fragment. Local focused test suite passes 5/5; workspace typecheck, lint and production build pass. Staging validation is still pending.

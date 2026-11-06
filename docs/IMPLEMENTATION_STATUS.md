@@ -153,3 +153,5 @@ Mobile E2E selector correction: the temporary modal drawer hides its navigation 
 Verified mobile navigation SHA `b3566dfbe2fc493a66bc198af3d37b7991f1fa81` passed all six hosted workflows, including Browser #258/#259 for visible drawer state and Escape dismissal.
 
 Production origin guard: focused security tests (5/5), typecheck, lint and production build pass. `NODE_ENV=production` now fails startup if `WEB_ORIGIN` is missing, non-HTTPS, or not an origin-only value. Publish this hardening and verify exact-SHA hosted workflows.
+
+Verified production-origin configuration SHA `24b592ea190415108e77247f4bbe3dda6103dc78` passed exact-SHA CI #541/#542, MongoDB #476/#477, Browser #260/#261. Production startup now requires a valid HTTPS `WEB_ORIGIN` allowlist; staging has not yet exercised it.

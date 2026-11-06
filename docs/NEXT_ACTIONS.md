@@ -350,3 +350,5 @@ The product object-reference test is the active local slice. Once published, req
 Latest issue found: Browser #254/#255 at SHA `457ee8256f9dea693fe6b954054a3aae236e2c04` failed because the test queried the named navigation landmark while MUI's modal drawer made it unavailable to accessible-role queries. The assertion now checks the visible Accounting button directly. Publish the correction and rerun Browser; inspect logs again if Escape/expanded-state assertions fail.
 
 The mobile menu keyboard/accessibility slice is complete through `b3566dfbe2fc493a66bc198af3d37b7991f1fa81` (all six CI/MongoDB/Browser runs passed). Continue with production origin configuration validation, then return to the mounted-route tenant/object-reference audit.
+
+Current local slice: `openingBalances.integration.test.ts` uses a real foreign-tenant account ID against an otherwise authorized opening-balance request and asserts rejection without journal, opening record or audit writes. Typecheck, lint and diff checks pass; hosted MongoDB verification is required because the local replica set is unavailable. The production origin guard is complete through exact-SHA workflows above.
