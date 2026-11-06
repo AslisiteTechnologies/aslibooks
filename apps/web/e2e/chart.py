@@ -143,10 +143,13 @@ def test_chart():
                 else:
                     route.fulfill(response=response)
             page.route("**/api/organizations/*/invoices", lose_invoice_draft_response)
-            page.get_by_role("button", name="Save draft").click()
+            save_draft_button = page.get_by_role("button", name="Save draft")
+            save_draft_button.focus()
+            page.keyboard.press("Enter")
             expect(page.get_by_role("alert").filter(has_text="Failed to fetch")).to_be_visible()
             with page.expect_response(lambda response: response.url.endswith("/invoices") and response.request.method == "POST") as draft_retry_response:
-                page.get_by_role("button", name="Save draft").click()
+                save_draft_button.focus()
+                page.keyboard.press("Enter")
             assert draft_retry_response.value.status == 200, draft_retry_response.value.text()
             assert draft_retry_response.value.json()["replayed"] is True
             assert len(draft_keys) == 2 and draft_keys[0] == draft_keys[1]
@@ -165,10 +168,13 @@ def test_chart():
                 else:
                     route.fulfill(response=response)
             page.route("**/api/organizations/*/invoices/*/issue", lose_invoice_issue_response)
-            page.get_by_role("button", name="Confirm and issue").click()
+            confirm_issue_button = page.get_by_role("button", name="Confirm and issue")
+            confirm_issue_button.focus()
+            page.keyboard.press("Enter")
             expect(page.locator('[role="alert"]').filter(has_text="Failed to fetch")).to_be_visible()
             with page.expect_response(lambda response: response.url.endswith("/issue") and response.request.method == "POST") as issue_retry:
-                page.get_by_role("button", name="Confirm and issue").click()
+                confirm_issue_button.focus()
+                page.keyboard.press("Enter")
             assert issue_retry.value.status == 200, issue_retry.value.text()
             assert issue_retry.value.json()["replayed"] is True
             assert len(issue_keys) == 2 and issue_keys[0] == issue_keys[1]

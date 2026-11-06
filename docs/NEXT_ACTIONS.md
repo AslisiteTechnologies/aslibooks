@@ -2,7 +2,7 @@
 
 ## Active checkpoint — manual journal and vendor credit reference isolation
 
-Foreign-invoice receipt allocation passed all six workflows at `a44697f7`. Local branch head `1e2d0d5` includes manual journal post/draft create/edit foreign-account denial, foreign-bill vendor-credit denial, foreign journal detail denial, and 390px overflow assertions for dashboard, accounting, contacts, sales, expenses and reports. Typecheck/lint/build/audit/diff are green; hosted MongoDB/Browser execution is required. Commits `b39fa20` and later are not on the remote because Git Credential Manager requires interactive GitHub sign-in and the noninteractive retry confirms no cached credentials. After authentication is restored, run `git push origin HEAD:refs/heads/develop/phase-1-foundation`, then verify exact-SHA CI/MongoDB/Browser. The local replica set, Docker, and Python/Playwright are unavailable. Continue independent route/role review while publishing is blocked. Acceptance criteria remain Partial.
+At `b3111f7`, CI #563/#564 and MongoDB #498/#499 passed; Browser #282/#283 remains in progress for the manual-journal foreign-account checks, foreign-bill/vendor and journal-detail denial, and mobile overflow assertions. The current local E2E change activates invoice draft save and issue confirmation with Enter. Commit/push it, verify exact-SHA Browser, and fix any failure. Then continue the remaining route/role, accessibility and release-readiness work. Local replica set, Docker, and Python/Playwright are unavailable. Acceptance criteria remain Partial.
 
 ## Active checkpoint — route-driven report reconciliation
 
