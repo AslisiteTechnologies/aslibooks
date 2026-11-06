@@ -77,3 +77,15 @@ Configuration, integration-testing, deployment, security, and release-checklist 
 3. Commit only reviewed Aslibooks source/docs/test files, excluding the owner-supplied vision file; push only to `develop/phase-1-foundation`, never `main`.
 4. Verify all six workflows on the exact pushed SHA and fix any failure.
 5. Continue the next remaining high-impact workflow gap and make staging procedures runnable without claiming a staging rehearsal that has not occurred.
+
+## Audit addendum — 2026-11-06 continuation
+
+The cursor-pagination implementation has advanced beyond the original audit snapshot:
+
+- Invoice list paging uses the existing validated cursor and is exposed in Sales and customer receipts. This keeps older open invoices reachable from allocation selectors.
+- Bills, receipts and vendor-payment history now expose validated cursor endpoints and load-more controls. Tenant-scoped compound indexes support these query paths and are handled by the existing explicit index-preparation command.
+- Bill cursor traversal, malformed-cursor rejection, web behavior and exact accounting workflow regression have local replica-set verification. The subsequent receipts/payment route changes pass local bill+receipt integration tests (8/8), web tests (8/8), typecheck, lint, production build, and index preparation across all 26 models.
+- Commit `5679dbe03d49ca1ea43641c79fd6f09064d01a8d` passed all six exact-SHA push/PR Actions: CI `42213609963` / `42213615848`, MongoDB `42213610102` / `42213615943`, Browser `42213610002` / `42213615860`.
+- Settlement-history follow-up `6cf0f15bad9d9b3936b7169bc746b298cc755cf6` is pushed to `origin/develop/phase-1-foundation`; its exact-SHA hosted workflows are pending. No database migrations were needed beyond adding declared indexes, and no data-changing migration was introduced.
+
+The product feature matrix above remains a snapshot of functional scope, not a claim that the service is staged or production approved. Update it when exact-SHA checks for `6cf0f15` finish. Staging infrastructure, secrets, backup/restore exercise, monitoring validation, rollback rehearsal, independent accounting/tax review and owner release acceptance remain unverified or owner-dependent.

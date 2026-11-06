@@ -438,7 +438,6 @@ Current local slice tests account/contact update and archive paths using real pe
 
 ## Immediate next actions
 
-1. Commit and push the completed receipt/vendor-payment paging follow-up on codex/aslibooks-mvp to origin/develop/phase-1-foundation.
-2. Verify all six CI, MongoDB, and Browser push/PR runs for that exact SHA; fix any failure and repeat.
-3. Continue the audited MVP gap list from docs/PRODUCT_AUDIT_2026-11-06.md, prioritizing customer-visible completion gaps over broad regression expansion.
-4. Staging setup, approved backup/restore rehearsal, monitoring integration, and release/rollback exercise require owner-provided environment/configuration; no production deploy or main merge.
+1. Verify all CI, MongoDB, and Browser push/PR runs for 6cf0f15bad9d9b3936b7169bc746b298cc755cf6; fix any failure and repeat.
+2. Continue the audited MVP gap list from docs/PRODUCT_AUDIT_2026-11-06.md, prioritizing customer-visible completion gaps over broad regression expansion.
+3. Staging setup, approved backup/restore rehearsal, monitoring integration, and release/rollback exercise require owner-provided environment/configuration; no production deploy or main merge.
