@@ -1,5 +1,9 @@
 # Next actions
 
+## Active checkpoint — warning contrast and expanded a11y coverage (2026-11-06)
+
+At `4ccb0d7`, push CI #575 and #576 and MongoDB #510 and #511 passed; Browser push #294 passed. Browser PR #295 progressed past Sales but failed in Expenses: `warning.main` (`#ed6c02`) on white is only 3.11:1. The current local theme darkens warning to `#a64b00`. The browser flow also now scans Products, Receipts, Banking, GST, fiscal close, Settings and Team. `pnpm web test` remains 8/8; run lint, typecheck, build, diff check, commit/push and verify all six exact-SHA actions. Local Playwright runtime exists but local MongoDB/Container engine is unavailable, so browser execution still needs hosted E2E. Continue fixing every actual axe finding; manual accessibility review stays open.
+
 ## Active checkpoint — axe contrast correction (2026-11-06)
 
 `385af28491dd943747c4bfe0277b511461d36440` passed CI #573/#574 and MongoDB #508/#509. Browser #292/#293 failed at the Sales screen: axe measured 2.59:1 on a disabled contained action, white on MUI's faded lavender background. `apps/web/src/main.tsx` now preserves the semantic disabled attribute while keeping contained-button text at 4.5:1 or higher. Web tests (8/8), lint, typecheck, build and `git diff --check` pass locally; production build still reports a 500.82 kB main chunk (153.94 kB gzip). Commit/push this correction and inspect all six exact-SHA workflows. Browser should continue the flow and reveal any later accessibility findings. Do not mark accessibility complete until the full scan passes and manual review is done.

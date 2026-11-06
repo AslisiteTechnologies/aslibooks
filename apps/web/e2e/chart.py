@@ -69,10 +69,13 @@ def test_chart():
             page.get_by_role("button", name="Confirm and post").click()
             expect(page.get_by_text("Opening balances posted to the ledger", exact=False)).to_be_visible()
             page.get_by_role("button", name="Settings", exact=True).click()
+            assert_accessible(page, "organization settings")
             page.get_by_label("Business name").fill(f"Fixture Shop {run} Books")
             page.locator("form").get_by_label("GSTIN (optional)").fill("22AAAAA0000A1Z5")
             page.get_by_role("button", name="Save settings").click()
             expect(page.get_by_text("Organization settings saved.")).to_be_visible()
+            page.get_by_role("button", name="Team", exact=True).click()
+            assert_accessible(page, "team management")
             page.get_by_role("button", name="Accounting", exact=True).click()
             page.get_by_label("Account code").fill("E2E-BANK")
             page.get_by_label("Account name").fill("Operating bank")
@@ -138,6 +141,7 @@ def test_chart():
             expect(page.get_by_role("heading", name="Test Vendor")).to_be_visible()
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Products", exact=True).click()
+            assert_accessible(page, "products and services")
             page.get_by_label("Code", exact=False).first.fill("E2E-SERVICE")
             page.get_by_label("Name", exact=False).first.fill("Consulting service")
             page.locator("input[maxlength=\"24\"]").fill("hour")
@@ -241,6 +245,7 @@ def test_chart():
             expect(page.get_by_text("E2E-SERVICE · Consulting service", exact=True)).not_to_be_visible()
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Receipts", exact=True).click()
+            assert_accessible(page, "receipts")
             amount_field = page.get_by_label("Amount received (₹)", exact=False).first
             expect(amount_field).to_be_enabled()
             expect(amount_field).to_have_value("45.00")
@@ -518,6 +523,7 @@ def test_chart():
             journal_id = bank_journal_response.value.json()["journalId"]
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Banking", exact=True).click()
+            assert_accessible(page, "banking and reconciliation")
             today = page.evaluate("new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date())")
             csv = f"transactionDate,amountPaise,description\r\n{today},2500,E2E deposit\r\n"
             with page.expect_response(lambda response: response.url.endswith("/bank-statements/import") and response.request.method == "POST") as bank_import_response:
@@ -556,6 +562,7 @@ def test_chart():
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="GST", exact=True).click()
             expect(page.get_by_role("heading", name="GST setup review")).to_be_visible()
+            assert_accessible(page, "GST setup review")
             expect(page.get_by_text("does not certify GST compliance", exact=False)).to_be_visible()
             expect(page.get_by_text("Checked 2 active catalog items", exact=False)).to_be_visible()
             expect(page.get_by_text("GST-PAGE-1 · GST pagination first page", exact=True)).to_be_visible()
@@ -564,6 +571,7 @@ def test_chart():
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Period close", exact=True).click()
             expect(page.get_by_role("heading", name="Fiscal period close")).to_be_visible()
+            assert_accessible(page, "fiscal period close")
             expect(page.get_by_text("Posted ledger debits equal credits", exact=True)).to_be_visible()
             expect(page.get_by_text("Imported bank entries are reconciled", exact=True)).to_be_visible()
             expect(page.get_by_role("button", name="Review and close period")).to_be_enabled()

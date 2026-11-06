@@ -4,7 +4,7 @@ import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import { App } from './App';
 
 const theme = createTheme({
-  palette: { mode: 'light', primary: { main: '#5546d9' }, background: { default: '#f7f8fc' } },
+  palette: { mode: 'light', primary: { main: '#5546d9' }, warning: { main: '#a64b00' }, background: { default: '#f7f8fc' } },
   shape: { borderRadius: 12 },
   typography: { fontFamily: 'Inter, system-ui, sans-serif' },
   components: {
