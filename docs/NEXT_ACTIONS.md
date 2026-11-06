@@ -438,7 +438,6 @@ Current local slice tests account/contact update and archive paths using real pe
 
 ## Immediate next actions
 
-1. Finish local full test/build/audit checks for the immediate cash expense flow; run `cashExpenses.integration.test.ts` against a disposable replica set.
-2. Commit and push the reviewed source, browser scenario, security matrix, acceptance matrix, and audit updates to `develop/phase-1-foundation`; never stage the owner vision file.
-3. Verify exact-SHA CI, MongoDB, and Browser workflows on both push and PR events; fix any failure and repeat.
-4. Continue the highest-impact unblocked MVP workflow from the acceptance matrix. Staging secrets/infrastructure, backup/restore rehearsal, monitoring integration and rollback exercise remain unverified and owner/environment dependent; do not merge `main` or deploy production.
+1. Commit and push the Browser selector correction for SHA `891989aaeae5c4039dfdd36f0bbefc11b2eec22e` to `develop/phase-1-foundation`; never stage the owner vision file.
+2. Verify exact-SHA CI, MongoDB, and Browser workflows on both push and PR events; fix any failure and repeat.
+3. Continue the highest-impact unblocked MVP workflow from the acceptance matrix. Staging secrets/infrastructure, backup/restore rehearsal, monitoring integration and rollback exercise remain unverified and owner/environment dependent; do not merge `main` or deploy production.

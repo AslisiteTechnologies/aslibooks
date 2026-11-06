@@ -369,9 +369,9 @@ def test_chart():
             page.get_by_role("combobox", name="Vendor", exact=True).first.click()
             page.get_by_role("option", name="Test Vendor").click()
             page.get_by_label("Vendor bill reference").fill(f"V-{run}")
-            page.get_by_label("Expense category").click()
+            page.get_by_label("Expense category").last.click()
             page.get_by_role("option", name="E2E-EXP · Office expenses").click()
-            page.get_by_label("Description").fill("Monthly office supplies")
+            page.get_by_label("Description").last.fill("Monthly office supplies")
             page.get_by_role("spinbutton", name="Amount (INR)", exact=True).fill("12.34")
             bill_draft_keys = []
             def lose_bill_draft_response(route):
