@@ -1,5 +1,17 @@
 # Test evidence
 
+## Current verified checkpoint — 2026-11-06
+
+- Repository remote HEAD `817892ef5435d4a796ddb438f05cebfcee859a22` passed every exact-SHA push and PR workflow: CI #565/#566, MongoDB integration #500/#501, Browser #284/#285. [CI push](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42169165641), [MongoDB push](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42169165524), and [Browser push](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42169165571).
+- `pnpm install --frozen-lockfile`: passed; lockfile unchanged. It repaired this checkout's incomplete `node_modules` links (`express-rate-limit` was declared in the manifest and lockfile but initially not present in the API workspace).
+- Forced uncached `pnpm exec turbo run typecheck --force`: passed all 3 packages.
+- `pnpm lint`: passed; ESLint checks `apps` and `packages` under `eslint.config.mjs`.
+- Forced uncached `pnpm exec turbo run build --force`: passed all 3 packages; Vite produced the web production bundle.
+- `pnpm audit --audit-level=high`: passed, no known vulnerabilities.
+- Forced uncached `pnpm exec turbo run test --force`: 63 passed, 77 skipped, 140 total. The 77 skipped cases require the isolated MongoDB replica set, unavailable in this checkout; they are not local passes. Hosted MongoDB workflow #500/#501 is the DB evidence for SHA `817892e`.
+- Python/Playwright is not available locally. Hosted Browser #284/#285 passed at `817892e`.
+- A new CI workflow change adds the lint and high-severity audit commands; exact-SHA verification for that change is pending publication and workflow completion.
+
 ## Previously verified remote history
 
 - SHA `8d7a994e15bd4a4af3244411096113a1f8c1e41b`: CI #181 and MongoDB #118 succeeded at the time they were observed.

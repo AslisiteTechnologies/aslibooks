@@ -1,5 +1,13 @@
 # Next actions
 
+## Active checkpoint — sync and CI hardening (2026-11-06)
+
+This checkout is on `codex/aslibooks-mvp`, based directly on verified remote `develop/phase-1-foundation` SHA `817892ef5435d4a796ddb438f05cebfcee859a22`. The stale local development branch and its 25 equivalent commits remain preserved; the original uncommitted workspace snapshot remains in `git stash@{0}`. The owner-supplied vision file is kept untracked and must not be staged.
+
+All six hosted workflows passed at SHA `817892e`: CI #565/#566, MongoDB integration #500/#501, Browser #284/#285. The current task adds lint and a high-severity dependency audit to CI because neither was enforced there. `pnpm install --frozen-lockfile`, forced uncached typecheck/test/build, lint, audit, and `git diff --check` have completed; local tests were 63 passed and 77 database-dependent skips (covered by hosted MongoDB at `817892e`). Commit this CI gate and the refreshed evidence, push only to `develop/phase-1-foundation` without force, and verify all exact-SHA workflows. Then continue the incomplete route/role and systematic accessibility gaps in the matrix.
+
+Do not merge PR #1 or deploy production. Do not close the MVP checklist while tax/accounting review, staging grants and validation, backup/restore, monitoring, malware/retention controls, and final owner release acceptance remain unverified.
+
 ## Active checkpoint — manual journal and vendor credit reference isolation
 
 At `b3111f7`, CI #563/#564 and MongoDB #498/#499 passed; Browser #282/#283 remains in progress for the manual-journal foreign-account checks, foreign-bill/vendor and journal-detail denial, and mobile overflow assertions. The current local E2E change activates invoice draft save and issue confirmation with Enter. Commit/push it, verify exact-SHA Browser, and fix any failure. Then continue the remaining route/role, accessibility and release-readiness work. Local replica set, Docker, and Python/Playwright are unavailable. Acceptance criteria remain Partial.
