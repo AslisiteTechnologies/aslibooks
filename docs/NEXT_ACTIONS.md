@@ -2,7 +2,7 @@
 
 ## Active checkpoint — viewer dashboard and general-ledger access (2026-11-06)
 
-Extended the source-reconciled financial workflow fixture with viewer checks for date-filtered dashboard KPIs and the income-account general ledger running balance. API typecheck, root ESLint, and `git diff --check` pass. The focused Vitest file is skipped locally because `MONGODB_TEST_URI` is not configured; hosted MongoDB verification is required. The preceding tenant-isolation change `c8ff4fa` passed CI push/PR, MongoDB push/PR, and Browser PR workflows; Browser push #310 is still running. Next: run the workspace build and unit tests, publish this fixture change, verify all exact-SHA workflows, then continue the route/role/reference matrix.
+Extended the source-reconciled financial workflow fixture with viewer checks for date-filtered dashboard KPIs and the income-account general-ledger running balance. At `106da57`, CI #593/#594 and MongoDB #528/#529 passed on push and PR; Browser #312/#313 are still running. Local workspace verification passed (63 tests, 77 MongoDB-dependent skips, typecheck, lint, production build, and diff check); the focused integration file skips without a local replica set. The preceding tenant-isolation change `c8ff4fa` passed CI #591/#592, MongoDB #526/#527, and Browser PR #311; Browser push #310 was still running at last check. Next: verify all Browser runs, then continue the route/role/reference matrix and document remaining release gates.
 
 ## Active checkpoint — viewer source-report access (2026-11-06)
 
