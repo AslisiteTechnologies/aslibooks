@@ -10,6 +10,8 @@ export function SalesScreen({ organization }: { organization: Organization }) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoiceNext, setInvoiceNext] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [customerId, setCustomerId] = useState('');
   const [draftLines, setDraftLines] = useState<Array<{ productId: string; quantity: string }>>([{ productId: '', quantity: '1' }]);
   const [dueDate, setDueDate] = useState('');
@@ -48,13 +50,24 @@ export function SalesScreen({ organization }: { organization: Organization }) {
     Promise.all([api.contacts(organization.id), api.products(organization.id), api.invoices(organization.id)])
       .then(([contactResult, productResult, invoiceResult]) => {
         if (!active) return;
-        setContacts(contactResult.contacts); setProducts(productResult.products); setInvoices(invoiceResult.invoices);
+        setContacts(contactResult.contacts); setProducts(productResult.products); setInvoices(invoiceResult.invoices); setInvoiceNext(invoiceResult.next);
         setDraftLines(lines => lines.map((line, index) => index === 0 && !line.productId && productResult.products.length
           ? { ...line, productId: productResult.products[0]._id } : line));
       }).catch(cause => { if (active) setError(cause instanceof Error ? cause.message : 'Unable to load sales data.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [organization.id, revision]);
+
+  async function loadMoreInvoices() {
+    if (!invoiceNext || loadingMore) return;
+    setLoadingMore(true); setError('');
+    try {
+      const page = await api.invoices(organization.id, invoiceNext);
+      setInvoices(current => [...current, ...page.invoices.filter(invoice => !current.some(existing => existing.id === invoice.id))]);
+      setInvoiceNext(page.next);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'More invoices could not be loaded.'); }
+    finally { setLoadingMore(false); }
+  }
 
   async function createDraft(event: FormEvent) {
     event.preventDefault();
@@ -187,6 +200,7 @@ export function SalesScreen({ organization }: { organization: Organization }) {
       </Stack>
       <AttachmentsPanel organizationId={organization.id} resourceType="invoice" resourceId={invoice.id} canWrite={canWrite} />
     </Paper>)}
+    {invoiceNext && <Button variant="outlined" disabled={loadingMore} onClick={() => void loadMoreInvoices()}>{loadingMore ? 'Loading invoices…' : 'Load more invoices'}</Button>}
     <Dialog open={!!toIssue} onClose={() => { if (!saving) setToIssue(null); }}>
       <DialogTitle>Issue this invoice?</DialogTitle>
       <DialogContent><DialogContentText>

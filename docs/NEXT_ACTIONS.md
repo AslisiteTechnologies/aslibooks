@@ -428,3 +428,10 @@ The prior `479e3d9` MongoDB run failed one expected-status assertion: a missing 
 The current focused route-security slice tests foreign invoice/bill allocation IDs for customer/vendor advances. Each foreign record is seeded in a peer organization; the current tenant's active advance must get a 404 and leave allocation, journal, and audit state unchanged. Typecheck, lint, and diff checks pass. Hosted replica-set verification is pending.
 
 Current local slice tests account/contact update and archive paths using real peer-tenant IDs, expecting 404 with the foreign record and tenant audit counts unchanged. Typecheck/lint/diff pass. Hosted replica-set verification awaits publication. Then resume route-reference checks or proceed to wider responsive accessibility coverage.
+# Next: publish and verify pagination change
+
+1. Finish the current `pnpm build`; rerun `git diff --check` and `pnpm lint` if edits change.
+2. Push a feature commit to `origin/develop/phase-1-foundation` without staging the owner-provided vision document.
+3. Verify exact-SHA CI, MongoDB, and Browser push/PR Actions; diagnose and repair any failure on a new commit.
+4. Continue the product audit priorities: page receipt/payment histories, then evaluate additional customer-facing gaps; only add tests tied to these concrete gaps.
+5. Staging work remains owner/environment dependent: staging secrets and infrastructure, approved backup/restore rehearsal, monitoring integrations and release/rollback exercise.

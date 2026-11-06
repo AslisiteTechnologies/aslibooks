@@ -89,6 +89,23 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     expect(await AuditEventModel.countDocuments({ organizationId, action: 'bill.posted' })).toBe(1);
     expect(await JournalModel.countDocuments({ organizationId })).toBe(1);
   });
+  it('paginates bill history with a validated tenant-scoped cursor', async () => {
+    for (let index = 0; index < 3; index += 1) {
+      await BillModel.create({ organizationId, vendorId, vendorName: 'Vendor One', vendorReference: `PAGE-${index}`, expenseAccountId: expenseId,
+        expenseAccountName: 'Office supplies', description: 'Cursor fixture', amountPaise: 100, amountPaidPaise: 0, status: 'draft' });
+    }
+    const seen: string[] = []; let after = '';
+    for (let pageIndex = 0; pageIndex < 10; pageIndex += 1) {
+      const response = await request(app).get(`${path}?limit=1${after ? `&after=${after}` : ''}`).set(owner).expect(200);
+      expect(response.body.bills).toHaveLength(1); seen.push(response.body.bills[0].id); after = response.body.next || '';
+      if (!after) break;
+    }
+    expect(seen).toHaveLength(4);
+    expect(new Set(seen).size).toBe(seen.length);
+    await request(app).get(`${path}?after=invalid`).set(owner).expect(400);
+    await request(app).get(`/orgs/${peerId}/bills?after=${seen[0]}`).set({ 'x-fixture-actor': 'bill-peer' }).expect(200)
+      .expect(response => expect(response.body.bills.every((bill: { vendorId: string }) => bill.vendorId === String(peerVendorId))).toBe(true));
+  });
   it('restricts AI draft assistance to posting members and never persists suggestions', async () => {
     const priorSecret = process.env.BETTER_AUTH_SECRET; const priorApiKey = process.env.OPENAI_API_KEY;
     process.env.BETTER_AUTH_SECRET = 'integration-test-shared-secret'; process.env.OPENAI_API_KEY = '';

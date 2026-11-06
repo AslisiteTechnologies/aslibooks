@@ -208,3 +208,9 @@ Viewer report access verified at ca394f6: hosted MongoDB #522/#523 pass exact so
 
 
 Cross-tenant export/attachment E2E follow-up (pending hosted verification): after creating a second org and confirming no first-org journals, the browser now visits Contacts and Sales and asserts no customer/vendor statement export or invoice attachment actions are present there. Local Python compilation, web tests 8/8, lint, typecheck, production build and diff check pass. Hosted Browser run must execute before recording this path complete.
+# Verified progress — bill and invoice list pagination
+
+- Invoice cursor pagination is now usable from Sales and the customer receipt/allocation screen, so customers can reach older invoices beyond the first page.
+- Bills now expose a validated, tenant-scoped `_id` cursor, with load-more controls for older bills and bill payment/advance workflows.
+- Focused verification at this work slice: workspace typecheck and lint pass; web tests pass 8/8; production workspace build is running. API cursor regression covers pagination, malformed cursor rejection, and tenant filtering; database-backed hosted verification follows publication.
+- Functionally complete: cursor API and screen controls for invoice/bill lists. Tested and verified: local typecheck, lint, eight web tests; API cursor persistence assertions are pending MongoDB Actions. Staging-ready and production-approved: no.

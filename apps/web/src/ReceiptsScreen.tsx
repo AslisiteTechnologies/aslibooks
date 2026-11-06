@@ -12,6 +12,8 @@ function parsePaise(value: string): number | null {
 
 export function ReceiptsScreen({ organization }: { organization: Organization }) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoiceNext, setInvoiceNext] = useState<string | null>(null);
+  const [loadingMoreInvoices, setLoadingMoreInvoices] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [customers, setCustomers] = useState<Contact[]>([]); const [advances, setAdvances] = useState<CustomerAdvance[]>([]);
@@ -57,7 +59,7 @@ export function ReceiptsScreen({ organization }: { organization: Organization })
         const allCustomers = [...contactResult.contacts.filter(contact => contact.roles.includes('customer'))]; let after = contactResult.next;
         while (after) { const page = await api.contacts(organization.id, '', after); allCustomers.push(...page.contacts.filter(contact => contact.roles.includes('customer'))); after = page.next; }
         if (!active) return;
-        setInvoices(invoiceResult.invoices); setAccounts(accountResult.accounts); setReceipts(receiptResult.receipts); setAdvances(advanceResult.advances); setCustomers(allCustomers);
+        setInvoices(invoiceResult.invoices); setInvoiceNext(invoiceResult.next); setAccounts(accountResult.accounts); setReceipts(receiptResult.receipts); setAdvances(advanceResult.advances); setCustomers(allCustomers);
         const open = invoiceResult.invoices.find(invoice => ['issued', 'partially_paid', 'partially_credited'].includes(invoice.status) && invoice.totalPaise > invoice.amountPaidPaise + (invoice.amountCreditedPaise ?? 0));
         const selectedInvoiceIsOpen = invoiceResult.invoices.some(invoice => invoice.id === receiptAllocations[0]?.invoiceId &&
           ['issued', 'partially_paid', 'partially_credited'].includes(invoice.status) && invoice.totalPaise > invoice.amountPaidPaise + (invoice.amountCreditedPaise ?? 0));
@@ -73,6 +75,13 @@ export function ReceiptsScreen({ organization }: { organization: Organization })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [organization.id, revision]);
+  async function loadMoreInvoices() {
+    if (!invoiceNext || loadingMoreInvoices) return;
+    setLoadingMoreInvoices(true); setError('');
+    try { const page = await api.invoices(organization.id, invoiceNext); setInvoices(current => [...current, ...page.invoices.filter(invoice => !current.some(existing => existing.id === invoice.id))]); setInvoiceNext(page.next); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'More invoices could not be loaded.'); }
+    finally { setLoadingMoreInvoices(false); }
+  }
 
   function selectInvoice(index: number, id: string) {
     const selected = outstandingInvoices.find(invoice => invoice.id === id);
@@ -137,6 +146,7 @@ export function ReceiptsScreen({ organization }: { organization: Organization })
 
   return <Stack spacing={2}>
     <Typography variant="h5">Customer receipts</Typography>
+    {invoiceNext && <Button variant="outlined" disabled={loadingMoreInvoices} onClick={() => void loadMoreInvoices()}>{loadingMoreInvoices ? 'Loading invoices…' : 'Load more invoices for allocation'}</Button>}
     <Alert severity="info">Receipts and customer advances post to the ledger. Advances are held in customer-advances account 2210 until allocated to an invoice or refunded.</Alert>
     {canWrite && <Paper variant="outlined" sx={{ p: 2 }}>
       <Stack component="form" spacing={2} onSubmit={review}>

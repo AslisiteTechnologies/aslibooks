@@ -102,7 +102,7 @@ export const api = {
     jsonRequest<{ id: string }>(`/api/organizations/${org}/products`, { method: 'POST', body: JSON.stringify(input) }),
   updateProduct: (org: string, id: string, input: { name?: string; unit?: string; unitPricePaise?: number; hsnSacCode?: string; taxCategory?: TaxCategory; gstRateBasisPoints?: number } | { active: false }) =>
     jsonRequest<{ id: string }>(`/api/organizations/${org}/products/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
-  invoices: (org: string) => jsonRequest<{ invoices: Invoice[]; next: string | null }>(`/api/organizations/${org}/invoices`),
+  invoices: (org: string, after = '') => jsonRequest<{ invoices: Invoice[]; next: string | null }>(`/api/organizations/${org}/invoices${after ? `?after=${encodeURIComponent(after)}` : ''}`),
   invoice: (org: string, id: string) => jsonRequest<{ invoice: InvoiceDocument }>(`/api/organizations/${org}/invoices/${id}`),
   createInvoiceDraft: (org: string, input: { idempotencyKey: string; customerId: string; lines: Array<{ productId: string; quantity: number }>; dueDate?: string; taxTreatment?: { kind: 'none' | 'exclusive' | 'inclusive'; placeOfSupplyStateCode?: string; supplyKind?: 'intra_state' | 'inter_state' } }) =>
     jsonRequest<{ id: string; status: Invoice['status']; replayed: boolean }>(`/api/organizations/${org}/invoices`, { method: 'POST', body: JSON.stringify(input) }),
@@ -139,7 +139,7 @@ export const api = {
     if (!response.ok) { const body = await response.json().catch(() => null) as { error?: string } | null; throw new Error(body?.error || 'Attachment could not be downloaded'); }
     return response.blob();
   }),
-  bills: (org: string) => jsonRequest<{ bills: Bill[] }>(`/api/organizations/${org}/bills`),
+  bills: (org: string, after = '') => jsonRequest<{ bills: Bill[]; next: string | null }>(`/api/organizations/${org}/bills${after ? `?after=${encodeURIComponent(after)}` : ''}`),
   createBillDraft: (org: string, input: { idempotencyKey: string; vendorId: string; vendorReference: string; expenseAccountId: string; description: string; amountPaise: number; dueDate?: string }) =>
     jsonRequest<{ id: string; status: 'draft' }>(`/api/organizations/${org}/bills`, { method: 'POST', body: JSON.stringify(input) }),
   extractBillDraft: (org: string, sourceText: string) => jsonRequest<{ vendorName: string | null; vendorReference: string | null; description: string | null; amountPaise: number | null; dueDate: string | null; currency: 'INR' | 'other' | 'unknown'; taxStatus: 'none_seen' | 'present' | 'unclear'; confidence: 'high' | 'medium' | 'low'; uncertainties: string[] }>(`/api/organizations/${org}/bills/ai-draft-assistance`, { method: 'POST', body: JSON.stringify({ sourceText }) }),

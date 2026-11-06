@@ -8,6 +8,8 @@ export function ExpensesScreen({ organization }: { organization: Organization })
   const [vendors, setVendors] = useState<Contact[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [bills, setBills] = useState<Bill[]>([]);
+  const [billNext, setBillNext] = useState<string | null>(null);
+  const [loadingMoreBills, setLoadingMoreBills] = useState(false);
   const [payments, setPayments] = useState<VendorPayment[]>([]);
   const [advances, setAdvances] = useState<VendorAdvance[]>([]);
   const [vendorId, setVendorId] = useState(''); const [expenseAccountId, setExpenseAccountId] = useState('');
@@ -48,7 +50,7 @@ export function ExpensesScreen({ organization }: { organization: Organization })
   useEffect(() => {
     let active = true; setLoading(true); setError('');
     Promise.all([api.contacts(organization.id), api.accounts(organization.id), api.bills(organization.id), api.vendorPayments(organization.id), api.vendorAdvances(organization.id)])
-      .then(([c, a, b, p, advanceResult]) => { if (active) { setVendors(c.contacts); setAccounts(a.accounts); setBills(b.bills); setPayments(p.payments); setAdvances(advanceResult.advances);
+      .then(([c, a, b, p, advanceResult]) => { if (active) { setVendors(c.contacts); setAccounts(a.accounts); setBills(b.bills); setBillNext(b.next); setPayments(p.payments); setAdvances(advanceResult.advances);
         const activeVendor = c.contacts.find(contact => contact.roles.includes('vendor') && contact.active);
         if (!advanceVendorId && activeVendor) setAdvanceVendorId(activeVendor._id);
         setAdvanceId(id => advanceResult.advances.some(row => row.id === id && row.availablePaise > 0) ? id : advanceResult.advances.find(row => row.availablePaise > 0)?.id ?? '');
@@ -57,6 +59,13 @@ export function ExpensesScreen({ organization }: { organization: Organization })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [organization.id, revision]);
+  async function loadMoreBills() {
+    if (!billNext || loadingMoreBills) return;
+    setLoadingMoreBills(true); setError('');
+    try { const page = await api.bills(organization.id, billNext); setBills(current => [...current, ...page.bills.filter(bill => !current.some(existing => existing.id === bill.id))]); setBillNext(page.next); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'More bills could not be loaded.'); }
+    finally { setLoadingMoreBills(false); }
+  }
   async function createDraft(event: FormEvent) {
     event.preventDefault(); const match = /^(\d{1,12})(?:\.(\d{1,2}))?$/.exec(amount.trim());
     const rupees = match ? Number(match[1]) : NaN; const fraction = match ? Number((match[2] || '').padEnd(2, '0')) : NaN;
@@ -206,6 +215,7 @@ export function ExpensesScreen({ organization }: { organization: Organization })
         <Button onClick={() => { setToCredit(bill); setCreditAmount(((bill.amountPaise - bill.amountPaidPaise - (bill.amountCreditedPaise ?? 0)) / 100).toFixed(2)); }}>Issue vendor credit</Button>
       </>}
     </Stack><AttachmentsPanel organizationId={organization.id} resourceType="bill" resourceId={bill.id} canWrite={canWrite} /></Paper>)}
+    {billNext && <Button variant="outlined" disabled={loadingMoreBills} onClick={() => void loadMoreBills()}>{loadingMoreBills ? 'Loading bills…' : 'Load more bills'}</Button>}
     {payments.map(payment => <Paper key={payment.id} variant="outlined" sx={{ p: 2 }}><Typography>{payment.vendorName} · {formatMoney(payment.amountPaise)} paid · {payment.allocations.map(a => a.vendorReference).join(', ')}</Typography></Paper>)}
     <Dialog open={!!toPost} onClose={() => { if (!saving) setToPost(null); }}><DialogTitle>Post this vendor bill?</DialogTitle><DialogContent><DialogContentText>{toPost && `${toPost.vendorName} · ${toPost.vendorReference} · ${formatMoney(toPost.amountPaise)}. This debits ${toPost.expenseAccountName} and credits accounts payable. Posted bill details cannot be edited; correct mistakes with a reversal.`}</DialogContentText></DialogContent><DialogActions><Button disabled={saving} onClick={() => setToPost(null)}>Keep as draft</Button><Button disabled={saving} variant="contained" onClick={() => { if (toPost) void post(toPost); }}>Confirm and post</Button></DialogActions></Dialog>
     <Dialog open={payDialogOpen} onClose={(_event, reason) => { if (!saving && reason === 'escapeKeyDown') { setPayDialogOpen(false); setToPay(null); setPaymentAllocations([]); } }}><DialogTitle>Record vendor payment</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>

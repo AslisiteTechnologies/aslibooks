@@ -20,6 +20,7 @@ const draftInput = z.strictObject({
   amountPaise: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER), dueDate: z.string().date().optional(),
 });
 const postInput = z.strictObject({ idempotencyKey: z.string().regex(/^[a-zA-Z0-9:_-]{8,128}$/) });
+const pageQuery = z.strictObject({ after: z.string().regex(/^[a-f\d]{24}$/i).optional(), limit: z.string().regex(/^\d{1,3}$/).optional() });
 class BillError extends Error { constructor(readonly status: number, message: string) { super(message); } }
 function indiaToday() {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
@@ -33,16 +34,20 @@ export function billRouter() {
     if (typeof id !== 'string' || !Types.ObjectId.isValid(id)) { res.status(400).json({ error: 'Invalid organization ID' }); return; }
     res.locals.organizationId = new Types.ObjectId(id); next();
   });
-  router.get('/', async (_req, res) => {
+  router.get('/', async (req, res) => {
     const { organizationId, authUserId } = res.locals;
     if (!await hasPermission(authUserId, String(organizationId), 'ledger:read')) { res.status(403).json({ error: 'Bill access denied' }); return; }
-    const bills = await BillModel.find({ organizationId }).sort({ _id: -1 }).limit(100).lean();
+    const parsed = pageQuery.safeParse(req.query);
+    if (!parsed.success) { res.status(400).json({ error: 'Invalid bill cursor' }); return; }
+    const limit = Math.min(Number(parsed.data.limit) || 50, 100);
+    const rows = await BillModel.find({ organizationId, ...(parsed.data.after ? { _id: { $lt: new Types.ObjectId(parsed.data.after) } } : {}) }).sort({ _id: -1 }).limit(limit + 1).lean();
+    const bills = rows.slice(0, limit);
     const today = indiaToday();
     res.json({ bills: bills.map(bill => ({ ...bill,
       amountCreditedPaise: bill.amountCreditedPaise ?? 0,
       overdue: ['posted', 'partially_paid', 'partially_credited'].includes(bill.status) && !!bill.dueDate && bill.dueDate < today,
       id: String(bill._id), _id: undefined,
-    })) });
+    })), next: rows.length > limit ? String(rows[limit - 1]._id) : null });
   });
   const requirePostingPermission: RequestHandler = async (_req, res, next) => {
     const { organizationId, authUserId } = res.locals;
