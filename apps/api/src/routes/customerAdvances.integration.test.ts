@@ -21,7 +21,7 @@ describe.skipIf(!enabled)('customer advances', () => {
   const app = express(); app.use(express.json());
   app.use('/orgs', organizationRouter(async headers => { const id = headers.get('x-fixture-actor'); return id ? { id } : null; }));
   const org = new Types.ObjectId(); const foreignOrg = new Types.ObjectId(); const foreignAdvanceId = new Types.ObjectId();
-  const customer = new Types.ObjectId(); const peerCustomer = new Types.ObjectId();
+  const customer = new Types.ObjectId(); const peerCustomer = new Types.ObjectId(); const foreignCustomer = new Types.ObjectId();
   const product = new Types.ObjectId(); const cash = new Types.ObjectId(); const ar = new Types.ObjectId(); const liability = new Types.ObjectId(); const income = new Types.ObjectId();
   const path = `/orgs/${org}/customer-advances`; const owner = { 'x-fixture-actor': 'advance-owner' }; const accountant = { 'x-fixture-actor': 'advance-accountant' };
   beforeAll(async () => {
@@ -29,7 +29,8 @@ describe.skipIf(!enabled)('customer advances', () => {
     await Promise.all([AccountModel.init(), AuditEventModel.init(), ContactModel.init(), CustomerAdvanceModel.init(), CustomerAdvanceAllocationModel.init(), CustomerAdvanceRefundModel.init(), FiscalPeriodModel.init(), InvoiceModel.init(), JournalModel.init(), MembershipModel.init(), OrganizationModel.init(), ProductModel.init()]);
     await OrganizationModel.create([{ _id: org, name: 'Advance fixture', slug: `advance-${org}` }, { _id: foreignOrg, name: 'Foreign advance fixture', slug: `advance-foreign-${foreignOrg}` }]);
     await MembershipModel.create([{ organizationId: org, authUserId: 'advance-owner', role: 'owner' }, { organizationId: org, authUserId: 'advance-accountant', role: 'accountant' }, { organizationId: org, authUserId: 'advance-viewer', role: 'viewer' }]);
-    await ContactModel.create([{ _id: customer, organizationId: org, displayName: 'Advance Customer', roles: ['customer'] }, { _id: peerCustomer, organizationId: org, displayName: 'Other Customer', roles: ['customer'] }]);
+    await ContactModel.create([{ _id: customer, organizationId: org, displayName: 'Advance Customer', roles: ['customer'] }, { _id: peerCustomer, organizationId: org, displayName: 'Other Customer', roles: ['customer'] },
+      { _id: foreignCustomer, organizationId: foreignOrg, displayName: 'Foreign Customer', roles: ['customer'] }]);
     await ProductModel.create({ _id: product, organizationId: org, code: 'SERVICE', name: 'Service', unitPricePaise: 10000 });
     await AccountModel.create([{ _id: cash, organizationId: org, code: '1000', name: 'Cash', type: 'asset' },
       { _id: ar, organizationId: org, code: '1100', name: 'Receivables', type: 'asset' },
@@ -44,6 +45,17 @@ describe.skipIf(!enabled)('customer advances', () => {
     const advancePayload = { idempotencyKey: `advance-${org}`, customerId: String(customer), cashAccountId: String(cash), amountPaise: 12000 };
     await request(app).post(path).send(advancePayload).expect(401);
     await request(app).post(path).set({ 'x-fixture-actor': 'advance-viewer' }).send(advancePayload).expect(403);
+    const beforeForeignContact = {
+      advances: await CustomerAdvanceModel.countDocuments({ organizationId: org }),
+      journals: await JournalModel.countDocuments({ organizationId: org }),
+      audits: await AuditEventModel.countDocuments({ organizationId: org }),
+    };
+    await request(app).post(path).set(owner).send({ ...advancePayload,
+      idempotencyKey: `foreign-customer-advance-${org}`, customerId: String(foreignCustomer),
+    }).expect(422);
+    expect(await CustomerAdvanceModel.countDocuments({ organizationId: org })).toBe(beforeForeignContact.advances);
+    expect(await JournalModel.countDocuments({ organizationId: org })).toBe(beforeForeignContact.journals);
+    expect(await AuditEventModel.countDocuments({ organizationId: org })).toBe(beforeForeignContact.audits);
     const advanceAttempts = await Promise.all([request(app).post(path).set(accountant).send(advancePayload), request(app).post(path).set(accountant).send(advancePayload)]);
     expect(advanceAttempts.map(response => response.status).sort()).toEqual([200, 201]);
     expect(advanceAttempts[0].body.id).toBe(advanceAttempts[1].body.id);
@@ -116,7 +128,7 @@ describe.skipIf(!enabled)('customer advances', () => {
     await JournalModel.collection.deleteMany({ organizationId: org }); await InvoiceModel.collection.deleteMany({ organizationId: org });
     await CustomerAdvanceAllocationModel.collection.deleteMany({ organizationId: org }); await CustomerAdvanceRefundModel.collection.deleteMany({ organizationId: org }); await CustomerAdvanceModel.collection.deleteMany({ organizationId: org });
     await AuditEventModel.deleteMany({ organizationId: org }); await FiscalPeriodModel.deleteMany({ organizationId: org });
-    await ProductModel.deleteMany({ organizationId: org }); await ContactModel.deleteMany({ organizationId: org });
+    await ProductModel.deleteMany({ organizationId: org }); await ContactModel.deleteMany({ organizationId: { $in: [org, foreignOrg] } });
     await AccountModel.deleteMany({ organizationId: org }); await MembershipModel.deleteMany({ organizationId: org });
     await CustomerAdvanceModel.collection.deleteMany({ organizationId: foreignOrg });
     await OrganizationModel.deleteMany({ _id: { $in: [org, foreignOrg] } }); await mongoose.disconnect();

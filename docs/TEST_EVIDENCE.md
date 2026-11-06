@@ -376,3 +376,5 @@ Paginated GST SHA `15aef1f498405d645843b4a7bd4fc40484aa49c6` passed exact-SHA CI
 ## Production origin validation — 2026-11-06
 - SHA `24b592ea190415108e77247f4bbe3dda6103dc78` passed all six exact-SHA workflows: CI #541/#542, MongoDB #476/#477, Browser #260/#261.
 - `WEB_ORIGIN` now fails startup in production when absent, non-HTTPS, or containing credentials/path/query/fragment. Local focused test suite passes 5/5; workspace typecheck, lint and production build pass. Staging validation is still pending.
+- Foreign opening-balance account reference rejection passed MongoDB #478/#479 and CI #543/#544 at exact SHA `a304d65485475603709d4aadc7e4369259318950`; Browser #262/#263 were pending at last check. The API returns 422 and the test confirms no journal, opening-balance or audit writes.
+- Customer-advance create test now supplies an actual foreign-tenant customer ID and asserts 422 with unchanged advance, journal and audit counts. Local typecheck/lint/diff checks pass; exact-SHA MongoDB run is pending publication.

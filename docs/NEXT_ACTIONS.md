@@ -352,3 +352,5 @@ Latest issue found: Browser #254/#255 at SHA `457ee8256f9dea693fe6b954054a3aae23
 The mobile menu keyboard/accessibility slice is complete through `b3566dfbe2fc493a66bc198af3d37b7991f1fa81` (all six CI/MongoDB/Browser runs passed). Continue with production origin configuration validation, then return to the mounted-route tenant/object-reference audit.
 
 Current local slice: `openingBalances.integration.test.ts` uses a real foreign-tenant account ID against an otherwise authorized opening-balance request and asserts rejection without journal, opening record or audit writes. Typecheck, lint and diff checks pass; hosted MongoDB verification is required because the local replica set is unavailable. The production origin guard is complete through exact-SHA workflows above.
+
+The foreign customer-advance reference test is the active slice. It must reject a peer tenant contact ID and preserve advance, journal, and audit counts. After publishing, verify exact-SHA MongoDB/CI and continue the same review for remaining untested operation references.
