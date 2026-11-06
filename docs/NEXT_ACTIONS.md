@@ -328,3 +328,19 @@ git diff --check
 ```
 
 Before a local full-suite retry, confirm `Test-NetConnection 127.0.0.1 -Port 37491 -InformationLevel Quiet` succeeds and use a unique `aslibooks_test_*` database. The last closed-period assertion focused run passed 2/2. After hosted checks pass, resume with a concrete uncovered operation/reference from `docs/ROUTE_SECURITY_MATRIX.md`; add focused no-side-effect integration coverage, run the full suite and quality commands above, then review keyboard/focus behavior at narrow viewport. Keep acceptance criteria partial while route permutations, external release gates, and statutory review remain incomplete.
+
+## Next concrete task — primary navigation keyboard coverage
+1. Finish publishing the keyboard Tab/Enter E2E assertion in `apps/web/e2e/chart.py` and wait for push/PR Browser checks. On failure, inspect the exact run log and fix the selector or accessibility behavior.
+2. Record the exact candidate SHA and all six workflow results in this file, `docs/IMPLEMENTATION_STATUS.md`, and `docs/MVP_ACCEPTANCE_MATRIX.md`.
+3. Continue the targeted cross-tenant object-reference review on any still-uncovered mounted financial operation. Add denial and unchanged-state assertions, run local quality checks, then verify exact-SHA hosted tests.
+4. Keep the product partial while GST policy review, staging grants/restore/monitoring, comprehensive accessibility, and owner-controlled release gates remain open.
+
+Local checks for the current API cleanup correction:
+
+```powershell
+pnpm typecheck
+pnpm lint
+pnpm build
+pnpm audit --audit-level=high
+git diff --check
+```
