@@ -1,5 +1,9 @@
 # Next actions
 
+## Active checkpoint — viewer access to customer receipt records (2026-11-06)
+
+Added a positive viewer GET assertion after a customer receipt is recorded, including the receipt identity, organization ID and amount. Local typecheck, lint, production build and diff check pass; the focused receipt integration file skips because no local replica set is available. Commit/push and verify all six exact-SHA workflows, then continue endpoint × role × reference coverage.
+
 ## Active checkpoint — viewer dashboard and general-ledger access (2026-11-06)
 
 Extended the source-reconciled financial workflow fixture with viewer checks for date-filtered dashboard KPIs and the income-account general-ledger running balance. At `106da57`, all six exact-SHA workflows passed: CI #593/#594, MongoDB #528/#529, Browser #312/#313. Local workspace verification passed (63 tests, 77 MongoDB-dependent skips, typecheck, lint, production build, and diff check); the focused integration file skips without a local replica set. Tenant-isolation change `c8ff4fa` passed all six workflows: CI #591/#592, MongoDB #526/#527, Browser #310/#311. Next: continue the route/role/reference matrix and document remaining release gates.

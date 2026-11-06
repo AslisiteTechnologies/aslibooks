@@ -108,6 +108,11 @@ describe.skipIf(!enabled)('customer receipts HTTP lifecycle', () => {
     expect(sameKeyAttempts[0].body.id).toBe(sameKeyAttempts[1].body.id);
     const partial = sameKeyAttempts.find(response => response.status === 201)!;
     expect(partial.body).toMatchObject({ amountPaise: 3000, replayed: false });
+    const viewerReceipts = await request(app).get(path).set({ 'x-fixture-actor': 'receipt-viewer' }).expect(200);
+    expect(viewerReceipts.body.receipts).toHaveLength(1);
+    expect(viewerReceipts.body.receipts[0]).toMatchObject({
+      id: partial.body.id, organizationId: String(organizationId), amountPaise: 3000,
+    });
     const invoiceAfterPartial = await InvoiceModel.findById(issuedInvoiceId);
     expect(invoiceAfterPartial).toMatchObject({ status: 'partially_paid', amountPaidPaise: 3000, totalPaise: 10000 });
     const replay = await request(app).post(path).set(accountant).send(first).expect(200);
