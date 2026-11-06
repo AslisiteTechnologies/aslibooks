@@ -1,14 +1,13 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
 import { connectDatabase, disconnectDatabase } from './db.js';
+import { assertMigrationTarget } from './migrations/config.js';
 import { migrations } from './migrations/registry.js';
 import { applyMigrations } from './migrations/runner.js';
 
 async function run() {
   const databaseName = process.env.MONGODB_DB_NAME;
-  if (!databaseName) throw new Error('MONGODB_DB_NAME must be configured');
-  if (process.env.ASLIBOOKS_MIGRATION_DATABASE !== databaseName)
-    throw new Error(`Set ASLIBOOKS_MIGRATION_DATABASE to the exact target database name (${databaseName}) to confirm the migration target`);
+  assertMigrationTarget(databaseName, process.env.ASLIBOOKS_MIGRATION_DATABASE);
 
   await connectDatabase();
   try {

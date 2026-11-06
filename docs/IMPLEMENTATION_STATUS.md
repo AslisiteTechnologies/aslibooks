@@ -1,5 +1,9 @@
 # Implementation status
 
+## Current verified checkpoint — 2026-11-06
+
+Current local branch: `codex/aslibooks-mvp`; publication target: `origin/develop/phase-1-foundation`. Local and remote are both at `354a091391fb26c9bcc023d2cf70646f1e1a45a9`. The exact-SHA CI and MongoDB push/PR checks and Browser PR check passed; Browser push run [#42223990281](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42223990281) was still in progress at this checkpoint. A separate, uncommitted migration-target guard extraction and unit test are locally verified (API 38 files / 149 tests, including the disposable replica-set suite; typecheck, lint, build, web 8/8, dependency audit, and diff check pass). The owner vision file is untracked and must remain unstaged. See the dated audit for verified feature classification and exact accounting reconciliation. Staging readiness remains unverified; production approval is absent.
+
 ## Receipt attachment gap — local verification in progress (2026-11-06)
 
 Immediate paid-now expenses now accept private receipt documents through the existing tenant-scoped PDF/PNG/JPEG attachment service. Authorization rechecks the cash-expense source inside the storage transaction; the Expenses history exposes an attachment panel. At `4f568377`, the focused disposable-replica test, Browser receipt upload and all six CI/MongoDB/Browser push/PR workflows passed. A viewer-upload denial and viewer-list allowance passed locally and all six exact-SHA workflows at `575dc89`. Web 8/8, typecheck, lint, production build, dependency audit and diff check pass. Staging and production remain unverified/unapproved.

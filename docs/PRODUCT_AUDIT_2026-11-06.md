@@ -1,5 +1,9 @@
 # Aslibooks product audit — 2026-11-06
 
+## Latest execution checkpoint
+
+At this update, local `HEAD` and `origin/develop/phase-1-foundation` are both `354a091391fb26c9bcc023d2cf70646f1e1a45a9`. Exact-SHA CI/MongoDB push and PR runs and Browser PR passed; Browser push [#42223990281](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42223990281) remained in progress. A locally verified migration-target confirmation guard is uncommitted and must be published after that run concludes. The latest supported non-tax golden workflow now includes receipt attachment, cash expense and report reconciliation. A realistic synthetic account-setup-to-bank-reconciliation UI flow was previously executed; report assertions and source records reconcile to exact journals. Staging-ready is not established: no hosted staging, restricted grants, backup/restore rehearsal, monitoring/alert or rollback exercise has been performed. Production approval remains false, and tax-bearing workflows are not represented as GST compliant.
+
 This audit records the current `codex/aslibooks-mvp` checkout at base SHA `4e3dd782f42b173eba2b1a3c4ba1e94d1006e808`, plus the uncommitted changes listed in the current implementation checkpoint. It does not include dirty changes from the other preserved worktrees. The owner-supplied `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md` is deliberately untracked.
 
 ## Repository and hosted verification
