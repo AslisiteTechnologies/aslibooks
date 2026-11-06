@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { api, type Organization } from './api';
 import { AuthScreen } from './AuthScreen';
 import { OnboardingScreen } from './OnboardingScreen';
-import { AppBar, Box, Button, Chip, Container, Divider, Drawer, List, ListItemButton, ListItemText, Paper, Stack, Toolbar, Typography } from '@mui/material';
+import { AppBar, Box, Button, Chip, Container, Divider, Drawer, List, ListItem, ListItemButton, ListItemText, Paper, Stack, Toolbar, Typography } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 
@@ -91,11 +91,13 @@ export function App() {
       </Stack>
       <Divider sx={{ my: 2 }} />
       <List>
-        {nav.map((item) => (
-          <ListItemButton key={item} selected={section === item} aria-current={section === item ? 'page' : undefined}
-            onClick={() => { setSection(item); setMobileOpen(false); }} sx={{ borderRadius: 2, mb: 0.5 }}>
-            <ListItemText primary={item} />
-          </ListItemButton>
+        {nav.map(item => (
+          <ListItem key={item} disablePadding>
+            <ListItemButton selected={section === item} aria-current={section === item ? 'page' : undefined}
+              onClick={() => { setSection(item); setMobileOpen(false); }} sx={{ borderRadius: 2, mb: 0.5 }}>
+              <ListItemText primary={item} />
+            </ListItemButton>
+          </ListItem>
         ))}
       </List>
     </Box>

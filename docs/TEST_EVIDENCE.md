@@ -25,12 +25,14 @@
 
 ## Active local feature — axe-core accessibility scan (not yet published)
 
+- The first hosted scan at `65c22f8` failed on the Overview screen: axe rule `list` found MUI navigation buttons as direct children of `<ul>`. The semantic fix wraps each button in `ListItem`; hosted Browser verification of that correction is pending.
 - `pnpm exec turbo run typecheck --force`: passed all 3 packages.
 - `pnpm lint`: passed.
 - `pnpm --filter @aslibooks/web test`: passed, 8/8. No application unit tests changed in the accessibility slice; the new scan executes in hosted browser E2E.
 - `pnpm exec turbo run build --force`: passed all 3 packages; Vite produced the web bundle.
 - `git diff --check`: passed before the latest documentation edits; rerun before commit.
 - The local Python command resolves only to the Windows App Execution Alias; local Playwright E2E is unavailable. Run the axe scans through the hosted Browser workflow and fix any reported WCAG violations before marking automated coverage verified. Manual accessibility review remains a release gate.
+- After the Overview list finding, the local MUI `ListItem` semantic fix passes forced typecheck, lint, web tests (8/8), build, and diff checks. The Vite build reports a main chunk of 500.70 kB uncompressed / 153.89 kB gzip; no limit change was made. Hosted Browser verification is still pending.
 
 ## Previously verified remote history
 
