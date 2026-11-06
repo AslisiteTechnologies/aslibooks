@@ -161,3 +161,5 @@ Opening-balance object-reference regression passed MongoDB #478/#479 and CI #543
 Customer/vendor advance reference follow-up: both creation routes now have tests for foreign contact IDs with no advance, journal, or audit writes. The first customer test run showed the intended tenant-scoped `404` response while the test expected `422`; this is corrected. Typecheck/lint/diff pass locally. Hosted replica-set rerun pending.
 
 Advance contact isolation passed MongoDB #482/#483 and CI #547/#548 at SHA `7351e7bed77bd735de770aa32c1573a50547cbe2`; Browser was pending. Current follow-up tests foreign invoice/bill IDs on allocation routes and asserts no allocation, journal or audit writes.
+
+Advance reference isolation passed exact-SHA MongoDB runs #482–#485 through `7a3f9584356bd8eadcd97cc7dbad45d0d1d1356e`; CI #549/#550 passed, Browser #268/#269 was pending. Current follow-up tests cross-tenant account/contact object IDs on updates and archives, checking no record or audit mutation.

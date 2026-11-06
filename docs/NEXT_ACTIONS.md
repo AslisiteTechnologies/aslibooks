@@ -358,3 +358,5 @@ The foreign customer-advance reference test is the active slice. It must reject 
 The prior `479e3d9` MongoDB run failed one expected-status assertion: a missing tenant-scoped customer reference returns 404 by design; the test incorrectly expected 422. The customer and vendor foreign-contact assertions now expect 404. Both verify advance/journal/audit counts remain unchanged. Typecheck, lint, and diff checks pass. Publish and verify the new exact SHA.
 
 The current focused route-security slice tests foreign invoice/bill allocation IDs for customer/vendor advances. Each foreign record is seeded in a peer organization; the current tenant's active advance must get a 404 and leave allocation, journal, and audit state unchanged. Typecheck, lint, and diff checks pass. Hosted replica-set verification is pending.
+
+Current local slice tests account/contact update and archive paths using real peer-tenant IDs, expecting 404 with the foreign record and tenant audit counts unchanged. Typecheck/lint/diff pass. Hosted replica-set verification awaits publication. Then resume route-reference checks or proceed to wider responsive accessibility coverage.

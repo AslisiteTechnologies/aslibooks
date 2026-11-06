@@ -75,6 +75,12 @@ describe.skipIf(!enabled)('chart of accounts HTTP', () => {
     const peer = { 'x-fixture-actor': 'other' };
     const { body: { id: otherId } } = await request(app).post(foreign).set(peer).send(input).expect(201);
     await request(app).patch(foreign + '/' + id).set(peer).send({ name: 'Leak' }).expect(404);
+    const otherAccountBefore = await AccountModel.findById(otherId).lean();
+    const auditCountBeforeForeignId = await AuditEventModel.countDocuments({ organizationId: org });
+    await request(app).patch(path + '/' + otherId).set(owner).send({ name: 'Cross-tenant account edit' }).expect(404);
+    await request(app).patch(path + '/' + otherId).set(owner).send({ active: false }).expect(404);
+    expect(await AccountModel.findById(otherId).lean()).toEqual(otherAccountBefore);
+    expect(await AuditEventModel.countDocuments({ organizationId: org })).toBe(auditCountBeforeForeignId);
     const list = await request(app).get(path).set('x-fixture-actor', 'viewer').expect(200);
     expect(list.body.accounts.map((a: { id: string }) => a.id)).toContain(id);
     expect(list.body.accounts.map((a: { id: string }) => a.id)).not.toContain(otherId);

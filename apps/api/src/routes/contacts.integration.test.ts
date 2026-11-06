@@ -61,6 +61,12 @@ describe.skipIf(!enabled)('contacts API', () => {
       .send({ displayName: 'Taken over' }).expect(404);
     await request(app).get(path + '/' + foreignContactId).set(owner).expect(404);
     await request(app).get(path + '/' + foreignContactId + '/ledger').set(owner).expect(404);
+    const foreignContactBefore = await ContactModel.findById(foreignContactId).lean();
+    const auditCountBeforeForeignId = await AuditEventModel.countDocuments({ organizationId: org });
+    await request(app).patch(path + '/' + foreignContactId).set(owner).send({ displayName: 'Cross-tenant edit' }).expect(404);
+    await request(app).patch(path + '/' + foreignContactId).set(owner).send({ active: false }).expect(404);
+    expect(await ContactModel.findById(foreignContactId).lean()).toEqual(foreignContactBefore);
+    expect(await AuditEventModel.countDocuments({ organizationId: org })).toBe(auditCountBeforeForeignId);
     await request(app).get(path + '?after=nope').set(owner).expect(400);
   });
   it('edits, searches, filters, and audits contacts', async () => {
