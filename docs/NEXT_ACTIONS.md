@@ -2,7 +2,7 @@
 
 ## Active checkpoint — warning contrast and expanded a11y coverage (2026-11-06)
 
-At `4ccb0d7`, CI #575/#576 and MongoDB #510/#511 passed; Browser push #294 passed. Browser PR #295 found warning text contrast in Expenses. The warning palette was darkened to `#a64b00`, and the browser flow now scans Products, Receipts, Banking, GST, fiscal close, Settings and Team. On `d9b8ff2`, Browser push #296 found an unnamed fiscal-close progress bar; `CircularProgress` elements in the app now have accessible names. Browser PR #297 was still running at last check. Web tests, lint, typecheck, build and diff passed before the latest progressbar fix. Local Playwright runtime exists but local MongoDB/Container engine is unavailable, so hosted E2E provides journey verification. Commit/push and verify all six workflows; keep fixing findings. Manual accessibility review stays open.
+Accessibility automation is green at exact SHA `01e3232`: CI #579/#580, MongoDB #514/#515, Browser #298/#299. This full desktop/mobile run includes axe WCAG 2.1 A/AA scans across sign-in, onboarding, overview, team, settings, accounting, contacts, products, sales, receipts, expenses/AI, banking, GST, fiscal close and reports. The two discovered contrast issues and missing progressbar name are fixed. Local web tests pass 8/8, lint/typecheck/build/diff checks pass; production build warns of a 500.92 kB main chunk (153.97 kB gzip). Continue the cross-route tenant/reference/role audit and record a manual keyboard/focus/screen-reader review; do not mark accessibility complete based only on automated scans.
 
 ## Active checkpoint — axe contrast correction (2026-11-06)
 
@@ -76,13 +76,19 @@ For local integration/browser tests, use a disposable MongoDB replica set and AP
 ## Restart commands
 
 ```powershell
-cd D:\aslibooks-next
+cd D:\aslibooks
 git status --short --branch
 git log -5 --oneline
 git ls-remote origin refs/heads/develop/phase-1-foundation
 Get-Content docs/IMPLEMENTATION_STATUS.md
 Get-Content docs/TEST_EVIDENCE.md -Tail 80
 Get-Content docs/NEXT_ACTIONS.md
+pnpm --filter @aslibooks/web test
+pnpm lint
+pnpm typecheck
+pnpm build
+pnpm audit --audit-level=high
+git diff --check
 ```
 
 ## Active task: finish retry-key follow-up, then close tenant/role test gaps
