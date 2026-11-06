@@ -1,11 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Alert, Button, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
 import { api, type Organization, type OrganizationInvitation, type OrganizationMember } from './api';
 
 export function TeamScreen({ organization, onAccepted }: { organization: Organization; onAccepted: () => Promise<void> }) {
   const canManage = ['owner', 'admin'].includes(organization.role);
   const [members, setMembers] = useState<OrganizationMember[]>([]); const [invitations, setInvitations] = useState<OrganizationInvitation[]>([]);
   const [roles, setRoles] = useState<Record<string, string>>({}); const [email, setEmail] = useState(''); const [inviteRole, setInviteRole] = useState<'admin' | 'accountant' | 'viewer'>('accountant');
+  const [transferTarget, setTransferTarget] = useState<OrganizationMember | null>(null);
   const [error, setError] = useState(''); const [notice, setNotice] = useState(''); const [version, setVersion] = useState(0);
   useEffect(() => {
     let active = true;
@@ -36,6 +37,14 @@ export function TeamScreen({ organization, onAccepted }: { organization: Organiz
     try { await api.acceptInvitation(invitation.organizationId, invitation.id); setNotice(`Invitation to ${invitation.organizationName} accepted.`); setVersion(value => value + 1); await onAccepted(); }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Invitation could not be accepted.'); }
   }
+  async function transferOwnership() {
+    if (!transferTarget) return;
+    try {
+      await api.transferOwnership(organization.id, transferTarget.id);
+      setNotice(`Ownership transferred to ${transferTarget.email}. Your role is now admin.`);
+      setTransferTarget(null); setVersion(value => value + 1); await onAccepted();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Ownership could not be transferred.'); }
+  }
   return <Stack spacing={2}>
     {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}{notice && <Alert severity="success" onClose={() => setNotice('')}>{notice}</Alert>}
     {!!invitations.length && <Paper variant="outlined" sx={{ p: 2 }}><Stack spacing={1.5}><Typography variant="h6">Invitations for you</Typography>
@@ -65,10 +74,20 @@ export function TeamScreen({ organization, onAccepted }: { organization: Organiz
               <Button color={member.status === 'active' ? 'error' : 'primary'} onClick={() => void update(member, { status: member.status === 'active' ? 'suspended' : 'active' })}>
                 {member.status === 'active' ? 'Suspend' : member.status === 'invited' ? 'Cancel invite' : 'Reactivate'}
               </Button>
+              {organization.role === 'owner' && member.role === 'admin' && member.status === 'active' &&
+                <Button color="warning" onClick={() => { setError(''); setTransferTarget(member); }}>Transfer ownership</Button>}
             </>}
           </Stack></Paper>;
         })}
       </Stack>
     </>}
+    <Dialog open={!!transferTarget} onClose={() => setTransferTarget(null)} aria-labelledby="transfer-ownership-title">
+      <DialogTitle id="transfer-ownership-title">Transfer organization ownership?</DialogTitle>
+      <DialogContent><DialogContentText>
+        {transferTarget?.email} will become the owner. Your role will change to admin immediately. Only transfer ownership to someone you trust.
+      </DialogContentText></DialogContent>
+      <DialogActions><Button onClick={() => setTransferTarget(null)}>Cancel</Button>
+        <Button color="warning" variant="contained" onClick={() => void transferOwnership()}>Confirm ownership transfer</Button></DialogActions>
+    </Dialog>
   </Stack>;
 }

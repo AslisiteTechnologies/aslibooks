@@ -15,7 +15,7 @@ describe.skipIf(!enabled)('organization member and invitation workflows', () => 
   const app = express(); app.use(express.json());
   app.use('/orgs', organizationRouter(async headers => { const id = headers.get('x-fixture-actor'); return id ? { id } : null; }));
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => { res.status(500).json({ error: String(error) }); });
-  const org = new Types.ObjectId(); const peer = new Types.ObjectId();
+  const org = new Types.ObjectId(); const peer = new Types.ObjectId(); const transferOrg = new Types.ObjectId();
   const ownerId = new Types.ObjectId(); const adminId = new Types.ObjectId(); const accountantId = new Types.ObjectId(); const viewerId = new Types.ObjectId();
   const invitedId = new Types.ObjectId(); const unverifiedId = new Types.ObjectId(); const racingInviteeId = new Types.ObjectId();
   const path = `/orgs/${org}`; const owner = { 'x-fixture-actor': ownerId.toHexString() }; const admin = { 'x-fixture-actor': adminId.toHexString() };
@@ -23,13 +23,22 @@ describe.skipIf(!enabled)('organization member and invitation workflows', () => 
   beforeAll(async () => {
     await mongoose.connect(uri!, { dbName });
     await Promise.all([OrganizationModel.init(), MembershipModel.init(), AuditEventModel.init()]);
-    await OrganizationModel.create([{ _id: org, name: 'Members route test', slug: `members-${org}` }, { _id: peer, name: 'Members peer', slug: `members-peer-${peer}` }]);
+    await OrganizationModel.create([
+      { _id: org, name: 'Members route test', slug: `members-${org}` },
+      { _id: peer, name: 'Members peer', slug: `members-peer-${peer}` },
+      { _id: transferOrg, name: 'Ownership transfer test', slug: `members-transfer-${transferOrg}` },
+    ]);
     await MembershipModel.create([
       { organizationId: org, authUserId: String(ownerId), role: 'owner', status: 'active' },
       { organizationId: org, authUserId: String(adminId), role: 'admin', status: 'active' },
       { organizationId: org, authUserId: String(accountantId), role: 'accountant', status: 'active' },
       { organizationId: org, authUserId: String(viewerId), role: 'viewer', status: 'active' },
       { organizationId: peer, authUserId: String(invitedId), role: 'owner', status: 'active' },
+    ]);
+    await MembershipModel.create([
+      { organizationId: transferOrg, authUserId: String(ownerId), role: 'owner', status: 'active' },
+      { organizationId: transferOrg, authUserId: String(adminId), role: 'admin', status: 'active' },
+      { organizationId: transferOrg, authUserId: String(accountantId), role: 'accountant', status: 'active' },
     ]);
     await mongoose.connection.collection('user').insertMany([
       { _id: ownerId, email: 'owner@members.example', name: 'Owner', emailVerified: true },
@@ -112,12 +121,28 @@ describe.skipIf(!enabled)('organization member and invitation workflows', () => 
     expect(await AuditEventModel.countDocuments({ organizationId: org, actorAuthUserId: { $in: [String(ownerId), String(adminId), String(invitedId)] }, action: { $in: ['membership.invited', 'membership.invitation_accepted', 'membership.updated'] } }))
       .toBe(racedInvite.status === 201 ? 6 : 5);
   });
+  it('transfers ownership atomically to an active admin and records both memberships', async () => {
+    const transferPath = `/orgs/${transferOrg}`;
+    const target = await MembershipModel.findOne({ organizationId: transferOrg, authUserId: String(adminId) });
+    const accountant = await MembershipModel.findOne({ organizationId: transferOrg, authUserId: String(accountantId) });
+    expect(target).not.toBeNull(); expect(accountant).not.toBeNull();
+    await request(app).post(`${transferPath}/members/${target!._id}/transfer-ownership`).set(admin).send({ confirmation: 'TRANSFER_OWNERSHIP' }).expect(403);
+    await request(app).post(`${transferPath}/members/${target!._id}/transfer-ownership`).set(owner).send({ confirmation: 'transfer' }).expect(400);
+    await request(app).post(`${transferPath}/members/${accountant!._id}/transfer-ownership`).set(owner).send({ confirmation: 'TRANSFER_OWNERSHIP' }).expect(409);
+    await request(app).post(`${transferPath}/members/${target!._id}/transfer-ownership`).set(owner).send({ confirmation: 'TRANSFER_OWNERSHIP' }).expect(200, { transferred: true });
+
+    expect(await MembershipModel.findOne({ organizationId: transferOrg, authUserId: String(ownerId) })).toMatchObject({ role: 'admin', status: 'active' });
+    expect(await MembershipModel.findOne({ organizationId: transferOrg, authUserId: String(adminId) })).toMatchObject({ role: 'owner', status: 'active' });
+    expect(await MembershipModel.countDocuments({ organizationId: transferOrg, role: 'owner', status: 'active' })).toBe(1);
+    expect(await AuditEventModel.countDocuments({ organizationId: transferOrg, actorAuthUserId: String(ownerId), action: 'membership.ownership_transferred' })).toBe(2);
+    await request(app).post(`${transferPath}/members/${accountant!._id}/transfer-ownership`).set(owner).send({ confirmation: 'TRANSFER_OWNERSHIP' }).expect(403);
+  });
   afterAll(async () => {
     if (!enabled) return;
     await mongoose.connection.collection('user').deleteMany({ _id: { $in: [ownerId, adminId, accountantId, invitedId, unverifiedId, racingInviteeId] } });
-    await AuditEventModel.deleteMany({ organizationId: { $in: [org, peer] } });
-    await MembershipModel.deleteMany({ organizationId: { $in: [org, peer] } });
-    await OrganizationModel.deleteMany({ _id: { $in: [org, peer] } });
+    await AuditEventModel.deleteMany({ organizationId: { $in: [org, peer, transferOrg] } });
+    await MembershipModel.deleteMany({ organizationId: { $in: [org, peer, transferOrg] } });
+    await OrganizationModel.deleteMany({ _id: { $in: [org, peer, transferOrg] } });
     await mongoose.disconnect();
   });
 });

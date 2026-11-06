@@ -9,6 +9,7 @@ import { fenceOrganizationManagement, hasPermission } from '../security/authoriz
 
 class MembershipError extends Error { constructor(readonly status: number, message: string) { super(message); } }
 const inviteInput = z.strictObject({ email: z.string().trim().email().max(254).transform(value => value.toLowerCase()), role: z.enum(['admin', 'accountant', 'viewer']) });
+const ownershipTransferInput = z.strictObject({ confirmation: z.literal('TRANSFER_OWNERSHIP') });
 const memberUpdate = z.union([
   z.strictObject({ role: z.enum(membershipRoles) }),
   z.strictObject({ status: z.enum(['active', 'suspended']) }),
@@ -104,6 +105,36 @@ export function memberRouter() {
     } catch (error) {
       if (error instanceof MembershipError) { res.status(error.status).json({ error: error.message }); return; }
       if (error instanceof Error && 'code' in error && error.code === 11000) { res.status(409).json({ error: 'This user already has a membership in the organization' }); return; }
+      next(error);
+    }
+  });
+  router.post('/:memberId/transfer-ownership', async (req, res, next) => {
+    const { organizationId, authUserId } = res.locals; const memberId = req.params.memberId;
+    if (!Types.ObjectId.isValid(memberId)) { res.status(400).json({ error: 'Invalid member reference' }); return; }
+    if (!req.is('application/json')) { res.status(415).json({ error: 'Send JSON ownership transfer confirmation' }); return; }
+    const parsed = ownershipTransferInput.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: 'Explicit ownership transfer confirmation is required' }); return; }
+    try {
+      await mongoose.connection.transaction(async session => {
+        if (!await fenceOrganizationManagement(authUserId, String(organizationId), session)) throw new MembershipError(403, 'Only owners and admins can transfer organization ownership');
+        const actor = await MembershipModel.findOne({ organizationId, authUserId, status: 'active' }).session(session);
+        if (!actor || actor.role !== 'owner') throw new MembershipError(403, 'Only the current owner can transfer organization ownership');
+        const target = await MembershipModel.findOne({ _id: memberId, organizationId }).session(session);
+        if (!target) throw new MembershipError(404, 'Member not found');
+        if (target.authUserId === authUserId) throw new MembershipError(409, 'Choose another organization member');
+        if (target.role !== 'admin' || target.status !== 'active') throw new MembershipError(409, 'Ownership can only be transferred to an active admin');
+        target.role = 'owner';
+        await target.save({ session });
+        actor.role = 'admin';
+        await actor.save({ session });
+        await AuditEventModel.create([
+          { organizationId, actorAuthUserId: authUserId, action: 'membership.ownership_transferred', resourceType: 'membership', resourceId: String(actor._id) },
+          { organizationId, actorAuthUserId: authUserId, action: 'membership.ownership_transferred', resourceType: 'membership', resourceId: String(target._id) },
+        ], { session, ordered: true });
+      });
+      res.json({ transferred: true });
+    } catch (error) {
+      if (error instanceof MembershipError) { res.status(error.status).json({ error: error.message }); return; }
       next(error);
     }
   });

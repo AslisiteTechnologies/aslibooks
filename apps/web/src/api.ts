@@ -220,6 +220,7 @@ export const api = {
   members: (org: string) => jsonRequest<{ members: OrganizationMember[] }>(`/api/organizations/${org}/members`),
   inviteMember: (org: string, email: string, role: 'admin' | 'accountant' | 'viewer') => jsonRequest<{ id: string; status: 'invited'; notificationSent: boolean }>(`/api/organizations/${org}/members`, { method: 'POST', body: JSON.stringify({ email, role }) }),
   updateMember: (org: string, memberId: string, input: { role: string } | { status: 'active' | 'suspended' }) => jsonRequest<{ updated: true }>(`/api/organizations/${org}/members/${memberId}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  transferOwnership: (org: string, memberId: string) => jsonRequest<{ transferred: true }>(`/api/organizations/${org}/members/${memberId}/transfer-ownership`, { method: 'POST', body: JSON.stringify({ confirmation: 'TRANSFER_OWNERSHIP' }) }),
   invitations: () => jsonRequest<{ invitations: OrganizationInvitation[] }>('/api/organizations/invitations'),
   acceptInvitation: (org: string, invitationId: string) => jsonRequest<{ accepted: true; organizationId: string }>(`/api/organizations/${org}/invitations/${invitationId}/accept`, { method: 'POST', body: '{}' }),
   authConfig: () => jsonRequest<{ emailVerificationRequired: boolean }>('/api/public/config'),
