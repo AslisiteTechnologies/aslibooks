@@ -430,12 +430,14 @@ The current focused route-security slice tests foreign invoice/bill allocation I
 Current local slice tests account/contact update and archive paths using real peer-tenant IDs, expecting 404 with the foreign record and tenant audit counts unchanged. Typecheck/lint/diff pass. Hosted replica-set verification awaits publication. Then resume route-reference checks or proceed to wider responsive accessibility coverage.
 # Next: publish and verify pagination change
 
-## Current active slice — private receipts for immediate expenses (2026-11-06)
+## Current active slice — permission regression follow-up (2026-11-06)
 
-1. Finish checking exact-HEAD Actions for `92e8e5678c11d4a1bb2155ec767a68e74e68561f`; doc-only CI and MongoDB passed, with PR Browser still in progress at last check.
-2. Commit the immediate-expense attachment API/model/UI, focused tenant test, hosted Browser receipt flow and status records above. Never stage `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`.
-3. Push only to `origin/develop/phase-1-foundation`; require push and PR CI, MongoDB and Browser success on the exact feature SHA. Fix any failures before closing this slice.
-4. Continue the audit’s independently executable gaps: reconcile the synthetic UI receipt artifact against its source expense and financial statements, then review mounted route/object-reference gaps and make backup/restore/monitoring procedures runnable without performing deployment.
+The source-receipt workflow commit `4f5683773ce4782943220413fba6ed3fca2ab1e7` is pushed to the development branch and all six exact-SHA CI/MongoDB/Browser push/PR workflows passed (recorded in `TEST_EVIDENCE.md`). The post-commit local follow-up adds direct proof that a viewer cannot upload a private receipt to an immediate expense; focused replica-set test and typecheck pass. Audit and acceptance docs now record the verified feature matrix and distinguish no staging rehearsal from hosted verification.
+
+1. Review and commit the viewer-upload denial assertion and accurate evidence/status updates. Never stage `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`.
+2. Push only to `origin/develop/phase-1-foundation`, then require all six exact-SHA workflows; investigate any failure.
+3. Continue the highest-impact unblocked release gap: add a versioned, forward-only, restart-safe data migration runner because the master vision asks for migration readiness and the current `STAGING_RUNBOOK.md` explicitly says no framework exists. Include a disposable-replica integration rehearsal, operator command and rollback/compatibility guidance. Do not run it against staging or production.
+4. After that, work on reproducible isolated backup/restore and monitoring checks using synthetic disposable data; staging access, restore objectives, malware/retention policy, qualified tax/accounting review and release approvals remain owner/environment gates.
 
 1. Finish the current `pnpm build`; rerun `git diff --check` and `pnpm lint` if edits change.
 2. Push a feature commit to `origin/develop/phase-1-foundation` without staging the owner-provided vision document.

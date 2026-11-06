@@ -2,7 +2,7 @@
 
 ## Receipt attachment gap — local verification in progress (2026-11-06)
 
-Immediate paid-now expenses now accept private receipt documents through the existing tenant-scoped PDF/PNG/JPEG attachment service. Authorization rechecks the cash-expense source inside the storage transaction; the Expenses history exposes an attachment panel. The focused disposable-replica API test verifies upload, viewer listing and cross-tenant 404. Locally verified: focused API 1/1, web 8/8, typecheck, lint, production build, dependency audit and diff check. The desktop/mobile hosted Browser scenario now uploads a synthetic receipt to the immediate expense; exact-SHA hosted verification is pending. Current source is uncommitted; preserve the owner-supplied vision file. Staging and production remain unverified/unapproved.
+Immediate paid-now expenses now accept private receipt documents through the existing tenant-scoped PDF/PNG/JPEG attachment service. Authorization rechecks the cash-expense source inside the storage transaction; the Expenses history exposes an attachment panel. At `4f568377`, the focused disposable-replica test, Browser receipt upload and all six CI/MongoDB/Browser push/PR workflows passed. A follow-up locally denies viewer upload and allows viewer listing; focused API 1/1 and typecheck pass, with this test-only extension awaiting publication/hosted checks. Web 8/8, lint, production build, dependency audit and diff check pass. Staging and production remain unverified/unapproved.
 
 ## Current verification checkpoint — 2026-11-06
 

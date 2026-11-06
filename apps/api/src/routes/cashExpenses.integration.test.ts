@@ -37,6 +37,9 @@ describe.skipIf(!enabled)('immediate cash expenses', () => {
     expect(await CashExpenseModel.countDocuments({ organizationId })).toBe(0);
     const posted = await request(app).post(path).set(owner).send(payload).expect(201);
     const receipt = Buffer.from('%PDF-1.7\nSynthetic expense receipt\n%%EOF');
+    await request(app).post(`/orgs/${organizationId}/attachments`).set({ 'x-fixture-actor': 'cash-expense-viewer', 'Content-Type': 'application/pdf',
+      'x-resource-type': 'cash_expense', 'x-resource-id': posted.body.id, 'x-file-name': 'viewer-upload.pdf', 'idempotency-key': 'cash-expense-viewer-file' })
+      .send(receipt).expect(403);
     const attachment = await request(app).post(`/orgs/${organizationId}/attachments`).set({ ...owner, 'Content-Type': 'application/pdf',
       'x-resource-type': 'cash_expense', 'x-resource-id': posted.body.id, 'x-file-name': 'expense-receipt.pdf', 'idempotency-key': 'cash-expense-file-001' })
       .send(receipt).expect(201);
