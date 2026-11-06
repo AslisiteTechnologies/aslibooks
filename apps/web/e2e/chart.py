@@ -429,10 +429,27 @@ def test_chart():
             expect(page.get_by_role("heading", name="Record vendor payment")).to_be_visible()
             payment_amount = page.get_by_label("Amount paid (INR)")
             payment_amount.fill("6.17")
+            payment_keys = []
+            def lose_vendor_payment_response(route):
+                if route.request.method != "POST":
+                    route.continue_()
+                    return
+                payment_keys.append(route.request.post_data_json["idempotencyKey"])
+                response = route.fetch()
+                if len(payment_keys) == 1:
+                    route.abort()
+                else:
+                    route.fulfill(response=response)
+            page.route("**/api/organizations/*/vendor-payments", lose_vendor_payment_response)
+            page.get_by_role("button", name="Review and record payment").click(force=True)
+            expect(page.locator('[role="alert"]').filter(has_text="Failed to fetch")).to_be_visible()
             with page.expect_response(lambda response: response.url.endswith("/bills") and response.request.method == "GET"):
                 with page.expect_response(lambda response: response.url.endswith("/vendor-payments") and response.request.method == "POST") as partial_payment_response:
                     page.get_by_role("button", name="Review and record payment").click(force=True)
             assert partial_payment_response.value.status == 201, partial_payment_response.value.text()
+            assert partial_payment_response.value.json()["replayed"] is True
+            assert len(payment_keys) == 2 and payment_keys[0] == payment_keys[1]
+            page.unroute("**/api/organizations/*/vendor-payments", lose_vendor_payment_response)
             expect(page.get_by_text("₹6.17 paid to Test Vendor", exact=False)).to_be_visible()
             expect(page.get_by_role("heading", name="Record vendor payment")).not_to_be_visible()
             expect(page.get_by_text("Loading bills…")).not_to_be_visible()
