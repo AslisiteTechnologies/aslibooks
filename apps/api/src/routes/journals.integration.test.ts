@@ -83,6 +83,13 @@ describe.skipIf(!enabled)('authenticated manual journal API', () => {
       { ...valid.lines[0], creditPaise: 1 }, valid.lines[1],
     ] }).expect(400);
     await request(app).post(path).set({ 'x-fixture-actor': 'journal-viewer' }).send(valid).expect(403);
+    const journalsBeforeForeignAccount = await JournalModel.countDocuments({ organizationId: org });
+    const auditsBeforeForeignAccount = await AuditEventModel.countDocuments({ organizationId: org });
+    await request(app).post(path).set(accountant).send({ ...valid, idempotencyKey: `foreign-account:${suffix}`, lines: [
+      { accountId: String(foreignDebit), debitPaise: 12345, creditPaise: 0 }, valid.lines[1],
+    ] }).expect(422);
+    expect(await JournalModel.countDocuments({ organizationId: org })).toBe(journalsBeforeForeignAccount);
+    expect(await AuditEventModel.countDocuments({ organizationId: org })).toBe(auditsBeforeForeignAccount);
     const posted = await request(app).post(path).set(accountant).send(valid).expect(201);
     expect(posted.body.replayed).toBe(false);
     const replay = await request(app).post(path).set(accountant).send(valid).expect(200);

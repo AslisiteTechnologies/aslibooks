@@ -2,7 +2,7 @@
 
 ## Active checkpoint — foreign vendor bill route isolation
 
-At `a2918108`, the corrected peer-list assertion and peer bill/invoice guessed-ID access checks passed CI #559/#560 and MongoDB #494/#495; Browser #278/#279 is still running. Current local change tests a customer receipt using a real foreign issued invoice ID and asserts no receipt, journal, audit, or invoice mutation. Run typecheck/lint, diff-check, commit/push, verify exact-SHA CI/MongoDB/Browser, then continue financial reference and role review. Local replica set is unavailable; hosted MongoDB is required. Acceptance criteria remain Partial.
+Foreign-invoice receipt allocation passed MongoDB #496/#497 and CI #561/#562 at `a44697f7`; Browser #280/#281 remains in progress. Current local regression submits a real peer account ID to direct journal posting and asserts no journal/audit writes. Run typecheck/lint/diff-check, commit/push, verify exact-SHA CI/MongoDB/Browser, then continue reference and role review. Local replica set is unavailable; hosted MongoDB is required. Acceptance criteria remain Partial.
 
 ## Active checkpoint — route-driven report reconciliation
 
