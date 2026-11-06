@@ -1,10 +1,10 @@
 # Next actions
 
-## Active checkpoint — persisted organization selection (2026-11-06)
+## Active checkpoint — automated accessibility verification (2026-11-06)
 
 This checkout is on `codex/aslibooks-mvp`; the stale local development branch and its 25 patch-equivalent commits remain preserved, and the original uncommitted workspace snapshot remains in `git stash@{0}`. The owner-supplied vision file is kept untracked and must not be staged.
 
-CI hardening commit `ddfb53707e3ea7a8a71c884356e94fa5489dedc5` is pushed to `develop/phase-1-foundation`; exact-SHA CI #567/#568, MongoDB #502/#503 and Browser #286/#287 all passed. CI now requires lint and a high-severity audit. `pnpm install --frozen-lockfile`, forced uncached typecheck/test/build, lint, audit, and `git diff --check` passed at parent `817892e`; the local suite had 63 pass and 77 DB-dependent skips. The current uncommitted UX slice persists active organization selection after revalidating the ID against memberships, with an E2E reload/isolation assertion; focused web tests pass 8/8, and typecheck/lint/build pass. Commit and publish this slice, verify all six exact-SHA workflows, then continue the remaining role/reference and accessibility gaps.
+CI hardening SHA `ddfb53707e3ea7a8a71c884356e94fa5489dedc5` passed exact-SHA CI #567/#568, MongoDB #502/#503 and Browser #286/#287; lint and high-severity audit are now CI gates. Persisted organization selection passed all six workflows at `725fe17d2f87fb5157d2ee9cc0038f8e97d361cd` (#569/#570, #504/#505, #288/#289). The next uncommitted slice adds axe-core WCAG 2.1 A/AA scans to sign-in, sign-up, onboarding, overview, accounting, contacts and sales browser states. Frozen install, local web tests 8/8, forced typecheck/build, lint, audit and diff checks pass; local Playwright is unavailable. Commit and publish the scans, fix each real violation, verify exact-SHA browser checks, then continue the role/reference audit and manual accessibility review. Keep manual review explicitly open.
 
 Do not merge PR #1 or deploy production. Do not close the MVP checklist while tax/accounting review, staging grants and validation, backup/restore, monitoring, malware/retention controls, and final owner release acceptance remain unverified.
 

@@ -10,21 +10,27 @@
 - `pnpm audit --audit-level=high`: passed, no known vulnerabilities.
 - Forced uncached `pnpm exec turbo run test --force`: 63 passed, 77 skipped, 140 total. The 77 skipped cases require the isolated MongoDB replica set, unavailable in this checkout; they are not local passes. Hosted MongoDB workflow #500/#501 is the DB evidence for SHA `817892e`.
 - Python/Playwright is not available locally. Hosted Browser #284/#285 passed at `817892e`.
-- A new CI workflow change adds the lint and high-severity audit commands; exact-SHA verification for that change is pending publication and workflow completion.
+- CI hardening commit `ddfb53707e3ea7a8a71c884356e94fa5489dedc5` passed exact-SHA workflows #567/#568, #502/#503, and #286/#287 with lint and high-severity audit enforced.
 
 ## CI hardening — exact SHA `ddfb53707e3ea7a8a71c884356e94fa5489dedc5`
 
 - All six exact-SHA workflows passed: [CI push #567](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42170945057), [CI PR #568](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42170949398), [MongoDB push #502](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42170945066), [MongoDB PR #503](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42170949387), [Browser push #286](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42170945042), and [Browser PR #287](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42170949372).
 - Hosted CI passed with the new ESLint and `pnpm audit --audit-level=high` steps enabled.
 
-## Active local feature — remembered organization preference (not yet published)
+## Organization preference — exact SHA `725fe17d2f87fb5157d2ee9cc0038f8e97d361cd`
+
+- All six workflows passed: [CI push #569](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42171424608), [CI PR #570](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42171429445), [MongoDB push #504](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42171424612), [MongoDB PR #505](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42171429454), [Browser push #288](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42171424654), and [Browser PR #289](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42171429419).
+- E2E reloads after selecting the second organization, verifies it remains active, and confirms its journal view does not expose the first organization's activity.
+- Local forced typecheck/build, lint, web tests 8/8, frozen install, and dependency audit pass.
+
+## Active local feature — axe-core accessibility scan (not yet published)
 
 - `pnpm exec turbo run typecheck --force`: passed all 3 packages.
 - `pnpm lint`: passed.
-- `pnpm --filter @aslibooks/web test`: passed, 8/8.
+- `pnpm --filter @aslibooks/web test`: passed, 8/8. No application unit tests changed in the accessibility slice; the new scan executes in hosted browser E2E.
 - `pnpm exec turbo run build --force`: passed all 3 packages; Vite produced the web bundle.
 - `git diff --check`: passed before the latest documentation edits; rerun before commit.
-- The local Python command resolves only to the Windows App Execution Alias; local Playwright E2E is unavailable. The modified browser test must be verified by the hosted Browser workflow before describing the reload behavior as verified.
+- The local Python command resolves only to the Windows App Execution Alias; local Playwright E2E is unavailable. Run the axe scans through the hosted Browser workflow and fix any reported WCAG violations before marking automated coverage verified. Manual accessibility review remains a release gate.
 
 ## Previously verified remote history
 

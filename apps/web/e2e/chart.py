@@ -5,6 +5,23 @@ from uuid import uuid4
 from playwright.sync_api import expect, sync_playwright
 
 
+AXE_SCRIPT = Path(__file__).resolve().parents[1] / "node_modules" / "axe-core" / "axe.min.js"
+
+
+def assert_accessible(page, state):
+    if not page.evaluate("() => Boolean(window.axe)"):
+        page.add_script_tag(path=str(AXE_SCRIPT))
+    violations = page.evaluate("""async () => {
+      const results = await window.axe.run(document, {
+        runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] },
+      });
+      return results.violations.map(({ id, impact, help, nodes }) => ({
+        id, impact, help, elements: nodes.slice(0, 5).map(node => ({ target: node.target, summary: node.failureSummary })),
+      }));
+    }""")
+    assert not violations, f"WCAG 2.1 A/AA violations on {state}: {violations}"
+
+
 def test_chart():
     run = uuid4().hex[:12]
     with sync_playwright() as playwright:
@@ -15,13 +32,18 @@ def test_chart():
         try:
             page.goto(os.environ.get("ASLIBOOKS_WEB_URL", "http://127.0.0.1:5176"))
             page.wait_for_load_state("networkidle", timeout=90000)
+            assert_accessible(page, "sign-in")
             page.get_by_role("button", name="Create account", exact=True).click()
             page.get_by_label("Full name").fill("Test Owner")
             page.get_by_label("Email", exact=False).fill(f"chart-{run}@example.com")
             page.get_by_label("Password").fill(f"Fixture-{run}!")
+            assert_accessible(page, "sign-up")
             page.get_by_role("button", name="Create account", exact=True).click()
             page.get_by_label("Business name").fill(f"Fixture Shop {run}")
+            assert_accessible(page, "organization onboarding")
             page.get_by_role("button", name="Create workspace").click()
+            expect(page.get_by_role("navigation", name="Primary navigation")).to_be_visible()
+            assert_accessible(page, "overview dashboard")
             primary_navigation = page.get_by_role("navigation", name="Primary navigation")
             expect(primary_navigation.get_by_role("button", name="Overview", exact=True)).to_have_attribute("aria-current", "page")
             page.get_by_role("button", name="Overview", exact=True).focus()
@@ -32,6 +54,8 @@ def test_chart():
             expect(page.get_by_role("heading", name="Sales", exact=True)).to_be_visible()
             expect(sales_navigation).to_have_attribute("aria-current", "page")
             page.get_by_role("button", name="Accounting", exact=True).click()
+            expect(page.get_by_role("button", name="Add starter chart")).to_be_visible()
+            assert_accessible(page, "accounting")
             page.get_by_role("button", name="Add starter chart").click()
             expect(page.get_by_text("Added 25 starter accounts", exact=False)).to_be_visible()
             page.get_by_role("button", name="Opening balances", exact=True).click()
@@ -75,6 +99,7 @@ def test_chart():
             expect(mobile_navigation_button).to_have_attribute("aria-expanded", "false")
             mobile_navigation_button.click()
             expect(page.get_by_role("button", name="Accounting", exact=True)).to_be_visible()
+            assert_accessible(page, "mobile navigation drawer")
             page.keyboard.press("Escape")
             expect(page.get_by_role("button", name="Open navigation")).to_have_attribute("aria-expanded", "false")
             page.get_by_role("button", name="Open navigation").click()
@@ -84,6 +109,8 @@ def test_chart():
             expect(page.get_by_text("Current asset · asset · Normal balance: debit · Archived", exact=True)).to_be_visible()
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Contacts", exact=True).click()
+            expect(page.get_by_role("button", name="Save contact")).to_be_visible()
+            assert_accessible(page, "contacts")
             assert_no_horizontal_overflow()
             page.locator("form").get_by_label("Name").fill("Test Customer")
             page.locator("form").get_by_label("Email").fill(f"customer-{run}@example.com")
@@ -123,6 +150,8 @@ def test_chart():
             expect(page.get_by_text("₹50.00 / hours", exact=True)).to_be_visible()
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Sales", exact=True).click()
+            page.get_by_label("Customer").wait_for()
+            assert_accessible(page, "sales")
             assert_no_horizontal_overflow()
             page.get_by_label("Customer").click()
             page.get_by_role("option", name="Test Customer").click()
@@ -281,6 +310,8 @@ def test_chart():
             expect(page.get_by_text("Draft invoice · Test Customer")).to_be_visible()
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Expenses", exact=True).click()
+            page.get_by_label("Paste bill text").wait_for()
+            assert_accessible(page, "expenses and AI suggestion review")
             assert_no_horizontal_overflow()
             bill_source = "Test Vendor invoice AI-42. Total INR 12.34 for monthly office supplies. Due date 30 November 2026."
             page.get_by_label("Paste bill text").fill(bill_source)
@@ -434,6 +465,8 @@ def test_chart():
             expect(page.get_by_text("1000 · Cash on hand — Debit ₹125.00 / Credit ₹0.00")).to_be_visible()
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Reports", exact=True).click()
+            expect(page.get_by_role("heading", name="Trial balance")).to_be_visible()
+            assert_accessible(page, "financial reports")
             assert_no_horizontal_overflow()
             expect(page.get_by_role("heading", name="Trial balance")).to_be_visible()
             expect(page.get_by_role("heading", name="Receivables and payables aging")).to_be_visible()
