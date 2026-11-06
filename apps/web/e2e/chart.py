@@ -10,6 +10,8 @@ def test_chart():
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1100, "height": 850})
+        def assert_no_horizontal_overflow():
+            assert page.evaluate("() => document.documentElement.scrollWidth <= window.innerWidth"), "Page overflows the viewport horizontally"
         try:
             page.goto(os.environ.get("ASLIBOOKS_WEB_URL", "http://127.0.0.1:5176"))
             page.wait_for_load_state("networkidle", timeout=90000)
@@ -68,6 +70,7 @@ def test_chart():
             expect(page.get_by_role("heading", name="E2E-BANK · Current account")).to_be_visible()
             page.set_viewport_size({"width": 390, "height": 844})
             page.reload()
+            assert_no_horizontal_overflow()
             mobile_navigation_button = page.get_by_role("button", name="Open navigation")
             expect(mobile_navigation_button).to_have_attribute("aria-expanded", "false")
             mobile_navigation_button.click()
@@ -80,6 +83,7 @@ def test_chart():
             expect(page.get_by_text("Current asset · asset · Normal balance: debit · Archived", exact=True)).to_be_visible()
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Contacts", exact=True).click()
+            assert_no_horizontal_overflow()
             page.locator("form").get_by_label("Name").fill("Test Customer")
             page.locator("form").get_by_label("Email").fill(f"customer-{run}@example.com")
             page.locator("form").get_by_label("Phone").fill("+91 9876543210")
@@ -118,6 +122,7 @@ def test_chart():
             expect(page.get_by_text("₹50.00 / hours", exact=True)).to_be_visible()
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Sales", exact=True).click()
+            assert_no_horizontal_overflow()
             page.get_by_label("Customer").click()
             page.get_by_role("option", name="Test Customer").click()
             page.get_by_label("Service").click()
@@ -269,6 +274,7 @@ def test_chart():
             expect(page.get_by_text("Draft invoice · Test Customer")).to_be_visible()
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Expenses", exact=True).click()
+            assert_no_horizontal_overflow()
             bill_source = "Test Vendor invoice AI-42. Total INR 12.34 for monthly office supplies. Due date 30 November 2026."
             page.get_by_label("Paste bill text").fill(bill_source)
             ai_suggest_button = page.get_by_role("button", name="Suggest bill fields")

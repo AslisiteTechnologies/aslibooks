@@ -31,6 +31,8 @@ The chart-group correction `ea3fbf4bcb691dea45e3ad3dae9203dfe2718157` passed all
 
 Tenant-reference evidence updated 2026-11-06: account/contact guessed-ID updates and archives passed MongoDB #486/#487; invoice draft reference create/edit passed #488/#489; bill draft reference edit passed #490/#491; corrected bill/invoice guessed-ID detail/edit/post tests passed #494/#495 at SHA `a2918108`; foreign-invoice receipt allocation passed all six workflows at `a44697f7` (CI #561/#562, MongoDB #496/#497, Browser #280/#281). Criterion 1 remains Partial: not every route/reference/export or role permutation has direct evidence. Local manual-journal foreign-account coverage is awaiting interactive Git authentication to publish for hosted verification.
 
+Responsive overflow assertion added to browser E2E for the 390px viewport across primary workflows; hosted Browser verification is pending. Criterion 9 remains Partial pending systematic accessibility and role-specific browser review.
+
 - Branch: `develop/phase-1-foundation`.
 - Latest exact-SHA verification before the pending closed-period test is `079de81f4d567c2083918df2901bf66e25c5f385`; CI #519/#520, MongoDB #454/#455, and Browser #238/#239 all passed. The earlier GST pagination browser locator issue was corrected and later Browser #230/#231 passed. GST review checks only fields entered by users; statutory validation remains out of scope without qualified review.
 - Previous readiness SHA `d282c5f6f2cd649bcd2eb7e42cd2bfba71d6b76a` passed CI #417/#418, MongoDB #354/#355 and Browser #137/#138.
