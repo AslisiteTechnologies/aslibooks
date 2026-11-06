@@ -56,7 +56,9 @@ All six posted journals were individually balanced. The two customer receipts we
 
 ## Highest-impact customer workflow gap and active implementation
 
-The receipt API already accepts up to 50 invoice allocations for a single customer, while the customer-facing form only sent one. This prevented representing a single remittance applied to multiple invoices. The current UI change adds/removes allocations, filters out duplicate invoices, limits choices to one customer, defaults each amount to the available balance, validates each balance, and previews the summed receipt before the existing confirmation/post boundary. Typecheck, lint and production build pass. The Browser workflow now creates and issues two synthetic invoices and allocates one receipt across both; exact-SHA hosted browser verification and publication remain pending.
+The receipt API already accepts up to 50 invoice allocations for a single customer, while the customer-facing form only sent one. This prevented representing a single remittance applied to multiple invoices. The current UI change adds/removes allocations, filters out duplicate invoices, limits choices to one customer, defaults each amount to the available balance, validates each balance, and previews the summed receipt before the existing confirmation/post boundary. Typecheck, lint and production build pass. The first hosted Browser attempt failed because its new test reused a customer that an earlier test intentionally archived; the fixture now creates fresh synthetic customer/vendor contacts before the new flow. Corrected hosted Browser verification is pending.
+
+The same audit found the API already supports multiple bill allocations in a vendor payment while the UI only exposed one bill. A corresponding payment UI now supports distinct same-vendor bills, validates each outstanding amount and preserves the idempotency key across response loss. Typecheck, lint, web tests and production build pass; the Browser scenario now posts two synthetic bills and pays them in one transaction. Exact-SHA hosted Browser verification is pending.
 
 ## Operational tooling and verification
 

@@ -2,6 +2,9 @@
 
 ## Current exact-SHA evidence — 2026-11-06
 
+- Exact SHA `fe25855be84fbd30522c5a30244c0f10a6ac365f` passed CI push/PR runs #42210988653/#42210994609 and MongoDB push/PR runs #42210988668/#42210994979. Browser push/PR #42210988663/#42210994810 failed at the new test setup because the scenario had intentionally archived the original customer earlier. The current correction creates fresh synthetic contacts before testing receipt allocations; hosted Browser rerun is pending.
+- Current UI follow-up adds multiple same-vendor bill allocations to a single payment. The Browser flow includes two synthetic posted bills and one payment; local typecheck, lint, build and web tests (8/8) pass. Hosted verification is pending.
+
 - Product audit base SHA `4e3dd782f42b173eba2b1a3c4ba1e94d1006e808` is the branch/remote HEAD audited this session. Its six Actions runs all succeeded: CI #42204798442/#42204807800, MongoDB #42204798469/#42204807706, Browser #42204798543/#42204807676. A local synthetic UI golden flow reconciled invoice, two receipts, bill/payment, transfer, two imported and reconciled bank rows to exact journals and reports. It found a multi-row import failure, fixed locally by ordered transactional inserts; focused MongoDB tests pass 2/2. The complete API replica-set suite passes 142/142 with `--testTimeout=20000`; accounting passes 5/5 and web 8/8. Typecheck, lint, production build, high-severity dependency audit and `git diff --check` pass. The UI now supports multiple invoice allocations on one receipt, and the Browser flow adds a two-invoice synthetic scenario; those new browser assertions are pending exact-SHA hosted CI.
 - `pnpm --filter @aslibooks/api db:ensure-indexes` succeeded against disposable database `aslibooks_test_indexops`, ensuring the indexes for all 26 Aslibooks Mongoose models. It created no data migrations and did not drop indexes.
 
