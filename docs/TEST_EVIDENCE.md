@@ -365,3 +365,10 @@ Paginated GST SHA `15aef1f498405d645843b4a7bd4fc40484aa49c6` passed exact-SHA CI
 - `products.integration.test.ts` now creates a real product in a peer tenant, attempts update and archive by that foreign ID under the current tenant path, and asserts 404 responses, unchanged foreign product state, and no new audit event.
 - Local typecheck/lint/diff checks pass. The isolated local MongoDB replica set is unavailable, so verify the route assertion through exact-SHA MongoDB workflows after publication.
 - At SHA `457ee8256f9dea693fe6b954054a3aae236e2c04`, CI #535/#536 and MongoDB #470/#471 passed; Browser #254/#255 failed at a test lookup for the nav landmark inside the temporary modal drawer. The visible Accounting button is the right assertion target in that state; the test now locates that button directly. Re-run Browser on the next exact SHA to verify drawer visibility and Escape dismissal.
+- Mobile drawer visibility/Escape coverage passed at SHA `b3566dfbe2fc493a66bc198af3d37b7991f1fa81`: Browser #258/#259. CI #539/#540 and MongoDB #474/#475 also passed. The Browser selector was corrected after #254/#255 showed that the temporary modal drawer hides its landmark from accessible-role queries.
+- The foreign product-ID update/archive regression passed MongoDB #472/#473 and CI #537/#538 at `9006a92cd3d239941e30d91e9091d56a665625cb`; Browser #256/#257 failed only in the independent mobile drawer locator, resolved at `b3566df`.
+
+## Production WEB_ORIGIN validation
+- `trustedOrigins.test.ts`: 5/5 passed, covering dev fallback, missing production configuration, HTTP rejection in production, origin normalization/deduplication, and path/credential rejection.
+- Full workspace typecheck and lint passed. Production build passed after the origin parser implementation; the only subsequent edit was a test expectation corrected and verified by the focused 5/5 run.
+- Exact-SHA CI/MongoDB/Browser verification is pending publication.

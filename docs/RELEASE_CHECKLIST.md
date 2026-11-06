@@ -12,3 +12,4 @@ For each gate attach the exact tested SHA, environment, run link and reviewer. [
 - [ ] Staging build, rollback and monitoring exercised. Record demo environment and known limitations.
 - [ ] Any enabled tax logic has qualified review. AI drafts require explicit confirmation through the normal posting boundary.
 - [ ] Owner accepts demo and limitations and explicitly approves any merge or production deployment.
+- [ ] Production `WEB_ORIGIN` is explicitly configured with HTTPS origins and startup validation has been exercised in staging.

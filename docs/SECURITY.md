@@ -26,3 +26,7 @@ Organization business write routes reject unsafe browser requests whose `Origin`
 ## API response headers and AI data
 
 The API applies `Cache-Control: no-store` to prevent shared/private browser caches from retaining authentication or tenant financial responses. It sets `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, a restrictive `default-src 'none'` policy for API responses, `Referrer-Policy: strict-origin-when-cross-origin`, and disables camera, geolocation and microphone permissions. These API headers do not configure the separate static web host; repeat the appropriate controls at that edge and verify HTTPS/HSTS there. AI bill assistance sends only user-provided source text after explicit consent, is limited to 12,000 characters and 20 requests per IP per hour across API instances sharing the Mongo database and auth secret, and requests provider non-storage. No source text is written to app records. Review provider retention terms and network logging configuration before enabling it in a production environment.
+
+## Production origin configuration
+
+`WEB_ORIGIN` is required when `NODE_ENV=production`. Each comma-separated value must be a canonical HTTP(S) origin with no path, credentials, query or fragment; production values must use HTTPS. Localhost remains the development fallback only. This prevents production startup from silently trusting the localhost development origin.

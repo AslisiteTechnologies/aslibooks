@@ -9,6 +9,20 @@ describe('trusted origin guard', () => {
       .toEqual(['https://books.example', 'https://admin.example']);
   });
 
+  it('keeps localhost as a development default and requires an explicit HTTPS origin in production', () => {
+    expect(configuredTrustedOrigins(undefined, 'development')).toEqual(['http://localhost:5173']);
+    expect(() => configuredTrustedOrigins(undefined, 'production')).toThrow('WEB_ORIGIN must be configured in production');
+    expect(() => configuredTrustedOrigins('http://books.example', 'production')).toThrow('must use HTTPS in production');
+    expect(configuredTrustedOrigins('https://books.example/', 'production')).toEqual(['https://books.example']);
+  });
+
+  it('rejects origin entries that include paths or credentials and removes duplicates', () => {
+    expect(() => configuredTrustedOrigins('https://books.example/app')).toThrow('must be origins without credentials');
+    expect(() => configuredTrustedOrigins('https://user:password@books.example')).toThrow('must be origins without credentials');
+    expect(configuredTrustedOrigins('https://books.example, https://books.example/'))
+      .toEqual(['https://books.example']);
+  });
+
   it('rejects untrusted unsafe browser requests before business handlers run', async () => {
     const app = express();
     let writes = 0;

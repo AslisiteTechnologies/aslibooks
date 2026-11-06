@@ -149,3 +149,7 @@ Mobile navigation follow-up adds `aria-expanded`, checks the accessible primary-
 Catalog reference follow-up: a regression test now submits a real peer-tenant product ID to current-tenant update/archive operations and verifies 404, unchanged product state, and no audit side effect. Hosted replica-set verification is pending.
 
 Mobile E2E selector correction: the temporary modal drawer hides its navigation landmark from the accessibility tree; the test now asserts the visible Accounting button within the current rendered tree, then sends Escape and verifies the menu collapsed. Exact-SHA Browser verification remains required.
+
+Verified mobile navigation SHA `b3566dfbe2fc493a66bc198af3d37b7991f1fa81` passed all six hosted workflows, including Browser #258/#259 for visible drawer state and Escape dismissal.
+
+Production origin guard: focused security tests (5/5), typecheck, lint and production build pass. `NODE_ENV=production` now fails startup if `WEB_ORIGIN` is missing, non-HTTPS, or not an origin-only value. Publish this hardening and verify exact-SHA hosted workflows.
