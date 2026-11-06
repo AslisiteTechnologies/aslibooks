@@ -109,6 +109,10 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
     const created = competingDrafts.find(response => response.status === 201)!;
     draftId = created.body.id;
     expect(created.body.status).toBe('draft');
+    await request(app).get(path).set({ 'x-fixture-actor': 'invoice-viewer' }).expect(200)
+      .expect(response => expect(response.body.invoices).toEqual(expect.arrayContaining([expect.objectContaining({ id: draftId, status: 'draft' })])));
+    await request(app).get(`${path}/${draftId}`).set({ 'x-fixture-actor': 'invoice-viewer' }).expect(200)
+      .expect(response => expect(response.body.invoice).toMatchObject({ id: draftId, status: 'draft' }));
     await request(app).post(path).set(owner).send(draftInput).expect(200, { id: draftId, status: 'draft', replayed: true });
     await request(app).post(path).set(owner).send({ ...draftInput, lines: [{ productId: String(serviceId), quantity: 3 }] }).expect(409);
     expect(await InvoiceModel.countDocuments({ organizationId, draftIdempotencyKey: draftInput.idempotencyKey })).toBe(1);

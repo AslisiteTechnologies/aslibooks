@@ -56,6 +56,10 @@ describe.skipIf(!enabled)('private source attachments', () => {
     expect(downloaded.body).toEqual(pdf);
     expect(downloaded.headers['content-type']).toContain('application/pdf');
     expect(downloaded.headers['cache-control']).toBe('private, no-store');
+    const viewerDownload = await request(app).get(`${path}/${uploaded.body.id}/content`).set({ 'x-fixture-actor': 'attachment-viewer' }).buffer(true)
+      .parse((response, callback) => { const chunks: Buffer[] = []; response.on('data', chunk => chunks.push(Buffer.from(chunk))); response.on('end', () => callback(null, Buffer.concat(chunks))); }).expect(200);
+    expect(viewerDownload.body).toEqual(pdf);
+    expect(viewerDownload.headers['cache-control']).toBe('private, no-store');
     await request(app).get(`/orgs/${otherOrg}/attachments/${uploaded.body.id}/content`).set({ 'x-fixture-actor': 'attachment-other-owner' }).expect(404);
     await request(app).get(path).query({ resourceType: 'journal', resourceId: String(otherJournalId) }).set(owner).expect(404);
     expect(await AuditEventModel.countDocuments({ organizationId: org, action: 'attachment.uploaded' })).toBe(1);

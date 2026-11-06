@@ -46,6 +46,8 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     const concurrentCreates = await Promise.all([request(app).post(path).set(owner).send(payload), request(app).post(path).set(owner).send(payload)]);
     expect(concurrentCreates.map(response => response.status).sort()).toEqual([200, 201]);
     expect(concurrentCreates[0].body.id).toBe(concurrentCreates[1].body.id); draftId = concurrentCreates[0].body.id;
+    await request(app).get(path).set({ 'x-fixture-actor': 'bill-viewer' }).expect(200)
+      .expect(response => expect(response.body.bills).toEqual(expect.arrayContaining([expect.objectContaining({ id: draftId, status: 'draft' })])));
     await request(app).post(path).set(owner).send(payload).expect(200).expect(response => expect(response.body.replayed).toBe(true));
     await request(app).post(path).set(owner).send({ ...payload, amountPaise: 12346 }).expect(409);
     expect(await BillModel.countDocuments({ organizationId, draftIdempotencyKey: payload.idempotencyKey })).toBe(1);
