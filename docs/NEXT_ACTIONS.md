@@ -1,5 +1,9 @@
 # Next actions
 
+## Active checkpoint — invoice draft foreign-reference denial
+
+Latest fully verified remote SHA `8626e0003a2c1e9e52141bf94fb9d7b240671f7a` passed all six workflows (CI #551/#552, MongoDB #486/#487, Browser #270/#271). The local changes now assert invoice draft create and edit reject real foreign-tenant customer/product IDs with no document or audit side effects. Typecheck/lint/build pass; the local replica-set service at `127.0.0.1:37491` is unavailable, so the focused integration test timed out at connection setup. Run `git diff --check`, commit and push this narrow regression test to `develop/phase-1-foundation`, then verify exact-SHA CI, MongoDB, and Browser workflows. Once green, inspect uncovered references and endpoint role cases from `docs/ROUTE_SECURITY_MATRIX.md`, prioritizing persisted child references and report/export isolation. Keep the acceptance matrix Partial until full evidence and external gates are complete.
+
 ## Active checkpoint — route-driven report reconciliation
 
 The remote development branch is at `c0b9e6a4ca75fb10411309783b38b562d66e296e`; exact-SHA CI #525/#526, MongoDB #460/#461 and Browser #244/#245 all passed. The active local change rewrites the report reconciliation fixture so opening balances also enter through the authorized opening-balance API. Typecheck, lint, production build, dependency audit and `git diff --check` pass locally. MongoDB at `127.0.0.1:37491` is unavailable, so publish the fixture on the development branch and wait for exact-SHA hosted MongoDB verification. Then continue the mounted-route role/reference audit and responsive accessibility work. Keep acceptance criteria partial while any route permutations and external release gates are open.

@@ -163,3 +163,7 @@ Customer/vendor advance reference follow-up: both creation routes now have tests
 Advance contact isolation passed MongoDB #482/#483 and CI #547/#548 at SHA `7351e7bed77bd735de770aa32c1573a50547cbe2`; Browser was pending. Current follow-up tests foreign invoice/bill IDs on allocation routes and asserts no allocation, journal or audit writes.
 
 Advance reference isolation passed exact-SHA MongoDB runs #482–#485 through `7a3f9584356bd8eadcd97cc7dbad45d0d1d1356e`; CI #549/#550 passed, Browser #268/#269 was pending. Current follow-up tests cross-tenant account/contact object IDs on updates and archives, checking no record or audit mutation.
+
+## Current execution — invoice draft reference isolation (2026-11-06)
+
+Exact SHA `8626e0003a2c1e9e52141bf94fb9d7b240671f7a` is fully green: CI #551/#552, MongoDB #486/#487, and Browser #270/#271. The active change adds real foreign-customer and foreign-product IDs to invoice draft create and edit requests. Rejections assert no draft or audit writes, and failed edits preserve the existing draft and its audit count. Typecheck, lint, and production build pass locally. The focused local MongoDB attempt timed out during connection because `127.0.0.1:37491` is not listening; hosted MongoDB must verify this slice. Tenant isolation and role coverage remain Partial; do not call the MVP or production ready.

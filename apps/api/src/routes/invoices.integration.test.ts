@@ -75,10 +75,13 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
     await request(app).post(path).set(owner).send({ customerId: String(customerId), lines: [{ productId: String(serviceId), quantity: 1 }] }).expect(400, { error: 'Provide a valid invoice draft idempotency key' });
     const outsiderDraft = await request(app).post(path).set(owner).send({ idempotencyKey: 'invoice-outsider-draft-01', customerId: String(peerCustomerId), lines: [{ productId: String(serviceId), quantity: 1 }] }).expect(422);
     expect(outsiderDraft.body.error).toContain('active customer');
+    expect(await InvoiceModel.countDocuments({ organizationId, draftIdempotencyKey: 'invoice-outsider-draft-01' })).toBe(0);
+    expect(await AuditEventModel.countDocuments({ organizationId, action: 'invoice.draft_created' })).toBe(0);
     const foreignProductDraft = await request(app).post(path).set(owner).send({ idempotencyKey: 'invoice-foreign-product-01',
       customerId: String(customerId), lines: [{ productId: String(peerServiceId), quantity: 1 }] }).expect(422);
     expect(foreignProductDraft.body.error).toContain('active services from this organization');
     expect(await InvoiceModel.countDocuments({ organizationId, draftIdempotencyKey: 'invoice-foreign-product-01' })).toBe(0);
+    expect(await AuditEventModel.countDocuments({ organizationId, action: 'invoice.draft_created' })).toBe(0);
     await request(app).post(path).set({ 'x-fixture-actor': 'invoice-viewer' })
       .send({ idempotencyKey: 'invoice-viewer-draft-01', customerId: String(customerId), lines: [{ productId: String(serviceId), quantity: 1 }] }).expect(403);
     await request(app).post(path).set(owner).send({
@@ -112,6 +115,14 @@ describe.skipIf(!enabled)('sales invoice HTTP lifecycle', () => {
     expect(await AuditEventModel.countDocuments({ organizationId, resourceId: draftId, action: 'invoice.draft_created' })).toBe(1);
     await request(app).get(path).set(owner).expect(200).expect(response => expect(response.body.invoices[0].dueDate).toBe('2026-11-30'));
     expect(await JournalModel.countDocuments({ organizationId })).toBe(0);
+    const draftBeforeForeignUpdates = await InvoiceModel.findById(draftId).lean();
+    const draftUpdateAuditCount = await AuditEventModel.countDocuments({ organizationId, resourceId: draftId, action: 'invoice.draft_updated' });
+    await request(app).patch(`${path}/${draftId}`).set(owner)
+      .send({ customerId: String(peerCustomerId), lines: [{ productId: String(serviceId), quantity: 3 }] }).expect(422);
+    await request(app).patch(`${path}/${draftId}`).set(owner)
+      .send({ customerId: String(customerId), lines: [{ productId: String(peerServiceId), quantity: 3 }] }).expect(422);
+    expect(await InvoiceModel.findById(draftId).lean()).toEqual(draftBeforeForeignUpdates);
+    expect(await AuditEventModel.countDocuments({ organizationId, resourceId: draftId, action: 'invoice.draft_updated' })).toBe(draftUpdateAuditCount);
     await request(app).patch(`${path}/${draftId}`).set(owner)
       .send({ customerId: String(customerId), lines: [{ productId: String(serviceId), quantity: 3 }] }).expect(200);
 
