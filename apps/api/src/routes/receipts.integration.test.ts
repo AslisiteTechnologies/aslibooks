@@ -138,6 +138,11 @@ describe.skipIf(!enabled)('customer receipts HTTP lifecycle', () => {
     expect(await JournalModel.countDocuments({ organizationId })).toBe(3);
     expect(await ReceiptModel.countDocuments({ organizationId })).toBe(2);
     expect(await AuditEventModel.countDocuments({ organizationId, action: 'receipt.recorded' })).toBe(2);
+    const receiptPage1 = await request(app).get(`${path}?limit=1`).set({ 'x-fixture-actor': 'receipt-viewer' }).expect(200);
+    expect(receiptPage1.body.receipts).toHaveLength(1); expect(receiptPage1.body.next).toBeTruthy();
+    const receiptPage2 = await request(app).get(`${path}?limit=1&after=${receiptPage1.body.next}`).set({ 'x-fixture-actor': 'receipt-viewer' }).expect(200);
+    expect(receiptPage2.body.receipts).toHaveLength(1); expect(receiptPage2.body.next).toBeNull();
+    expect(new Set([...receiptPage1.body.receipts, ...receiptPage2.body.receipts].map((receipt: { id: string }) => receipt.id)).size).toBe(2);
     const receiptJournal = await JournalModel.findById(partial.body.journalId)
       .lean<{ lines: Array<{ accountId: Types.ObjectId; debitPaise: number; creditPaise: number }> } | null>();
     expect(receiptJournal?.lines.map(line => [String(line.accountId), line.debitPaise, line.creditPaise]))

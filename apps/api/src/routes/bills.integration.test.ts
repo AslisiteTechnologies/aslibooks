@@ -177,6 +177,11 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     expect(await VendorPaymentModel.countDocuments({ organizationId: paymentOrg })).toBe(2);
     expect(await AuditEventModel.countDocuments({ organizationId: paymentOrg, action: 'vendor_payment.recorded' })).toBe(2);
     expect(await JournalModel.countDocuments({ organizationId: paymentOrg })).toBe(3);
+    const paymentPage1 = await request(app).get(`${paymentPath}/vendor-payments?limit=1`).set(paymentAccountant).expect(200);
+    expect(paymentPage1.body.payments).toHaveLength(1); expect(paymentPage1.body.next).toBeTruthy();
+    const paymentPage2 = await request(app).get(`${paymentPath}/vendor-payments?limit=1&after=${paymentPage1.body.next}`).set(paymentAccountant).expect(200);
+    expect(paymentPage2.body.payments).toHaveLength(1); expect(paymentPage2.body.next).toBeNull();
+    expect(new Set([...paymentPage1.body.payments, ...paymentPage2.body.payments].map((payment: { id: string }) => payment.id)).size).toBe(2);
     expect(partial.body.journalId).not.toBe(final.body.journalId);
   });
   it('issues audited vendor credits against unpaid bills and reconciles later payments to the remaining balance', async () => {
