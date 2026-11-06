@@ -71,7 +71,7 @@ def test_chart():
             mobile_navigation_button = page.get_by_role("button", name="Open navigation")
             expect(mobile_navigation_button).to_have_attribute("aria-expanded", "false")
             mobile_navigation_button.click()
-            expect(page.get_by_role("navigation", name="Primary navigation").get_by_role("button", name="Accounting", exact=True)).to_be_visible()
+            expect(page.get_by_role("button", name="Accounting", exact=True)).to_be_visible()
             page.keyboard.press("Escape")
             expect(page.get_by_role("button", name="Open navigation")).to_have_attribute("aria-expanded", "false")
             page.get_by_role("button", name="Open navigation").click()

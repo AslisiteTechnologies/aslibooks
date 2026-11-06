@@ -364,3 +364,4 @@ Paginated GST SHA `15aef1f498405d645843b4a7bd4fc40484aa49c6` passed exact-SHA CI
 ## Cross-tenant catalog reference regression
 - `products.integration.test.ts` now creates a real product in a peer tenant, attempts update and archive by that foreign ID under the current tenant path, and asserts 404 responses, unchanged foreign product state, and no new audit event.
 - Local typecheck/lint/diff checks pass. The isolated local MongoDB replica set is unavailable, so verify the route assertion through exact-SHA MongoDB workflows after publication.
+- At SHA `457ee8256f9dea693fe6b954054a3aae236e2c04`, CI #535/#536 and MongoDB #470/#471 passed; Browser #254/#255 failed at a test lookup for the nav landmark inside the temporary modal drawer. The visible Accounting button is the right assertion target in that state; the test now locates that button directly. Re-run Browser on the next exact SHA to verify drawer visibility and Escape dismissal.

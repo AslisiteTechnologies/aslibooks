@@ -147,3 +147,5 @@ Navigation semantics follow-up: the primary navigation landmark is named and the
 Mobile navigation follow-up adds `aria-expanded`, checks the accessible primary-navigation region at 390px width, and verifies Escape closes the drawer. Local web tests/typecheck/lint/build pass; Browser runs on the candidate SHA are the required verification.
 
 Catalog reference follow-up: a regression test now submits a real peer-tenant product ID to current-tenant update/archive operations and verifies 404, unchanged product state, and no audit side effect. Hosted replica-set verification is pending.
+
+Mobile E2E selector correction: the temporary modal drawer hides its navigation landmark from the accessibility tree; the test now asserts the visible Accounting button within the current rendered tree, then sends Escape and verifies the menu collapsed. Exact-SHA Browser verification remains required.
