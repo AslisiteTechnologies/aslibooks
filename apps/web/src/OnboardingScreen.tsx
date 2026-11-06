@@ -44,7 +44,7 @@ export function OnboardingScreen({ onCreated }: { onCreated: () => Promise<void>
           setSlug(e.target.value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''));
         }} />
         <TextField label="Workspace slug" required helperText="Lowercase letters, numbers and hyphens; at least 3 characters" value={slug} onChange={(e) => setSlug(e.target.value)} inputProps={{ pattern: '[a-z0-9]+(-[a-z0-9]+)*', minLength: 3, maxLength: 64 }} />
-        <Button type="submit" variant="contained" size="large" disabled={busy}>{busy ? <CircularProgress size={22} /> : 'Create workspace'}</Button>
+        <Button type="submit" variant="contained" size="large" disabled={busy}>{busy ? <CircularProgress size={22} aria-label="Creating workspace" /> : 'Create workspace'}</Button>
       </Stack>
     </Paper>
   </Container>;

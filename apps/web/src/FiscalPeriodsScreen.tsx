@@ -42,7 +42,7 @@ export function FiscalPeriodsScreen({ organization }: { organization: Organizati
     {!selected && <Alert severity="info">A fiscal period is created when the first journal is posted.</Alert>}
     {selected && <Paper variant="outlined" sx={{ p: 2 }}><Stack spacing={2}>
       <Typography variant="h6">Close review</Typography><Typography color="text.secondary">Period {selected.startDate} to {selected.endDateExclusive} (end date is exclusive)</Typography>
-      {!checklist ? <CircularProgress size={24} /> : checklist.checks.map(check => <Stack key={check.id} direction="row" spacing={1} alignItems="flex-start">
+      {!checklist ? <CircularProgress size={24} aria-label="Loading fiscal period checks" /> : checklist.checks.map(check => <Stack key={check.id} direction="row" spacing={1} alignItems="flex-start">
         <Chip size="small" color={check.passed ? 'success' : check.blocking ? 'error' : 'warning'} label={check.passed ? 'Ready' : check.blocking ? 'Blocked' : 'Review'} />
         <Stack><Typography fontWeight={600}>{check.label}</Typography><Typography variant="body2" color="text.secondary">{check.detail}{!check.blocking && !check.passed ? ' This is a reminder; it does not prevent closing.' : ''}</Typography></Stack>
       </Stack>)}

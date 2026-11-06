@@ -2,7 +2,7 @@
 
 ## Active checkpoint — warning contrast and expanded a11y coverage (2026-11-06)
 
-At `4ccb0d7`, push CI #575 and #576 and MongoDB #510 and #511 passed; Browser push #294 passed. Browser PR #295 progressed past Sales but failed in Expenses: `warning.main` (`#ed6c02`) on white is only 3.11:1. The current local theme darkens warning to `#a64b00`. The browser flow also now scans Products, Receipts, Banking, GST, fiscal close, Settings and Team. `pnpm web test` remains 8/8; run lint, typecheck, build, diff check, commit/push and verify all six exact-SHA actions. Local Playwright runtime exists but local MongoDB/Container engine is unavailable, so browser execution still needs hosted E2E. Continue fixing every actual axe finding; manual accessibility review stays open.
+At `4ccb0d7`, CI #575/#576 and MongoDB #510/#511 passed; Browser push #294 passed. Browser PR #295 found warning text contrast in Expenses. The warning palette was darkened to `#a64b00`, and the browser flow now scans Products, Receipts, Banking, GST, fiscal close, Settings and Team. On `d9b8ff2`, Browser push #296 found an unnamed fiscal-close progress bar; `CircularProgress` elements in the app now have accessible names. Browser PR #297 was still running at last check. Web tests, lint, typecheck, build and diff passed before the latest progressbar fix. Local Playwright runtime exists but local MongoDB/Container engine is unavailable, so hosted E2E provides journey verification. Commit/push and verify all six workflows; keep fixing findings. Manual accessibility review stays open.
 
 ## Active checkpoint — axe contrast correction (2026-11-06)
 
