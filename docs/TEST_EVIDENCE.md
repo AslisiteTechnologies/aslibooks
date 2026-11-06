@@ -1,5 +1,11 @@
 # Test evidence
 
+## Latest exact-SHA execution — 2026-11-06
+
+- At SHA `719cf9358f034e640775bb962666618dc7d30b61`, all six hosted workflows passed: [CI push #42226301324](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42226301324), [CI PR #42226309451](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42226309451), [MongoDB push #42226301093](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42226301093), [MongoDB PR #42226309470](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42226309470), [Browser push #42226301091](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42226301091), [Browser PR #42226309471](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42226309471). This verifies the migration-target confirmation guard plus corrected source-reconciled expense/report assertions.
+- Migration-target confirmation unit test passes 2/2 locally. The runner’s three replica-set tests skipped in this current session because no local MongoDB replica set was available; the hosted MongoDB workflow passed for the exact SHA. The previously recorded full local API replica-set suite passed 38 files / 149 tests.
+- At SHA `18d1398f4236e2c81376b5b6fa2d0627fbcdcee8`, all six workflows also passed: CI push/PR #42224840009/#42224846361, MongoDB push/PR #42224840014/#42224846446, Browser push/PR #42224839996/#42224846208. At corrected report SHA `354a091391fb26c9bcc023d2cf70646f1e1a45a9`, all six passed after fixing the Browser expected-profit baseline.
+
 ## Current exact-SHA evidence — 2026-11-06
 
 - Exact SHA `fe25855be84fbd30522c5a30244c0f10a6ac365f` passed CI push/PR runs #42210988653/#42210994609 and MongoDB push/PR runs #42210988668/#42210994979. Browser push/PR #42210988663/#42210994810 failed at the new test setup because the scenario had intentionally archived the original customer earlier. The current correction creates fresh synthetic contacts before testing receipt allocations; hosted Browser rerun is pending.
