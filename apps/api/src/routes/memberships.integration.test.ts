@@ -17,7 +17,7 @@ describe.skipIf(!enabled)('organization member and invitation workflows', () => 
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => { res.status(500).json({ error: String(error) }); });
   const org = new Types.ObjectId(); const peer = new Types.ObjectId();
   const ownerId = new Types.ObjectId(); const adminId = new Types.ObjectId(); const accountantId = new Types.ObjectId(); const viewerId = new Types.ObjectId();
-  const invitedId = new Types.ObjectId(); const unverifiedId = new Types.ObjectId();
+  const invitedId = new Types.ObjectId(); const unverifiedId = new Types.ObjectId(); const racingInviteeId = new Types.ObjectId();
   const path = `/orgs/${org}`; const owner = { 'x-fixture-actor': ownerId.toHexString() }; const admin = { 'x-fixture-actor': adminId.toHexString() };
   let invitedMembershipId = '';
   beforeAll(async () => {
@@ -91,10 +91,30 @@ describe.skipIf(!enabled)('organization member and invitation workflows', () => 
     const ownerMembership = await MembershipModel.findOne({ organizationId: org, authUserId: String(ownerId) });
     await request(app).patch(`${path}/members/${ownerMembership!._id}`).set(owner).send({ status: 'suspended' }).expect(409);
     expect(await AuditEventModel.countDocuments({ organizationId: org, actorAuthUserId: { $in: [String(ownerId), String(adminId), String(invitedId)] }, action: { $in: ['membership.invited', 'membership.invitation_accepted', 'membership.updated'] } })).toBe(4);
+
+    await mongoose.connection.collection('user').insertOne({ _id: racingInviteeId, email: `race-${org}@members.example`, name: 'Race invitee', emailVerified: true });
+    const adminMembership = await MembershipModel.findOne({ organizationId: org, authUserId: String(adminId), role: 'admin', status: 'active' });
+    expect(adminMembership).not.toBeNull();
+    const [demotion, racedInvite] = await Promise.all([
+      request(app).patch(`${path}/members/${adminMembership!._id}`).set(owner).send({ role: 'accountant' }),
+      request(app).post(path + '/members').set(admin).send({ email: `race-${org}@members.example`, role: 'viewer' }),
+    ]);
+    expect(demotion.status).toBe(200);
+    expect([201, 403]).toContain(racedInvite.status);
+    expect(await MembershipModel.findOne({ organizationId: org, authUserId: String(adminId) })).toMatchObject({ role: 'accountant', status: 'active' });
+    await request(app).post(path + '/members').set(admin).send({ email: `race-${org}@members.example`, role: 'viewer' }).expect(403);
+    const racingInvite = await MembershipModel.findOne({ organizationId: org, authUserId: String(racingInviteeId) });
+    if (racedInvite.status === 201) {
+      expect(racingInvite).toMatchObject({ role: 'viewer', status: 'invited' });
+    } else {
+      expect(racingInvite).toBeNull();
+    }
+    expect(await AuditEventModel.countDocuments({ organizationId: org, actorAuthUserId: { $in: [String(ownerId), String(adminId), String(invitedId)] }, action: { $in: ['membership.invited', 'membership.invitation_accepted', 'membership.updated'] } }))
+      .toBe(racedInvite.status === 201 ? 6 : 5);
   });
   afterAll(async () => {
     if (!enabled) return;
-    await mongoose.connection.collection('user').deleteMany({ _id: { $in: [ownerId, adminId, accountantId, invitedId, unverifiedId] } });
+    await mongoose.connection.collection('user').deleteMany({ _id: { $in: [ownerId, adminId, accountantId, invitedId, unverifiedId, racingInviteeId] } });
     await AuditEventModel.deleteMany({ organizationId: { $in: [org, peer] } });
     await MembershipModel.deleteMany({ organizationId: { $in: [org, peer] } });
     await OrganizationModel.deleteMany({ _id: { $in: [org, peer] } });

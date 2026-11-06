@@ -1,5 +1,9 @@
 # Next actions
 
+## Active checkpoint — organization-management race guard (2026-11-06)
+
+Added a replica-set regression racing an owner demoting an admin against that admin inviting a viewer. The result must be either an invite committed before demotion or a 403 after demotion; subsequent invitation attempts must be denied and audit counts must match. `pnpm --filter @aslibooks/api exec vitest run src/routes/memberships.integration.test.ts` skipped locally because no MongoDB replica set/container engine is available; API typecheck and lint pass. Hosted MongoDB exact-SHA verification is required. Commit/push, inspect exact CI/MongoDB/Browser workflows, then continue the remaining endpoint × role × reference audit. Automated accessibility is green at `01e3232`; manual accessibility review remains open.
+
 ## Active checkpoint — warning contrast and expanded a11y coverage (2026-11-06)
 
 Accessibility automation is green at exact SHA `01e3232`: CI #579/#580, MongoDB #514/#515, Browser #298/#299. This full desktop/mobile run includes axe WCAG 2.1 A/AA scans across sign-in, onboarding, overview, team, settings, accounting, contacts, products, sales, receipts, expenses/AI, banking, GST, fiscal close and reports. The two discovered contrast issues and missing progressbar name are fixed. Local web tests pass 8/8, lint/typecheck/build/diff checks pass; production build warns of a 500.92 kB main chunk (153.97 kB gzip). Continue the cross-route tenant/reference/role audit and record a manual keyboard/focus/screen-reader review; do not mark accessibility complete based only on automated scans.

@@ -185,3 +185,6 @@ Accessibility checkpoint (2026-11-06): semantic list fix SHA 385af284 passed exa
 
 
 Automated accessibility checkpoint: exact SHA 01e3232 passed all six hosted workflows (CI #579/#580, MongoDB #514/#515, Browser #298/#299). Axe WCAG 2.1 A/AA checks passed across the scanned core product screens in the full desktop/mobile journey. Fixed invalid nav list children, low-contrast disabled action and warning text, and unnamed fiscal-period progress indicator. Local web suite 8/8, lint, typecheck, build and diff check pass; bundle warning remains at 500.92 kB uncompressed (153.97 kB gzip). Manual keyboard/focus/screen-reader review and accountant/viewer browser journeys remain open. Next: continue the mounted-route role/reference audit; acceptance is not complete.
+
+
+Organization-management concurrency follow-up (pending hosted verification): membership integration now races owner demotion of an admin against that admin inviting a viewer. It accepts only an invite committed before demotion or a 403 after the role fence, verifies future attempts are denied, and checks the corresponding audit event count. Local API typecheck and lint passed; focused membership test skipped because MongoDB replica set/container is unavailable locally. Do not count this case as verified until exact-SHA MongoDB Actions passes.
