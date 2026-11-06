@@ -20,7 +20,7 @@ describe.skipIf(!enabled)('vendor advances', () => {
   const app = express(); app.use(express.json());
   app.use('/orgs', organizationRouter(async headers => { const id = headers.get('x-fixture-actor'); return id ? { id } : null; }));
   const org = new Types.ObjectId(); const foreignOrg = new Types.ObjectId(); const foreignAdvanceId = new Types.ObjectId();
-  const vendor = new Types.ObjectId(); const otherVendor = new Types.ObjectId();
+  const vendor = new Types.ObjectId(); const otherVendor = new Types.ObjectId(); const foreignVendor = new Types.ObjectId();
   const cash = new Types.ObjectId(); const prepayment = new Types.ObjectId(); const payables = new Types.ObjectId(); const expense = new Types.ObjectId();
   const path = `/orgs/${org}/vendor-advances`; const owner = { 'x-fixture-actor': 'vendor-advance-owner' }; const accountant = { 'x-fixture-actor': 'vendor-advance-accountant' };
   beforeAll(async () => {
@@ -29,7 +29,8 @@ describe.skipIf(!enabled)('vendor advances', () => {
     await OrganizationModel.create([{ _id: org, name: 'Vendor advance fixture', slug: `vendor-advance-${org}` },
       { _id: foreignOrg, name: 'Foreign vendor advance fixture', slug: `vendor-advance-foreign-${foreignOrg}` }]);
     await MembershipModel.create([{ organizationId: org, authUserId: 'vendor-advance-owner', role: 'owner' }, { organizationId: org, authUserId: 'vendor-advance-accountant', role: 'accountant' }, { organizationId: org, authUserId: 'vendor-advance-viewer', role: 'viewer' }]);
-    await ContactModel.create([{ _id: vendor, organizationId: org, displayName: 'Advance Vendor', roles: ['vendor'] }, { _id: otherVendor, organizationId: org, displayName: 'Other Vendor', roles: ['vendor'] }]);
+    await ContactModel.create([{ _id: vendor, organizationId: org, displayName: 'Advance Vendor', roles: ['vendor'] }, { _id: otherVendor, organizationId: org, displayName: 'Other Vendor', roles: ['vendor'] },
+      { _id: foreignVendor, organizationId: foreignOrg, displayName: 'Foreign Vendor', roles: ['vendor'] }]);
     await AccountModel.create([{ _id: cash, organizationId: org, code: '1000', name: 'Cash', type: 'asset' },
       { _id: prepayment, organizationId: org, code: '1400', name: 'Vendor advances', type: 'asset' },
       { _id: payables, organizationId: org, code: '2000', name: 'Payables', type: 'liability' },
@@ -43,6 +44,17 @@ describe.skipIf(!enabled)('vendor advances', () => {
     const payload = { idempotencyKey: `vendor-advance-${org}`, vendorId: String(vendor), cashAccountId: String(cash), amountPaise: 12000 };
     await request(app).post(path).send(payload).expect(401);
     await request(app).post(path).set({ 'x-fixture-actor': 'vendor-advance-viewer' }).send(payload).expect(403);
+    const beforeForeignContact = {
+      advances: await VendorAdvanceModel.countDocuments({ organizationId: org }),
+      journals: await JournalModel.countDocuments({ organizationId: org }),
+      audits: await AuditEventModel.countDocuments({ organizationId: org }),
+    };
+    await request(app).post(path).set(accountant).send({ ...payload,
+      idempotencyKey: `foreign-vendor-advance-${org}`, vendorId: String(foreignVendor),
+    }).expect(404);
+    expect(await VendorAdvanceModel.countDocuments({ organizationId: org })).toBe(beforeForeignContact.advances);
+    expect(await JournalModel.countDocuments({ organizationId: org })).toBe(beforeForeignContact.journals);
+    expect(await AuditEventModel.countDocuments({ organizationId: org })).toBe(beforeForeignContact.audits);
     const advanceAttempts = await Promise.all([request(app).post(path).set(accountant).send(payload), request(app).post(path).set(accountant).send(payload)]);
     expect(advanceAttempts.map(response => response.status).sort()).toEqual([200, 201]);
     expect(advanceAttempts[0].body.id).toBe(advanceAttempts[1].body.id);
@@ -89,7 +101,7 @@ describe.skipIf(!enabled)('vendor advances', () => {
     await JournalModel.collection.deleteMany({ organizationId: org }); await BillModel.collection.deleteMany({ organizationId: org });
     await VendorAdvanceAllocationModel.collection.deleteMany({ organizationId: org }); await VendorAdvanceModel.collection.deleteMany({ organizationId: org });
     await AuditEventModel.deleteMany({ organizationId: org }); await FiscalPeriodModel.deleteMany({ organizationId: org });
-    await ContactModel.deleteMany({ organizationId: org }); await AccountModel.deleteMany({ organizationId: org });
+    await ContactModel.deleteMany({ organizationId: { $in: [org, foreignOrg] } }); await AccountModel.deleteMany({ organizationId: org });
     await MembershipModel.deleteMany({ organizationId: org });
     await VendorAdvanceModel.collection.deleteMany({ organizationId: foreignOrg });
     await OrganizationModel.deleteMany({ _id: { $in: [org, foreignOrg] } }); await mongoose.disconnect();

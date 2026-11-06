@@ -157,3 +157,5 @@ Production origin guard: focused security tests (5/5), typecheck, lint and produ
 Verified production-origin configuration SHA `24b592ea190415108e77247f4bbe3dda6103dc78` passed exact-SHA CI #541/#542, MongoDB #476/#477, Browser #260/#261. Production startup now requires a valid HTTPS `WEB_ORIGIN` allowlist; staging has not yet exercised it.
 
 Opening-balance object-reference regression passed MongoDB #478/#479 and CI #543/#544 at SHA `a304d65485475603709d4aadc7e4369259318950`; Browser was pending. The next change adds customer-advance creation denial for a foreign contact ID and verifies no financial/audit side effects.
+
+Customer/vendor advance reference follow-up: both creation routes now have tests for foreign contact IDs with no advance, journal, or audit writes. The first customer test run showed the intended tenant-scoped `404` response while the test expected `422`; this is corrected. Typecheck/lint/diff pass locally. Hosted replica-set rerun pending.

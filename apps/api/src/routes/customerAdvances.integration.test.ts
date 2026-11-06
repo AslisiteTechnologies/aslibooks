@@ -52,7 +52,7 @@ describe.skipIf(!enabled)('customer advances', () => {
     };
     await request(app).post(path).set(owner).send({ ...advancePayload,
       idempotencyKey: `foreign-customer-advance-${org}`, customerId: String(foreignCustomer),
-    }).expect(422);
+    }).expect(404);
     expect(await CustomerAdvanceModel.countDocuments({ organizationId: org })).toBe(beforeForeignContact.advances);
     expect(await JournalModel.countDocuments({ organizationId: org })).toBe(beforeForeignContact.journals);
     expect(await AuditEventModel.countDocuments({ organizationId: org })).toBe(beforeForeignContact.audits);
