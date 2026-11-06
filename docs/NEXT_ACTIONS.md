@@ -436,8 +436,8 @@ The source-receipt workflow commit `4f5683773ce4782943220413fba6ed3fca2ab1e7` is
 
 1. Review and commit the viewer-upload denial assertion and accurate evidence/status updates. Never stage `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`.
 2. Push only to `origin/develop/phase-1-foundation`, then require all six exact-SHA workflows; investigate any failure.
-3. Migration runner implementation passes focused replica-set tests (3/3), exact-target success and mismatch refusal, full API suite (37 files / 147 tests), web suite 8/8, workspace typecheck/lint/build and dependency audit. Commit/push the runner and verify all six exact-SHA workflows. No migration is currently registered; do not run against staging or production.
-4. After publishing the runner, build a reproducible isolated backup/restore and monitoring evidence procedure using synthetic disposable data; staging access, restore objectives, malware/retention policy, qualified tax/accounting review and release approvals remain owner/environment gates.
+3. Migration runner is published as `5f15b61`; CI/MongoDB push/PR and Browser push pass while Browser PR runs. The report golden-flow extension now passes the focused replica-set test and full API suite (37 files / 147 tests); workspace typecheck/lint/build, web tests and audit pass. Browser rechecks profit after the expense. Commit/push this accounting reconciliation slice and verify all six exact-SHA Actions. No migration is currently registered; do not run against staging or production.
+4. After publishing the accounting reconciliation follow-up, build a reproducible isolated backup/restore and monitoring evidence procedure using synthetic disposable data; staging access, restore objectives, malware/retention policy, qualified tax/accounting review and release approvals remain owner/environment gates.
 
 1. Finish the current `pnpm build`; rerun `git diff --check` and `pnpm lint` if edits change.
 2. Push a feature commit to `origin/develop/phase-1-foundation` without staging the owner-provided vision document.

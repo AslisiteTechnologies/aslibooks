@@ -749,6 +749,13 @@ def test_chart():
             })
             page.get_by_role("button", name="Upload privately").last.click()
             expect(page.get_by_text("expense-receipt.pdf uploaded privately.", exact=True)).to_be_visible()
+            page.get_by_role("button", name="Open navigation").click()
+            page.get_by_role("button", name="Reports", exact=True).click()
+            expect(page.get_by_role("heading", name="Trial balance")).to_be_visible()
+            expect(page.get_by_text("Net profit ₹33.66", exact=False)).to_be_visible()
+            expect(page.get_by_text("Balance sheet balances", exact=True)).to_be_visible()
+            page.get_by_role("button", name="Open navigation").click()
+            page.get_by_role("button", name="Expenses", exact=True).click()
             for index, bill_amount in enumerate(("1.00", "2.00"), start=1):
                 page.get_by_label("Vendor").first.click()
                 page.get_by_role("option", name="Payment Allocation Vendor").click()

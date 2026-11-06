@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AccountModel } from '../models/account.js';
 import { AuditEventModel } from '../models/auditEvent.js';
 import { BillModel, VendorCreditModel } from '../models/bill.js';
+import { CashExpenseModel } from '../models/cashExpense.js';
 import { ContactModel } from '../models/contact.js';
 import { FiscalPeriodModel } from '../models/fiscalPeriod.js';
 import { CreditNoteModel, InvoiceModel, InvoiceSequenceModel } from '../models/invoice.js';
@@ -49,7 +50,7 @@ describe.skipIf(!enabled)('source transaction report reconciliation', () => {
   beforeAll(async () => {
     await mongoose.connect(uri!, { dbName: dbName!, serverSelectionTimeoutMS: 10000 });
     await Promise.all([
-      AccountModel.init(), AuditEventModel.init(), BillModel.init(), ContactModel.init(),
+      AccountModel.init(), AuditEventModel.init(), BillModel.init(), CashExpenseModel.init(), ContactModel.init(),
       CreditNoteModel.init(), FiscalPeriodModel.init(), InvoiceModel.init(), InvoiceSequenceModel.init(),
       JournalModel.init(), MembershipModel.init(), OpeningBalanceModel.init(), OrganizationModel.init(), ProductModel.init(),
       ReceiptModel.init(), VendorCreditModel.init(), VendorPaymentModel.init(),
@@ -74,7 +75,7 @@ describe.skipIf(!enabled)('source transaction report reconciliation', () => {
     await ProductModel.create({ _id: serviceId, organizationId, code: `SVC-${suffix}`, name: 'Professional service', unitPricePaise: 10_000 });
   });
 
-  it('reconciles ledger and reports from posted invoice, receipt, bill, payment and credits', async () => {
+  it('reconciles ledger and reports from posted invoice, receipt, bill, payment, immediate expense and credits', async () => {
     const opening = await request(app).post(`${organizationPath}/opening-balances`).set(owner).send({
       idempotencyKey: `source-opening-${suffix}`, asOf: fiscalYearStart,
       balances: [
@@ -111,6 +112,18 @@ describe.skipIf(!enabled)('source transaction report reconciliation', () => {
     await request(app).post(`${organizationPath}/bills/${billDraft.body.id}/credit-notes`).set(owner).send({
       idempotencyKey: `source-vendor-credit-${suffix}`, amountPaise: 1_000, reason: 'Returned supplies',
     }).expect(201);
+    const cashExpenseResponse = await request(app).post(`${organizationPath}/cash-expenses`).set(owner).send({
+      idempotencyKey: `source-cash-expense-${suffix}`, expenseAccountId: String(expenseId), cashAccountId: String(cashId),
+      payeeName: 'Synthetic shop', description: 'Point-of-sale office supplies', amountPaise: 500,
+    }).expect(201);
+    const cashExpense = await CashExpenseModel.findById(cashExpenseResponse.body.id).lean();
+    expect(cashExpense).toMatchObject({ organizationId, amountPaise: 500, description: 'Point-of-sale office supplies', journalId: new Types.ObjectId(cashExpenseResponse.body.journalId) });
+    const cashExpenseJournal = await JournalModel.findById(cashExpenseResponse.body.journalId)
+      .lean<{ lines: Array<{ accountId: Types.ObjectId; debitPaise: number; creditPaise: number }> } | null>();
+    expect(cashExpenseJournal?.lines).toEqual(expect.arrayContaining([
+      expect.objectContaining({ accountId: expenseId, debitPaise: 500, creditPaise: 0 }),
+      expect.objectContaining({ accountId: cashId, debitPaise: 0, creditPaise: 500 }),
+    ]));
 
     const customerStatement = await request(app).get(`${organizationPath}/contacts/${customerId}/ledger`).set(owner).expect(200);
     expect(customerStatement.body).toMatchObject({ balancePaise: 6_000,
@@ -124,18 +137,18 @@ describe.skipIf(!enabled)('source transaction report reconciliation', () => {
     const trialBalance = await request(app).get(`${reportsPath}/trial-balance?asOf=${indiaToday}`).set(owner).expect(200);
     expect(trialBalance.body).toMatchObject({ balanced: true, debitTotalPaise: 64_000, creditTotalPaise: 64_000 });
     expect(trialBalance.body.accounts).toEqual(expect.arrayContaining([
-      expect.objectContaining({ accountId: String(cashId), debitBalancePaise: 51_000, creditBalancePaise: 0 }),
+      expect.objectContaining({ accountId: String(cashId), debitBalancePaise: 50_500, creditBalancePaise: 0 }),
       expect.objectContaining({ accountId: String(receivablesId), debitBalancePaise: 6_000, creditBalancePaise: 0 }),
       expect.objectContaining({ accountId: String(payablesId), debitBalancePaise: 0, creditBalancePaise: 5_000 }),
       expect.objectContaining({ accountId: String(incomeId), debitBalancePaise: 0, creditBalancePaise: 9_000 }),
-      expect.objectContaining({ accountId: String(expenseId), debitBalancePaise: 7_000, creditBalancePaise: 0 }),
+      expect.objectContaining({ accountId: String(expenseId), debitBalancePaise: 7_500, creditBalancePaise: 0 }),
     ]));
 
     const profitAndLoss = await request(app).get(`${reportsPath}/profit-and-loss?from=${fiscalYearStart}&to=${indiaToday}`).set(owner).expect(200);
-    expect(profitAndLoss.body).toMatchObject({ totalIncomePaise: 9_000, totalExpensesPaise: 7_000, netProfitPaise: 2_000 });
+    expect(profitAndLoss.body).toMatchObject({ totalIncomePaise: 9_000, totalExpensesPaise: 7_500, netProfitPaise: 1_500 });
     const balanceSheet = await request(app).get(`${reportsPath}/balance-sheet?asOf=${indiaToday}`).set(owner).expect(200);
-    expect(balanceSheet.body).toMatchObject({ totalAssetsPaise: 57_000, totalLiabilitiesPaise: 5_000, totalEquityPaise: 50_000,
-      currentEarningsPaise: 2_000, liabilitiesAndEquityPaise: 57_000, balanced: true });
+    expect(balanceSheet.body).toMatchObject({ totalAssetsPaise: 56_500, totalLiabilitiesPaise: 5_000, totalEquityPaise: 50_000,
+      currentEarningsPaise: 1_500, liabilitiesAndEquityPaise: 56_500, balanced: true });
     const receivablesAging = await request(app).get(`${reportsPath}/aged-receivables?asOf=${indiaToday}`).set(owner).expect(200);
     expect(receivablesAging.body).toMatchObject({ totalOutstandingPaise: 6_000, documentCount: 1 });
     const payablesAging = await request(app).get(`${reportsPath}/aged-payables?asOf=${indiaToday}`).set(owner).expect(200);
@@ -153,15 +166,20 @@ describe.skipIf(!enabled)('source transaction report reconciliation', () => {
         expect(response.body.account).toMatchObject({ id: String(incomeId), normalSide: 'credit' });
         expect(response.body.entries.reduce((balance: number, entry: { creditPaise: number; debitPaise: number }) => balance + entry.creditPaise - entry.debitPaise, response.body.openingBalancePaise)).toBe(9_000);
       });
+    await request(app).get(`${reportsPath}/general-ledger?accountId=${expenseId}&from=${fiscalYearStart}&to=${indiaToday}`).set(viewer).expect(200)
+      .then(response => {
+        expect(response.body.account).toMatchObject({ id: String(expenseId), normalSide: 'debit' });
+        expect(response.body.entries.reduce((balance: number, entry: { creditPaise: number; debitPaise: number }) => balance + entry.debitPaise - entry.creditPaise, response.body.openingBalancePaise)).toBe(7_500);
+      });
     await request(app).get(`${reportsPath}/dashboard?from=${fiscalYearStart}&to=${indiaToday}`).set(viewer).expect(200)
-      .then(response => expect(response.body).toMatchObject({ revenuePaise: 9_000, expensesPaise: 7_000, netProfitPaise: 2_000,
-        cashPaise: 51_000, receivablesPaise: 6_000, payablesPaise: 5_000 }));
+      .then(response => expect(response.body).toMatchObject({ revenuePaise: 9_000, expensesPaise: 7_500, netProfitPaise: 1_500,
+        cashPaise: 50_500, receivablesPaise: 6_000, payablesPaise: 5_000 }));
     await request(app).get(`${reportsPath}/trial-balance?asOf=${indiaToday}`).set(viewer).expect(200)
       .then(response => expect(response.body).toMatchObject({ balanced: true, debitTotalPaise: 64_000, creditTotalPaise: 64_000 }));
     await request(app).get(`${reportsPath}/profit-and-loss?from=${fiscalYearStart}&to=${indiaToday}`).set(viewer).expect(200)
-      .then(response => expect(response.body).toMatchObject({ totalIncomePaise: 9_000, totalExpensesPaise: 7_000, netProfitPaise: 2_000 }));
+      .then(response => expect(response.body).toMatchObject({ totalIncomePaise: 9_000, totalExpensesPaise: 7_500, netProfitPaise: 1_500 }));
     await request(app).get(`${reportsPath}/balance-sheet?asOf=${indiaToday}`).set(viewer).expect(200)
-      .then(response => expect(response.body).toMatchObject({ totalAssetsPaise: 57_000, liabilitiesAndEquityPaise: 57_000, balanced: true }));
+      .then(response => expect(response.body).toMatchObject({ totalAssetsPaise: 56_500, liabilitiesAndEquityPaise: 56_500, balanced: true }));
     await request(app).get(`${reportsPath}/aged-receivables?asOf=${indiaToday}`).set(viewer).expect(200)
       .then(response => expect(response.body).toMatchObject({ totalOutstandingPaise: 6_000, documentCount: 1 }));
     await request(app).get(`${reportsPath}/aged-payables?asOf=${indiaToday}`).set(viewer).expect(200)
@@ -171,7 +189,7 @@ describe.skipIf(!enabled)('source transaction report reconciliation', () => {
         receivables: { ledgerBalancePaise: 6_000, documentBalancePaise: 6_000, reconciled: true },
         payables: { ledgerBalancePaise: 5_000, documentBalancePaise: 5_000, reconciled: true },
       }));
-  });
+  }, 60_000);
 
   afterAll(async () => {
     if (!enabled) return;
@@ -182,6 +200,7 @@ describe.skipIf(!enabled)('source transaction report reconciliation', () => {
     await InvoiceSequenceModel.collection.deleteMany(filter);
     await ReceiptModel.collection.deleteMany(filter);
     await BillModel.collection.deleteMany(filter);
+    await CashExpenseModel.collection.deleteMany(filter);
     await VendorCreditModel.collection.deleteMany(filter);
     await VendorPaymentModel.collection.deleteMany(filter);
     await OpeningBalanceModel.collection.deleteMany(filter);
