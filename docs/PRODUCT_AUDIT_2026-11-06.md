@@ -89,3 +89,12 @@ The cursor-pagination implementation has advanced beyond the original audit snap
 - Settlement-history follow-up `6cf0f15bad9d9b3936b7169bc746b298cc755cf6` is pushed to `origin/develop/phase-1-foundation`; its exact-SHA hosted workflows are pending. No database migrations were needed beyond adding declared indexes, and no data-changing migration was introduced.
 
 The product feature matrix above remains a snapshot of functional scope, not a claim that the service is staged or production approved. Update it when exact-SHA checks for `6cf0f15` finish. Staging infrastructure, secrets, backup/restore exercise, monitoring validation, rollback rehearsal, independent accounting/tax review and owner release acceptance remain unverified or owner-dependent.
+
+## Explicit state separation
+
+| State | Verified scope | Evidence / boundary |
+| --- | --- | --- |
+| **Fully working** | Supported non-tax invoice/bill posting and settlement, receipt/payment allocation, bank import/matching/reconciliation, core reports, audit/role boundaries, and now cursor-paged transaction histories | Synthetic UI golden flow and source-journal reconciliation above; route suites and exact-SHA runs recorded in `docs/TEST_EVIDENCE.md`; latest implementation locally passes the focused replica-set tests. |
+| **Partially working** | GST-ready fields and deterministic calculations; constrained AI draft/explanation; responsive web | Tax-bearing invoice issuance remains deliberately held pending qualified review; AI bill parsing only assists a draft and there is no live provider credential evidence; automated WCAG scans pass but manual review and wide-device support acceptance remain. |
+| **Missing** | Subscription billing/plan entitlements, organization-level bulk export/deletion workflow, and native mobile app | No subscription or organization export/deletion product workflow exists in `apps/api/src/routes` / `apps/web/src`; no Expo/native app exists. Core report and contact-statement CSV exports are present. Native mobile, subscriptions and advanced integrations are explicitly later scope in master vision §5J/§6 Phase 7. |
+| **Externally blocked / not verified** | Real staging release and production approval, backup/restore rehearsal, monitored rollback, live transactional email/provider behavior, independent tax/accounting review | Requires staging infrastructure/secrets and operational access or qualified owner review. Runbook documentation is present, but no staging exercise or deployment has been performed. |
