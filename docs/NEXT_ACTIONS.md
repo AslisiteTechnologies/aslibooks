@@ -329,9 +329,9 @@ git diff --check
 
 Before a local full-suite retry, confirm `Test-NetConnection 127.0.0.1 -Port 37491 -InformationLevel Quiet` succeeds and use a unique `aslibooks_test_*` database. The last closed-period assertion focused run passed 2/2. After hosted checks pass, resume with a concrete uncovered operation/reference from `docs/ROUTE_SECURITY_MATRIX.md`; add focused no-side-effect integration coverage, run the full suite and quality commands above, then review keyboard/focus behavior at narrow viewport. Keep acceptance criteria partial while route permutations, external release gates, and statutory review remain incomplete.
 
-## Next concrete task — primary navigation keyboard coverage
-1. Finish publishing the keyboard Tab/Enter E2E assertion in `apps/web/e2e/chart.py` and wait for push/PR Browser checks. On failure, inspect the exact run log and fix the selector or accessibility behavior.
-2. Record the exact candidate SHA and all six workflow results in this file, `docs/IMPLEMENTATION_STATUS.md`, and `docs/MVP_ACCEPTANCE_MATRIX.md`.
+## Next concrete task — accessible primary navigation
+1. The Tab/Enter E2E assertion is published at SHA `4b2ce7129c764873b311530070db1dddb312e44d`; check its push/PR Browser runs. If it fails, inspect the exact run log and correct the selector or focus behavior.
+2. A follow-up adds a named Primary navigation landmark and `aria-current="page"` to the active section; web tests 8/8, typecheck, lint, production build, and diff checks pass locally. Publish it and verify exact-SHA browser coverage for landmark naming, active section announcement, and keyboard movement.
 3. Continue the targeted cross-tenant object-reference review on any still-uncovered mounted financial operation. Add denial and unchanged-state assertions, run local quality checks, then verify exact-SHA hosted tests.
 4. Keep the product partial while GST policy review, staging grants/restore/monitoring, comprehensive accessibility, and owner-controlled release gates remain open.
 

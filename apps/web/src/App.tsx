@@ -71,7 +71,8 @@ export function App() {
       <Divider sx={{ my: 2 }} />
       <List>
         {nav.map((item) => (
-          <ListItemButton key={item} selected={section === item} onClick={() => { setSection(item); setMobileOpen(false); }} sx={{ borderRadius: 2, mb: 0.5 }}>
+          <ListItemButton key={item} selected={section === item} aria-current={section === item ? 'page' : undefined}
+            onClick={() => { setSection(item); setMobileOpen(false); }} sx={{ borderRadius: 2, mb: 0.5 }}>
             <ListItemText primary={item} />
           </ListItemButton>
         ))}
@@ -93,7 +94,7 @@ export function App() {
           <Chip label="Development preview" variant="outlined" size="small" />
         </Toolbar>
       </AppBar>
-      <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}>
+      <Box component="nav" aria-label="Primary navigation" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}>
         <Drawer variant="temporary" open={mobileOpen} onClose={() => setMobileOpen(false)} ModalProps={{ keepMounted: true }} sx={{ display: { xs: 'block', md: 'none' }, '& .MuiDrawer-paper': { width: drawerWidth } }}>{sidebar}</Drawer>
         <Drawer variant="permanent" open sx={{ display: { xs: 'none', md: 'block' }, '& .MuiDrawer-paper': { width: drawerWidth, borderRightColor: 'divider' } }}>{sidebar}</Drawer>
       </Box>
