@@ -1,5 +1,9 @@
 # Next actions
 
+## Active checkpoint — axe contrast correction (2026-11-06)
+
+`385af28491dd943747c4bfe0277b511461d36440` passed CI #573/#574 and MongoDB #508/#509. Browser #292/#293 failed at the Sales screen: axe measured 2.59:1 on a disabled contained action, white on MUI's faded lavender background. `apps/web/src/main.tsx` now preserves the semantic disabled attribute while keeping contained-button text at 4.5:1 or higher. Web tests (8/8), lint, typecheck, build and `git diff --check` pass locally; production build still reports a 500.82 kB main chunk (153.94 kB gzip). Commit/push this correction and inspect all six exact-SHA workflows. Browser should continue the flow and reveal any later accessibility findings. Do not mark accessibility complete until the full scan passes and manual review is done.
+
 ## Active checkpoint — automated accessibility verification (2026-11-06)
 
 This checkout is on `codex/aslibooks-mvp`; the stale local development branch and its 25 patch-equivalent commits remain preserved, and the original uncommitted workspace snapshot remains in `git stash@{0}`. The owner-supplied vision file is kept untracked and must not be staged.
