@@ -267,7 +267,7 @@ def test_chart():
             expect(page.locator('[role="alert"]').filter(has_text="Failed to fetch")).to_be_visible()
             with page.expect_response(lambda response: response.url.endswith("/receipts") and response.request.method == "POST") as receipt_retry:
                 page.get_by_role("button", name="Confirm and record").click()
-            assert receipt_retry.value.status == 201, receipt_retry.value.text()
+            assert receipt_retry.value.status == 200, receipt_retry.value.text()
             assert receipt_retry.value.json()["replayed"] is True
             assert len(receipt_keys) == 2 and receipt_keys[0] == receipt_keys[1]
             page.unroute("**/api/organizations/*/receipts", lose_receipt_response)
@@ -446,7 +446,7 @@ def test_chart():
             with page.expect_response(lambda response: response.url.endswith("/bills") and response.request.method == "GET"):
                 with page.expect_response(lambda response: response.url.endswith("/vendor-payments") and response.request.method == "POST") as partial_payment_response:
                     page.get_by_role("button", name="Review and record payment").click(force=True)
-            assert partial_payment_response.value.status == 201, partial_payment_response.value.text()
+            assert partial_payment_response.value.status == 200, partial_payment_response.value.text()
             assert partial_payment_response.value.json()["replayed"] is True
             assert len(payment_keys) == 2 and payment_keys[0] == payment_keys[1]
             page.unroute("**/api/organizations/*/vendor-payments", lose_vendor_payment_response)

@@ -6,7 +6,7 @@ Extended the source-reconciled financial workflow fixture with viewer checks for
 
 ## Active checkpoint — committed receipt/vendor payment response-loss retries (2026-11-06)
 
-Corrected the browser receipt retry simulation: the first POST reaches and commits on the API before Playwright aborts its response, and the retry must return `replayed: true` under the same idempotency key. Previously the route aborted before reaching the server, so it only tested pre-commit network failure. Added the same committed-response-loss assertion for partial vendor payments. Python syntax and `git diff --check` pass locally. Commit and verify exact-SHA Browser workflows; continue reviewing retry coverage for other high-value posting paths.
+Corrected the browser receipt retry simulation: the first POST reaches and commits on the API before Playwright aborts its response, and the retry must return `replayed: true` under the same idempotency key. Previously the route aborted before reaching the server, so it only tested pre-commit network failure. Added the same committed-response-loss assertion for partial vendor payments. At `eb77fb8`, CI/MongoDB passed but both Browser runs failed because the test expected 201 on a replay; the API correctly returns 200 for replayed receipt creation. The assertion and vendor-payment replay status expectation are corrected to 200. Python syntax and `git diff --check` pass locally; publish and verify the exact-SHA Browser workflows.
 
 ## Active checkpoint — viewer source-report access (2026-11-06)
 
