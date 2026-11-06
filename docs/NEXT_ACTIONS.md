@@ -1,8 +1,8 @@
 # Next actions
 
-## Active checkpoint — vendor bill draft reference isolation
+## Active checkpoint — foreign vendor bill route isolation
 
-Invoice draft reference SHA `3ec4309b` passed CI #553/#554 and MongoDB #488/#489; Browser #272/#273 is still pending. The current local bill integration regression rejects foreign vendor and expense-account references on draft edit, preserving the bill and audit count. Typecheck/lint/diff are verified. Commit and push this test, verify exact-SHA CI/MongoDB/Browser, then continue the mounted endpoint role/reference review and responsive workflow accessibility. The local replica set at `127.0.0.1:37491` is unavailable; use hosted MongoDB integration for DB coverage. Acceptance criteria remain Partial.
+Vendor bill foreign-reference SHA `1832d36b` passed CI #555/#556 and MongoDB #490/#491; Browser #274/#275 is still running. The current local route tests seed a real peer-tenant bill and verify its guessed ID cannot be read, edited, or posted through the current tenant's API; the foreign bill and local audit count remain unchanged. Typecheck is green, lint/diff verification finishing. Commit/push this change, verify exact-SHA CI/MongoDB/Browser, then continue route and role review. Local replica-set service is unavailable; use hosted integration for DB coverage. Acceptance criteria remain Partial.
 
 ## Active checkpoint — route-driven report reconciliation
 

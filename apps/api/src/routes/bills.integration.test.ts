@@ -51,6 +51,17 @@ describe.skipIf(!enabled)('vendor bill HTTP lifecycle', () => {
     expect(await BillModel.countDocuments({ organizationId, draftIdempotencyKey: payload.idempotencyKey })).toBe(1);
     expect(await AuditEventModel.countDocuments({ organizationId, action: 'bill.draft_created' })).toBe(1);
     expect(await JournalModel.countDocuments({ organizationId })).toBe(0);
+    const peerDraft = await request(app).post(`/orgs/${peerId}/bills`).set({ 'x-fixture-actor': 'bill-peer' }).send({
+      idempotencyKey: 'bill-peer-draft-100', vendorId: String(peerVendorId), vendorReference: 'PEER-100',
+      expenseAccountId: String(peerExpenseId), description: 'Peer tenant draft', amountPaise: 900,
+    }).expect(201);
+    const peerBillBefore = await BillModel.findById(peerDraft.body.id).lean();
+    const localAuditCountBeforeForeignBill = await AuditEventModel.countDocuments({ organizationId });
+    await request(app).get(`${path}/${peerDraft.body.id}`).set(owner).expect(404);
+    await request(app).patch(`${path}/${peerDraft.body.id}`).set(owner).send(payload).expect(404);
+    await request(app).post(`${path}/${peerDraft.body.id}/post`).set(owner).send({ idempotencyKey: 'bill-foreign-post-100' }).expect(404);
+    expect(await BillModel.findById(peerDraft.body.id).lean()).toEqual(peerBillBefore);
+    expect(await AuditEventModel.countDocuments({ organizationId })).toBe(localAuditCountBeforeForeignBill);
     const draftBeforeForeignUpdates = await BillModel.findById(draftId).lean();
     const draftUpdateAuditCount = await AuditEventModel.countDocuments({ organizationId, resourceId: draftId, action: 'bill.draft_updated' });
     await request(app).patch(`${path}/${draftId}`).set(owner).send({ ...payload, vendorId: String(peerVendorId) }).expect(422);
