@@ -148,6 +148,14 @@ describe.skipIf(!enabled)('source transaction report reconciliation', () => {
     await request(app).get(`${organizationPath}/contacts/${customerId}/ledger`).set(viewer).expect(200).then(response => {
       expect(response.body).toMatchObject({ balancePaise: 6_000, subledger: { openDocumentBalancePaise: 6_000 } });
     });
+    await request(app).get(`${reportsPath}/general-ledger?accountId=${incomeId}&from=${fiscalYearStart}&to=${indiaToday}`).set(viewer).expect(200)
+      .then(response => {
+        expect(response.body.account).toMatchObject({ id: String(incomeId), normalSide: 'credit' });
+        expect(response.body.entries.reduce((balance: number, entry: { creditPaise: number; debitPaise: number }) => balance + entry.creditPaise - entry.debitPaise, response.body.openingBalancePaise)).toBe(9_000);
+      });
+    await request(app).get(`${reportsPath}/dashboard?from=${fiscalYearStart}&to=${indiaToday}`).set(viewer).expect(200)
+      .then(response => expect(response.body).toMatchObject({ revenuePaise: 9_000, expensesPaise: 7_000, netProfitPaise: 2_000,
+        cashPaise: 51_000, receivablesPaise: 6_000, payablesPaise: 5_000 }));
     await request(app).get(`${reportsPath}/trial-balance?asOf=${indiaToday}`).set(viewer).expect(200)
       .then(response => expect(response.body).toMatchObject({ balanced: true, debitTotalPaise: 64_000, creditTotalPaise: 64_000 }));
     await request(app).get(`${reportsPath}/profit-and-loss?from=${fiscalYearStart}&to=${indiaToday}`).set(viewer).expect(200)
