@@ -181,7 +181,7 @@ def test_chart():
             expect(viewer_page.get_by_role("heading", name="Viewer unauthorized contact")).to_have_count(0)
             viewer_page.get_by_role("button", name="Open navigation").click()
             viewer_page.get_by_role("button", name="Sales", exact=True).click()
-            expect(viewer_page.get_by_text("Test Customer")).to_be_visible()
+            expect(viewer_page.get_by_role("heading", name="Sales invoices")).to_be_visible()
             expect(viewer_page.get_by_role("button", name="Save draft", exact=True)).to_have_count(0)
             viewer_page.get_by_role("button", name="Open navigation").click()
             viewer_page.get_by_role("button", name="Reports", exact=True).click()
