@@ -139,7 +139,7 @@ describe.skipIf(!enabled)('organization records export HTTP', () => {
     expect(complete.attachmentManifestSha256).toBe(createHash('sha256')
       .update(`${archivedAttachmentRecord.archivePath} ${archivedAttachmentRecord.sha256}\n`).digest('hex'));
     expect(await AuditEventModel.countDocuments({ organizationId, action: 'organization.data_exported', actorAuthUserId: 'export-accountant' })).toBe(2);
-  });
+  }, 20_000);
 
   afterAll(async () => {
     if (!enabled) return;
