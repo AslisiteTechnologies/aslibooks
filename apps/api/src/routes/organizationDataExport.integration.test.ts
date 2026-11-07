@@ -98,7 +98,7 @@ describe.skipIf(!enabled)('organization records export HTTP', () => {
     if (!enabled) return;
     const organizationIds = [organizationId, peerId];
     const filter = { organizationId: { $in: organizationIds } };
-    await Promise.all([AuditEventModel.deleteMany(filter), AttachmentModel.deleteMany(filter), ContactModel.deleteMany(filter),
+    await Promise.all([AuditEventModel.deleteMany(filter), AttachmentModel.collection.deleteMany(filter), ContactModel.deleteMany(filter),
       AccountModel.deleteMany(filter), MembershipModel.deleteMany(filter), OrganizationModel.deleteMany({ _id: { $in: organizationIds } })]);
     await mongoose.disconnect();
   });
