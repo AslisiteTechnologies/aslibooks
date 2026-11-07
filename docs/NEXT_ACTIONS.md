@@ -1,5 +1,19 @@
 # Next actions
 
+## Owner-dependent gates and next executable steps
+
+Current code is not production-ready. The remaining owner/adviser inputs are: staging host/service spend approval and domain; creation of the new synthetic-only Atlas database/user/allowlist; secret-manager values (Mongo URI, auth secret, origins); secure backup destination and approval of its encryption/key custody; RPO/RTO; accountant/legal approval of retention, deletion, attachment and tax behavior; AI provider privacy/retention/spend decisions; full manual accessibility review; final release approval. Do not access the existing screenshot databases or apply the paid Blueprint.
+
+Independent next steps: install Render CLI and run `render blueprints validate render.yaml` (validation itself does not create resources); review the planned service/cost; after owner provisioning and approval only, complete the exact staging sequence in `STAGING_RUNBOOK.md`: `pnpm install --frozen-lockfile`; set `MONGODB_DB_NAME=aslibooks_staging_synthetic` and matching `ASLIBOOKS_INDEX_DATABASE`; run `pnpm --filter @aslibooks/api db:ensure-indexes`; then deploy the reviewed SHA manually and complete the golden workflow, grant-denial, monitoring, backup/restore and rollback rehearsals. Keep PR #1 Draft, `main` untouched and production undeployed.
+
+The Blueprint template’s Node and static build commands are:
+
+```sh
+corepack pnpm install --frozen-lockfile
+corepack pnpm --filter @aslibooks/api build
+corepack pnpm --filter @aslibooks/web build
+```
+
 ## Explicit target confirmation for index preparation — exact-SHA verified (2026-11-07)
 
 At `b83c833daa5c741b80f619c7a536d0a7d0c6f1a1`, `db:ensure-indexes` refuses to connect unless `ASLIBOOKS_INDEX_DATABASE` exactly equals `MONGODB_DB_NAME`; invoking the real CLI without confirmation exited 1 before connecting. Focused config test 1/1; full workspace suite 86 passed (API 70, accounting 5, web 11), 86 DB-backed tests skipped locally. Typecheck, lint, build and diff check pass. All six exact-SHA CI/MongoDB/Browser push and PR workflows passed (#42353955187/#42353959968, #42353955181/#42353960029, #42353955172/#42353960118). Next: continue independent product and operational improvements locally; staging deployment and restore rehearsal require owner-provisioned hosting, staging credentials, domain, and secure backup destination. Never direct this command to an existing Atlas database, merge `main`, or deploy production.

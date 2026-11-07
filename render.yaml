@@ -1,0 +1,53 @@
+# Staging template only. Applying this Blueprint creates a paid API service.
+# Do not apply without explicit owner approval and owner-provisioned synthetic DB credentials.
+services:
+  - type: web
+    name: aslibooks-staging-api
+    runtime: node
+    branch: develop/phase-1-foundation
+    region: singapore
+    plan: 0.5c-512mb
+    autoDeployTrigger: off
+    buildCommand: corepack enable && corepack pnpm install --frozen-lockfile && corepack pnpm --filter @aslibooks/api build
+    startCommand: node apps/api/dist/index.js
+    healthCheckPath: /health/ready
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_DB_NAME
+        value: aslibooks_staging_synthetic
+      - key: MONGODB_URI
+        sync: false
+      - key: BETTER_AUTH_SECRET
+        sync: false
+      - key: BETTER_AUTH_URL
+        sync: false
+      - key: WEB_ORIGIN
+        sync: false
+
+  - type: web
+    name: aslibooks-staging-web
+    runtime: static
+    branch: develop/phase-1-foundation
+    autoDeployTrigger: off
+    buildCommand: corepack enable && corepack pnpm install --frozen-lockfile && corepack pnpm --filter @aslibooks/web build
+    staticPublishPath: apps/web/dist
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Permissions-Policy
+        value: camera=(), microphone=(), geolocation=()
+      - path: /*
+        name: Strict-Transport-Security
+        value: max-age=31536000
+    envVars:
+      - key: VITE_API_URL
+        sync: false
