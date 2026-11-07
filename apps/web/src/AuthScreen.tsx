@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Alert, Box, Button, CircularProgress, Container, Link, Paper, Stack, TextField, Typography } from '@mui/material';
 import { api, userFacingApiError } from './api';
 
@@ -16,6 +16,17 @@ export function AuthScreen({ onAuthenticated, connectionError = '', onRetryConne
   const [notice, setNotice] = useState('');
   const [verificationRequired, setVerificationRequired] = useState(false);
   const [resetToken, setResetToken] = useState('');
+  const previousMode = useRef(mode);
+  const nameInput = useRef<HTMLInputElement>(null);
+  const emailInput = useRef<HTMLInputElement>(null);
+  const passwordInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (previousMode.current === mode) return;
+    previousMode.current = mode;
+    const nextInput = mode === 'signup' ? nameInput : mode === 'reset' ? passwordInput : emailInput;
+    nextInput.current?.focus();
+  }, [mode]);
 
   useEffect(() => {
     const token = new URLSearchParams(window.location.search).get('token');
@@ -68,9 +79,9 @@ export function AuthScreen({ onAuthenticated, connectionError = '', onRetryConne
         {error && <Alert severity="error">{error}</Alert>}
         {notice && <Alert severity="success">{notice}</Alert>}
         <Stack component="form" spacing={2} onSubmit={(event) => { void submit(event); }}>
-          {mode === 'signup' && <TextField label="Full name" required autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />}
-          {mode !== 'reset' && <TextField label="Email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />}
-          {(mode === 'signin' || mode === 'signup' || mode === 'reset') && <TextField label={mode === 'reset' ? 'New password' : 'Password'} type="password" required inputProps={{ minLength: 8 }} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} value={password} onChange={(e) => setPassword(e.target.value)} />}
+          {mode === 'signup' && <TextField inputRef={nameInput} label="Full name" required autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />}
+          {mode !== 'reset' && <TextField inputRef={emailInput} label="Email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />}
+          {(mode === 'signin' || mode === 'signup' || mode === 'reset') && <TextField inputRef={passwordInput} label={mode === 'reset' ? 'New password' : 'Password'} type="password" required inputProps={{ minLength: 8 }} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} value={password} onChange={(e) => setPassword(e.target.value)} />}
           <Button type="submit" variant="contained" size="large" disabled={busy || (mode === 'reset' && !resetToken)}>{busy ? <CircularProgress size={22} aria-label="Submitting account request" /> : mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Create account' : mode === 'request-reset' ? 'Send reset link' : 'Save new password'}</Button>
         </Stack>
         {mode === 'signin' && verificationRequired && <Link component="button" type="button" onClick={() => { setMode('request-reset'); setError(''); setNotice(''); }}>Forgot password?</Link>}

@@ -16,10 +16,22 @@ try {
   await page.getByLabel('Password').waitFor();
   await page.getByRole('button', { name: 'Sign in' }).waitFor();
 
-  await page.getByRole('button', { name: 'Create account' }).click();
+  const createAccount = page.getByRole('button', { name: 'Create account' });
+  await createAccount.focus();
+  await page.keyboard.press('Enter');
   await page.getByLabel('Full name').waitFor();
   await page.getByLabel('Email').waitFor();
   await page.getByLabel('Password').waitFor();
+  assert.equal(await page.getByLabel('Full name').evaluate(element => element === document.activeElement), true,
+    'signup should move focus to the first required field');
+  await page.keyboard.press('Tab');
+  assert.equal(await page.getByLabel('Email').evaluate(element => element === document.activeElement), true,
+    'Tab from the name field should move focus to email');
+  const backToSignIn = page.getByRole('button', { name: 'Sign in', exact: true });
+  await backToSignIn.focus();
+  await page.keyboard.press('Enter');
+  assert.equal(await page.getByLabel('Email').evaluate(element => element === document.activeElement), true,
+    'returning to sign in should move focus to email');
 
   const dimensions = await page.evaluate(() => ({
     viewport: document.documentElement.clientWidth,
