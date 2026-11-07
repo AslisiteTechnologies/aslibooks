@@ -912,10 +912,16 @@ def test_chart():
                 viewer_page.get_by_role("button", name="Confirm and post").click()
             assert accountant_post.value.status == 201, accountant_post.value.text()
             expect(viewer_page.get_by_text("Journal posted and recorded in the audit trail.", exact=True)).to_be_visible()
+            viewer_page.get_by_text("Accountant approved opening adjustment", exact=True).locator("xpath=../..").get_by_role("button", name="View details").click()
+            expect(viewer_page.get_by_text("1000 · Cash on hand — Debit ₹1.00 / Credit ₹0.00", exact=True)).to_be_visible()
+            expect(viewer_page.get_by_text("3000 · Owner capital — Debit ₹0.00 / Credit ₹1.00", exact=True)).to_be_visible()
             viewer_page.get_by_role("button", name="Open navigation").click()
             viewer_page.get_by_role("button", name="Reports", exact=True).click()
             net_profit_after_accountant = viewer_page.evaluate("() => document.body.innerText.match(/Net profit ₹[\\d,.]+/)?.[0] ?? null")
-            assert net_profit_after_accountant == net_profit_before_accountant, "A balance-sheet-only accountant journal changed reported net profit"
+            assert net_profit_after_accountant == net_profit_before_accountant, (
+                f"A balance-sheet-only accountant journal changed reported net profit: "
+                f"before={net_profit_before_accountant!r}, after={net_profit_after_accountant!r}"
+            )
             expect(viewer_page.get_by_text("Balance sheet balances", exact=True)).to_be_visible()
             viewer_page.close()
             page.route("**/api/organizations/**", lambda route: route.fulfill(status=401, content_type="application/json", body='{"error":"Unauthorized"}'), times=1)
