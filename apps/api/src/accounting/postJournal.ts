@@ -1,0 +1,165 @@
+import mongoose, { Types } from 'mongoose';
+import { markPostingAccounts } from '../models/account.js';
+import { JournalModel } from '../models/journal.js';
+import { JournalDraftModel } from '../models/journalDraft.js';
+import { AuditEventModel } from '../models/auditEvent.js';
+import { fenceLedgerPermission } from '../security/authorization.js';
+import { assertPostingPeriodOpen } from './fiscalPeriods.js';
+
+export type PostingLine = { accountId: string; debitPaise: number; creditPaise: number };
+export type PostingCommand = {
+  organizationId: string;
+  actorAuthUserId: string;
+  idempotencyKey: string;
+  description: string;
+  lines: PostingLine[];
+  sourceDraftId?: string;
+};
+export class PostingError extends Error {
+  constructor(public readonly code: 'INVALID' | 'ACCOUNT' | 'CONFLICT' | 'PERIOD_CLOSED', message: string) { super(message); }
+}
+export function validatePosting(command: PostingCommand): void {
+  if (!Types.ObjectId.isValid(command.organizationId)) throw new PostingError('INVALID', 'Invalid organization');
+  if (!command.actorAuthUserId.trim()) throw new PostingError('INVALID', 'Actor required');
+  if (!/^[a-zA-Z0-9:_-]{8,128}$/.test(command.idempotencyKey)) throw new PostingError('INVALID', 'Invalid idempotency key');
+  if (!command.description.trim() || command.description.length > 500) throw new PostingError('INVALID', 'Invalid description');
+  if (command.sourceDraftId && !Types.ObjectId.isValid(command.sourceDraftId)) throw new PostingError('INVALID', 'Invalid source draft');
+  if (command.lines.length < 2 || command.lines.length > 200) throw new PostingError('INVALID', 'Journal requires 2 to 200 lines');
+  let debit = 0;
+  let credit = 0;
+  for (const line of command.lines) {
+    if (!Types.ObjectId.isValid(line.accountId)) throw new PostingError('INVALID', 'Invalid account ID');
+    if (![line.debitPaise, line.creditPaise].every(v => Number.isSafeInteger(v) && v >= 0))
+      throw new PostingError('INVALID', 'Amounts must be nonnegative safe integer paise');
+    if ((line.debitPaise > 0) === (line.creditPaise > 0))
+      throw new PostingError('INVALID', 'Exactly one side must be positive');
+    debit += line.debitPaise;
+    credit += line.creditPaise;
+    if (!Number.isSafeInteger(debit) || !Number.isSafeInteger(credit))
+      throw new PostingError('INVALID', 'Total exceeds safe integer range');
+  }
+  if (debit !== credit) throw new PostingError('INVALID', 'Journal is not balanced');
+}
+
+function samePayload(existing: { reversalOf?: Types.ObjectId; sourceDraftId?: Types.ObjectId; description: string; lines: PostingLine[] }, command: PostingCommand) {
+  return !existing.reversalOf && existing.description === command.description &&
+    String(existing.sourceDraftId ?? '') === (command.sourceDraftId?.toLowerCase() ?? '') &&
+    existing.lines.length === command.lines.length &&
+    existing.lines.every((line, i) =>
+      String(line.accountId) === command.lines[i].accountId.toLowerCase() &&
+      line.debitPaise === command.lines[i].debitPaise &&
+      line.creditPaise === command.lines[i].creditPaise);
+}
+
+/** Internal-only posting primitive. Caller MUST verify active tenant membership and ledger:post permission. */
+export async function postJournal(command: PostingCommand, options: { enforceMembershipFence?: boolean } = {}): Promise<{ journalId: string; replayed: boolean }> {
+  validatePosting(command);
+  const organizationId = new Types.ObjectId(command.organizationId);
+  if (options.enforceMembershipFence) {
+    // Fast-path replay cannot bypass the transaction-time membership check.
+    // All authorized calls must enter the transaction before inspecting the key.
+    return postJournalFenced(command);
+  }
+  const existing = await JournalModel.findOne({ organizationId, idempotencyKey: command.idempotencyKey }).exec();
+  if (existing) {
+    if (!samePayload(existing, command))
+      throw new PostingError('CONFLICT', 'Idempotency key already used with different journal');
+    return { journalId: String(existing._id), replayed: true };
+  }
+  try {
+    return await mongoose.connection.transaction(async (session) => {
+      await assertPostingPeriodOpen(organizationId, session);
+      if (!await markPostingAccounts(organizationId, command.lines, session))
+        throw new PostingError('ACCOUNT', 'Account missing, inactive, or outside organization');
+      const [journal] = await JournalModel.create([{
+        organizationId,
+        idempotencyKey: command.idempotencyKey,
+        currency: 'INR',
+        description: command.description,
+        lines: command.lines.map(line => ({
+          accountId: new Types.ObjectId(line.accountId),
+          debitPaise: line.debitPaise,
+          creditPaise: line.creditPaise,
+        })),
+        postedAt: new Date(),
+        ...(command.sourceDraftId ? { sourceDraftId: new Types.ObjectId(command.sourceDraftId) } : {}),
+      }], { session });
+      await AuditEventModel.create([{
+        organizationId,
+        actorAuthUserId: command.actorAuthUserId,
+        action: 'journal.posted',
+        resourceType: 'journal',
+        resourceId: String(journal._id),
+      }], { session });
+      return { journalId: String(journal._id), replayed: false };
+    });
+  } catch (error) {
+    if (error instanceof PostingError) throw error;
+    // Unique index guarantees a concurrent retry cannot post the same key twice.
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === 11000) {
+      const retry = await JournalModel.findOne({ organizationId, idempotencyKey: command.idempotencyKey }).exec();
+      if (retry && samePayload(retry, command))
+        return { journalId: String(retry._id), replayed: true };
+      throw new PostingError('CONFLICT', 'Idempotency key conflict');
+    }
+    // A competing transaction can surface a transient write conflict instead
+    // of E11000. Resolve a committed identical posting before returning the error.
+    // Never assume a transient error means a journal was committed.
+    if (typeof error === 'object' && error !== null &&
+        'hasErrorLabel' in error && typeof error.hasErrorLabel === 'function' &&
+        error.hasErrorLabel('TransientTransactionError')) {
+      const committed = await JournalModel.findOne({
+        organizationId, idempotencyKey: command.idempotencyKey,
+      }).exec();
+      if (committed) {
+        if (!samePayload(committed, command))
+          throw new PostingError('CONFLICT', 'Idempotency key already used with different journal');
+        return { journalId: String(committed._id), replayed: true };
+      }
+    }
+    throw error;
+  }
+}
+
+/** Transactional authorization path. Do not call from unverified HTTP input. */
+async function postJournalFenced(command: PostingCommand): Promise<{ journalId: string; replayed: boolean }> {
+  const organizationId = new Types.ObjectId(command.organizationId);
+  return mongoose.connection.transaction(async (session) => {
+    if (!await fenceLedgerPermission(command.actorAuthUserId, command.organizationId, session))
+      throw new PostingError('CONFLICT', 'Ledger posting permission denied');
+    const existing = await JournalModel.findOne({
+      organizationId, idempotencyKey: command.idempotencyKey,
+    }).session(session).exec();
+    if (existing) {
+      if (!samePayload(existing, command))
+        throw new PostingError('CONFLICT', 'Idempotency key already used with different journal');
+      return { journalId: String(existing._id), replayed: true };
+    }
+    await assertPostingPeriodOpen(organizationId, session);
+    if (!await markPostingAccounts(organizationId, command.lines, session))
+      throw new PostingError('ACCOUNT', 'Account missing, inactive, or outside organization');
+    const [journal] = await JournalModel.create([{
+      organizationId, idempotencyKey: command.idempotencyKey, currency: 'INR',
+      ...(command.sourceDraftId ? { sourceDraftId: new Types.ObjectId(command.sourceDraftId) } : {}),
+      description: command.description, lines: command.lines.map(line => ({
+        accountId: new Types.ObjectId(line.accountId),
+        debitPaise: line.debitPaise, creditPaise: line.creditPaise,
+      })), postedAt: new Date(),
+    }], { session });
+    if (command.sourceDraftId) {
+      const draft = await JournalDraftModel.findOne({ _id: command.sourceDraftId, organizationId, status: 'draft' }).session(session);
+      if (!draft) throw new PostingError('CONFLICT', 'Journal draft is no longer available to post');
+      draft.status = 'posted'; draft.postedJournalId = journal._id; draft.postedAt = journal.postedAt;
+      await draft.save({ session });
+      await AuditEventModel.create([{
+        organizationId, actorAuthUserId: command.actorAuthUserId,
+        action: 'journal.draft_posted', resourceType: 'journalDraft', resourceId: String(draft._id),
+      }], { session });
+    }
+    await AuditEventModel.create([{
+      organizationId, actorAuthUserId: command.actorAuthUserId,
+      action: 'journal.posted', resourceType: 'journal', resourceId: String(journal._id),
+    }], { session });
+    return { journalId: String(journal._id), replayed: false };
+  });
+}
