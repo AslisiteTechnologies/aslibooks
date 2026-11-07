@@ -1,8 +1,8 @@
 # Next actions
 
-## Current local completion batch — 2026-11-07 (uncommitted by request)
+## Current completion checkpoint — 2026-11-07
 
-Base branch/remote SHA: `a5366224b39c18e2086b6db7dae64135ad1cf321`. Local working changes add a friendly authentication connection error and retry button, formatter tests, and a draft owner/adviser decision record for data export, retention and deletion. Verified locally: web suite 4 files / 10 tests, workspace typecheck, lint, full production build, high-severity audit (no known vulnerabilities), browser sign-in/registration keyboard walkthrough, connection retry and zero console errors. `pnpm test` passes 80 tests (API unit 65, accounting 5, web 10); 84 database-dependent API tests skip because Docker/MongoDB are unavailable. Full authenticated manual accessibility remains incomplete. After reviewing all local scope, make one reviewable commit for this batch and push to the existing development target; verify all six exact-SHA checks. Do not stage `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md` or touch dirty peer worktrees. Staging operations, data-lifecycle policy approval, qualified tax/accounting review and production sign-off remain owner/environment dependent.
+Source code change `2ba0d100a525fb631bfccbb052bcb18bae4803a` is committed and pushed; all six exact-SHA checks passed (CI #42337192383/#42337202719, MongoDB #42337192391/#42337202791, Browser #42337192362/#42337202748). Local validation: 80 tests pass (API unit 65, accounting 5, web 10); 84 API integration tests skip without local MongoDB. Workspace typecheck/lint/build and high-severity audit pass. Auth-screen keyboard/focus and offline-retry review is limited to unauthenticated UI. Remaining work: full authenticated manual accessibility, data-lifecycle policy approval and implementation, staging credentials/operations, backup/restore/monitoring/rollback rehearsal, qualified tax/accounting review and release approval. Do not stage `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`, touch dirty peer worktrees, merge `main` or deploy production.
 
 ## Active checkpoint — publish verified migration-target guard (2026-11-06)
 

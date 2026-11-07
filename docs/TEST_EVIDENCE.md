@@ -1,12 +1,13 @@
 # Test evidence
 
-## Local auth resilience follow-up — 2026-11-07 (uncommitted)
+## Auth resilience and data lifecycle draft — source SHA `2ba0d100a525fb631bfccbb052bcb18bae4803a`
 
 - Added pure formatter coverage for browser network errors and preserved server messages: `pnpm --filter @aslibooks/web test` passes 4 files / 10 tests.
 - `pnpm typecheck`, `pnpm lint`, and `pnpm --filter @aslibooks/web build` pass after the auth retry change.
 - Local Vite UI walkthrough: sign-in/registration form fields and actions are keyboard reachable in sequence; focus is visibly indicated; unavailable API produces “Unable to connect to Aslibooks. Check your connection and try again.”; Retry repeats the session check and preserves usable sign-in; browser console has no errors.
 - Limits: unauthenticated local UI only. No local API/MongoDB (Docker, Python and MongoDB binaries unavailable), so authenticated workflow and full manual screen-reader review were not performed. Do not count this as full accessibility or staging acceptance.
 - The complete current workspace command `pnpm test` finished successfully at the runner level: API 12 unit-test files / 65 tests passed, accounting 1 file / 5 tests passed, web 4 files / 10 tests passed; 26 database-dependent API integration files (84 tests) skipped due absent local MongoDB replica set. This is not a full local integration pass. Workspace typecheck, lint, full `pnpm build`, and `pnpm audit --audit-level=high` passed (no known vulnerabilities).
+- All six exact-SHA workflows passed for the source commit: [CI push #42337192383](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42337192383), [CI PR #42337202719](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42337202719), [MongoDB push #42337192391](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42337192391), [MongoDB PR #42337202791](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42337202791), [Browser push #42337192362](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42337192362), [Browser PR #42337202748](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42337202748).
 
 ## Latest exact-SHA execution — 2026-11-06
 
