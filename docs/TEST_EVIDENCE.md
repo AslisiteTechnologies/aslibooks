@@ -1,5 +1,11 @@
 # Local Playwright dependency and bounded GST pagination — 2026-11-07
 
+## Exact database target for index operator — local verification (2026-11-07)
+
+- Focused `apps/api/src/indexConfig.test.ts`: 1/1 passed.
+- Ran `pnpm --filter @aslibooks/api db:ensure-indexes` with a synthetic `MONGODB_DB_NAME`, no `ASLIBOOKS_INDEX_DATABASE`, and no `MONGODB_URI`. The command exited 1 with the fixed sanitized error event before attempting a database connection.
+- Full `pnpm test`: API 70 passed / 86 replica-set tests skipped, accounting 5/5, web 11/11. Workspace typecheck, lint, build and `git diff --check` passed. Exact-SHA hosted checks for this follow-up are pending.
+
 - `pnpm --filter @aslibooks/web test -- src/gstReadiness.test.ts`: 6/6 passed, including finite traversal, repeated-cursor rejection and a 100-page ceiling for distinct cursors.
 - `pnpm --filter @aslibooks/web test:smoke`: passed against existing local Vite service `http://localhost:5173`; sign-in and account creation forms render at 390px; no horizontal overflow or JavaScript page errors. This smoke submits no credentials and creates no account.
 - `pnpm lint`, `pnpm test` (API 69 passed / 85 DB-dependent skipped, accounting 5 passed, web 11 passed), `pnpm typecheck`, `pnpm build`, `pnpm audit --audit-level=high` (no known vulnerabilities), and `git diff --check`: passed locally.

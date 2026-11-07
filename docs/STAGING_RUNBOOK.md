@@ -52,10 +52,11 @@ Mongoose model schemas declare indexes. Apply additions before deploying code th
 
 ```sh
 pnpm install --frozen-lockfile
+export ASLIBOOKS_INDEX_DATABASE="$MONGODB_DB_NAME"
 pnpm --filter @aslibooks/api db:ensure-indexes
 ```
 
-`db:ensure-indexes` imports the registered Aslibooks Mongoose models and calls `createIndexes()` for each. It only ensures declared indexes; it does not drop indexes or mutate ledger documents. A duplicate-key failure is a stop condition: inspect the index and data safely, write and review a specific repair/migration, back up first, then retry. Do not use `syncIndexes()` as a production migration.
+`db:ensure-indexes` requires `ASLIBOOKS_INDEX_DATABASE` to exactly match `MONGODB_DB_NAME` and checks this before opening a database connection. It imports the registered Aslibooks Mongoose models and calls `createIndexes()` for each, then creates TTL indexes for auth and AI rate-limit collections. It only ensures declared indexes; it does not drop indexes or mutate ledger documents. A duplicate-key failure is a stop condition: inspect the index and data safely, write and review a specific repair/migration, back up first, then retry. Do not use `syncIndexes()` as a production migration.
 
 The API now includes a versioned forward-only runner in `apps/api/src/migrations/runner.ts`, with migration declarations in `apps/api/src/migrations/registry.ts`. No data migration is required by the current release, so the registry is deliberately empty and the command records no applied versions. Each future migration must have a date-prefixed unique ID, a description, a restart-safe `up` operation, and an isolated replica-set integration rehearsal. The runner applies migrations in ID order, records successful versions in `aslibooks_schema_migrations`, skips recorded versions, rejects unknown historical versions, and permits safe retry after an operation stops before version recording. It never implements automatic down migrations: correct data forward with a reviewed migration or use the application’s linked journal reversal for financial postings.
 
@@ -97,7 +98,7 @@ Use an encrypted, access-logged backup destination and a separate maintenance id
 
 1. Take a consistent MongoDB replica-set backup according to the managed provider’s documented procedure; record backup timestamp, database name, artifact digest and encryption/key reference without printing credentials.
 2. Restore into a new isolated disposable database, never over the source. Keep API traffic disconnected from both source and restored copy.
-3. Run `pnpm --filter @aslibooks/api db:ensure-indexes` against the restored copy.
+3. Set both `MONGODB_DB_NAME` and `ASLIBOOKS_INDEX_DATABASE` to the restored copy’s exact new database name, then run `pnpm --filter @aslibooks/api db:ensure-indexes`.
 4. Verify expected tenant and document counts, membership/journal/audit linkage, indexes, GridFS file/chunk pairing, a balanced trial balance, and sample GL/P&L/balance-sheet values against the backup cut-off.
 5. Record restore duration and measured data loss against approved objectives. Delete the disposable restored copy under the approved test-data policy. A failed or absent restore rehearsal blocks production approval.
 
