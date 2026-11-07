@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Alert, Button, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
-import { api, downloadOrganizationData, userFacingApiError, type Organization } from './api';
+import { api, downloadOrganizationArchive, downloadOrganizationData, userFacingApiError, type Organization } from './api';
 
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export function SettingsScreen({ organization, onSaved }: { organization: Organization; onSaved: () => void }) {
@@ -28,6 +28,21 @@ export function SettingsScreen({ organization, onSaved }: { organization: Organi
     } catch (cause) { setError(userFacingApiError(cause, 'Organization data export could not be prepared.')); }
     finally { setExporting(false); }
   }
+  async function exportArchive() {
+    setExporting(true); setError(''); setNotice('');
+    try {
+      const { blob, filename, cancelled } = await downloadOrganizationArchive(organization.id);
+      if (cancelled) return;
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url; link.download = filename; link.click();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+      setNotice('Complete organization archive downloaded. Verify complete.json and the attachment checksums before relying on it.');
+    } catch (cause) { setError(userFacingApiError(cause, 'Organization archive could not be prepared.')); }
+    finally { setExporting(false); }
+  }
   return <Stack spacing={2}>
     <Typography variant="h5">Organization settings</Typography>
     {!canManage && <Alert severity="info">Only owners and admins can change organization settings.</Alert>}
@@ -44,8 +59,10 @@ export function SettingsScreen({ organization, onSaved }: { organization: Organi
     </Stack></Paper>
     <Paper variant="outlined" sx={{ p: 2 }}><Stack spacing={1}>
       <Typography variant="h6">Organization data export</Typography>
-      <Typography color="text.secondary">Download tenant-scoped accounting source records and audit history as NDJSON. Export access is limited to owners, admins and accountants. Attachment metadata is included, but original file contents must be downloaded separately from their source records.</Typography>
-      {canExport && <Button variant="outlined" onClick={() => { void exportRecords(); }} disabled={exporting}>{exporting ? 'Preparing export…' : 'Download organization records'}</Button>}
+      <Typography color="text.secondary">The complete .tar.gz archive includes tenant-scoped accounting records, audit history and original uploaded files. The download is unencrypted. It is not a point-in-time snapshot or a database backup; verify its completion marker and attachment checksums, then store it securely. Export access is limited to owners, admins and accountants.</Typography>
+      {canExport && <Button variant="contained" onClick={() => { void exportArchive(); }} disabled={exporting}>{exporting ? 'Preparing archive…' : 'Download complete organization archive'}</Button>}
+      <Typography color="text.secondary">For record-only integrations, NDJSON includes attachment metadata without original files.</Typography>
+      {canExport && <Button variant="outlined" onClick={() => { void exportRecords(); }} disabled={exporting}>{exporting ? 'Preparing export…' : 'Download records-only NDJSON'}</Button>}
       {!canExport && <Alert severity="info">Only owners, admins and accountants can export organization records.</Alert>}
     </Stack></Paper>
   </Stack>;

@@ -1,4 +1,6 @@
 import express from 'express';
+import { createHash } from 'node:crypto';
+import { gunzipSync } from 'node:zlib';
 import mongoose, { Types } from 'mongoose';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -35,6 +37,7 @@ describe.skipIf(!enabled)('organization records export HTTP', () => {
   const contactId = new Types.ObjectId();
   const attachmentId = new Types.ObjectId();
   const storageId = new Types.ObjectId();
+  const attachmentBytes = Buffer.concat([Buffer.from('%PDF-1.7\nSynthetic archive receipt\n'), Buffer.alloc(1024 * 1024, 65), Buffer.from('\n%%EOF')]);
 
   beforeAll(async () => {
     await mongoose.connect(uri!, { dbName });
@@ -55,9 +58,15 @@ describe.skipIf(!enabled)('organization records export HTTP', () => {
       { organizationId: peerId, code: '9000', name: 'Foreign confidential account', type: 'asset' },
     ]);
     await ContactModel.create({ _id: contactId, organizationId, displayName: 'Synthetic customer', roles: ['customer'] });
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db!, { bucketName: 'aslibooks_attachments' });
+    await new Promise<void>((resolve, reject) => {
+      const upload = bucket.openUploadStreamWithId(storageId, 'private-attachment', { contentType: 'application/pdf',
+        metadata: { organizationId: String(organizationId), sha256: createHash('sha256').update(attachmentBytes).digest('hex') } });
+      upload.once('error', reject); upload.once('finish', resolve); upload.end(attachmentBytes);
+    });
     await AttachmentModel.create({ _id: attachmentId, organizationId, resourceType: 'journal', resourceId: new Types.ObjectId(),
       uploadedBy: 'export-owner', idempotencyKey: 'export-attachment-key', filename: 'receipt.pdf', contentType: 'application/pdf',
-      sizeBytes: 10, sha256: 'a'.repeat(64), storageId, createdAt: new Date('2026-01-02T00:00:00Z') });
+      sizeBytes: attachmentBytes.length, sha256: createHash('sha256').update(attachmentBytes).digest('hex'), storageId, createdAt: new Date('2026-01-02T00:00:00Z') });
   });
 
   it('streams authorized tenant records, excludes peer data and attachment storage identifiers, and logs the export', async () => {
@@ -94,8 +103,48 @@ describe.skipIf(!enabled)('organization records export HTTP', () => {
       expect(await AuditEventModel.countDocuments({ organizationId, action: 'organization.data_exported', actorAuthUserId })).toBe(1);
   });
 
+  it('streams a gzip archive with authorized records and verified original attachment bytes', async () => {
+    await request(app).get(`${path}/archive`).expect(401);
+    await request(app).get(`${path}/archive`).set(viewer).expect(403);
+    await request(app).get(`/orgs/${peerId}/export/archive`).set(owner).expect(404);
+    const response = await request(app).get(`${path}/archive`).set(accountant).buffer(true).parse((res, callback) => {
+      const chunks: Buffer[] = [];
+      res.on('data', (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
+      res.on('end', () => callback(null, Buffer.concat(chunks)));
+    }).expect(200);
+    const compressed = response.body as Buffer;
+    expect(response.headers['content-type']).toContain('application/gzip');
+    expect(response.headers['cache-control']).toBe('private, no-store');
+    expect(response.headers['x-export-format']).toBe('aslibooks-tar-gzip-v1');
+    expect(response.headers['content-disposition']).toContain('.tar.gz');
+    const files = unpackTar(gunzipSync(compressed));
+    const manifest = JSON.parse(files.get('manifest.json')!.toString('utf8')) as { version: number; attachmentContentIncluded: boolean; snapshotSemantics: string; collections: string[] };
+    expect(manifest).toMatchObject({ version: 1, attachmentContentIncluded: true });
+    expect(manifest.collections).toEqual(expect.arrayContaining(['invoiceSequences', 'creditNotes', 'customerAdvanceAllocations',
+      'customerAdvanceRefunds', 'vendorCredits', 'vendorAdvanceAllocations', 'bankReconciliations']));
+    expect(manifest.snapshotSemantics).toContain('not a point-in-time snapshot');
+    const attachmentRecordBytes = files.get('records/attachments/000000000001.json')!;
+    const archivedAttachmentRecord = JSON.parse(attachmentRecordBytes.toString('utf8')) as { archivePath: string; sha256: string };
+    expect(archivedAttachmentRecord).toMatchObject({
+      _id: String(attachmentId), filename: 'receipt.pdf', archivePath: `attachments/${String(attachmentId)}.pdf`,
+      sizeBytes: attachmentBytes.length, sha256: createHash('sha256').update(attachmentBytes).digest('hex'),
+    });
+    expect(files.get(archivedAttachmentRecord.archivePath)).toEqual(attachmentBytes);
+    expect(attachmentRecordBytes.toString('utf8')).not.toContain(String(storageId));
+    expect([...files.keys()].some(name => name.includes(String(peerId)))).toBe(false);
+    const complete = JSON.parse(files.get('complete.json')!.toString('utf8')) as { type: string; recordCounts: Record<string, number>;
+      recordCollectionSha256: Record<string, string>; attachmentFileCount: number; attachmentBytes: number; attachmentManifestSha256: string };
+    expect(complete).toMatchObject({ type: 'complete', recordCounts: { accounts: 1, contacts: 1, attachments: 1 }, attachmentFileCount: 1, attachmentBytes: attachmentBytes.length });
+    expect(complete.recordCollectionSha256.attachments).toBe(createHash('sha256').update(attachmentRecordBytes).digest('hex'));
+    expect(complete.attachmentManifestSha256).toBe(createHash('sha256')
+      .update(`${archivedAttachmentRecord.archivePath} ${archivedAttachmentRecord.sha256}\n`).digest('hex'));
+    expect(await AuditEventModel.countDocuments({ organizationId, action: 'organization.data_exported', actorAuthUserId: 'export-accountant' })).toBe(2);
+  });
+
   afterAll(async () => {
     if (!enabled) return;
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db!, { bucketName: 'aslibooks_attachments' });
+    await bucket.delete(storageId).catch(() => undefined);
     const organizationIds = [organizationId, peerId];
     const filter = { organizationId: { $in: organizationIds } };
     await Promise.all([AuditEventModel.deleteMany(filter), AttachmentModel.collection.deleteMany(filter), ContactModel.deleteMany(filter),
@@ -103,3 +152,18 @@ describe.skipIf(!enabled)('organization records export HTTP', () => {
     await mongoose.disconnect();
   });
 });
+
+function unpackTar(archive: Buffer): Map<string, Buffer> {
+  const files = new Map<string, Buffer>();
+  let offset = 0;
+  while (offset + 512 <= archive.length) {
+    const header = archive.subarray(offset, offset + 512);
+    if (header.every(byte => byte === 0)) break;
+    const path = header.subarray(0, 100).toString('ascii').replace(/\0.*$/, '');
+    const size = Number.parseInt(header.subarray(124, 136).toString('ascii').replace(/\0.*$/, '').trim(), 8);
+    const dataStart = offset + 512;
+    files.set(path, archive.subarray(dataStart, dataStart + size));
+    offset = dataStart + Math.ceil(size / 512) * 512;
+  }
+  return files;
+}

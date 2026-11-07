@@ -19,6 +19,37 @@ export async function downloadOrganizationData(org: string): Promise<{ blob: Blo
   return { blob: await response.blob(), filename };
 }
 
+type FilePickerWindow = Window & {
+  showSaveFilePicker?: (options: { suggestedName: string }) => Promise<{ createWritable(): Promise<WritableStream<Uint8Array>> }>;
+};
+
+export async function downloadOrganizationArchive(org: string): Promise<{ blob?: Blob; filename: string; savedToDisk?: boolean; cancelled?: boolean }> {
+  const picker = (window as FilePickerWindow).showSaveFilePicker;
+  let fileHandle: Awaited<ReturnType<NonNullable<FilePickerWindow['showSaveFilePicker']>>> | undefined;
+  if (picker) {
+    try { fileHandle = await picker.call(window, { suggestedName: 'aslibooks-organization-archive.tar.gz' }); }
+    catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return { filename: '', cancelled: true };
+      throw error;
+    }
+  }
+  const response = await fetch(`${API_URL}/api/organizations/${org}/export/archive`, { credentials: 'include' });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null) as { error?: string } | null;
+    throw new Error(body?.error || 'Organization archive could not be prepared.');
+  }
+  if (response.headers.get('X-Export-Format') !== 'aslibooks-tar-gzip-v1')
+    throw new Error('The server returned an unexpected archive format.');
+  const disposition = response.headers.get('Content-Disposition') ?? '';
+  const filename = disposition.match(/filename="([^"\r\n]+)"/i)?.[1] ?? 'aslibooks-organization-archive.tar.gz';
+  if (fileHandle) {
+    if (!response.body) throw new Error('The organization archive stream is unavailable.');
+    await response.body.pipeTo(await fileHandle.createWritable());
+    return { filename, savedToDisk: true };
+  }
+  return { blob: await response.blob(), filename };
+}
+
 type AuthUser = { id: string; name: string; email: string };
 type SessionResponse = { user: AuthUser } | null;
 export type Organization = { id: string; name: string; slug: string; gstin: string; fiscalYearStartMonth: number; baseCurrency: string; role: string };

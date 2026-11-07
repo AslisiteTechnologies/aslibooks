@@ -1,7 +1,9 @@
 """Run against local, disposable Aslibooks API and web servers. See docs/integration-testing.md."""
 from pathlib import Path
+import hashlib
 import json
 import os
+import tarfile
 from uuid import uuid4
 from playwright.sync_api import expect, sync_playwright
 
@@ -28,6 +30,7 @@ def test_chart():
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1100, "height": 850})
+        page.add_init_script("Object.defineProperty(window, 'showSaveFilePicker', { value: undefined, configurable: true })")
         def assert_no_horizontal_overflow():
             assert page.evaluate("() => document.documentElement.scrollWidth <= window.innerWidth"), "Page overflows the viewport horizontally"
         try:
@@ -781,8 +784,26 @@ def test_chart():
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Settings", exact=True).click()
             assert_accessible(page, "organization records export")
+            with page.expect_download() as archive_download:
+                page.get_by_role("button", name="Download complete organization archive").click()
+            with tarfile.open(archive_download.value.path(), mode="r:gz") as archive:
+                archive_names = set(archive.getnames())
+                manifest = json.load(archive.extractfile("manifest.json"))
+                assert manifest["format"] == "aslibooks-organization-archive" and manifest["version"] == 1
+                assert manifest["attachmentContentIncluded"] is True
+                assert "not a point-in-time snapshot" in manifest["snapshotSemantics"]
+                attachment_records = [json.load(archive.extractfile(name)) for name in archive_names if name.startswith("records/attachments/")]
+                source_attachment = next(record for record in attachment_records if record["filename"] == "invoice-source.pdf")
+                assert "storageId" not in source_attachment
+                assert source_attachment["archivePath"] in archive_names
+                original_attachment = archive.extractfile(source_attachment["archivePath"]).read()
+                assert original_attachment == attachment_bytes
+                assert hashlib.sha256(original_attachment).hexdigest() == source_attachment["sha256"]
+                complete = json.load(archive.extractfile("complete.json"))
+                assert complete["type"] == "complete" and complete["attachmentFileCount"] > 0
+            expect(page.get_by_text("Complete organization archive downloaded. Verify complete.json and the attachment checksums before relying on it.", exact=True)).to_be_visible()
             with page.expect_download() as records_download:
-                page.get_by_role("button", name="Download organization records").click()
+                page.get_by_role("button", name="Download records-only NDJSON").click()
             records_text = Path(records_download.value.path()).read_text(encoding="utf-8")
             records = [json.loads(line) for line in records_text.splitlines()]
             assert records[0]["type"] == "manifest"
