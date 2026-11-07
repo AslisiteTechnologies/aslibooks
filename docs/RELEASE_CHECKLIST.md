@@ -10,6 +10,7 @@ For each gate attach the exact tested SHA, environment, run link and reviewer. [
 - [ ] Chart, contacts, sales, bills, receipts and vendor payments cover audit, tenancy, retries and concurrent changes.
 - [ ] Manual journals, closed periods and reversals pass atomicity and immutability checks.
 - [ ] Golden business month reconciles across GL, trial balance, P&L, balance sheet and aging.
+- [x] Hosted synthetic browser journey reconciles financial source documents to statements and verifies the full organization archive and original attachment bytes on exact SHA `92720a2c0ac7f62de1846e7730be026b62670fe6` (Browser push #42361955780, PR #42361971452). This archive is unencrypted and best-effort; data policy, staging backup/restore and release gates remain open.
 - [ ] Browser completes onboarding → invoice → partial receipt → reports on desktop and mobile viewport.
 - [ ] Automated WCAG 2.1 A/AA scans pass on key browser workflows; manual keyboard, screen-reader, focus, and contrast review is recorded.
 - [ ] Security review covers session expiry, abuse controls, redaction, advisories, grants and restore rehearsal. Application API/operator error logs now omit exception messages/stacks at `0b47ec5`; external provider log redaction and staging grants/restore review remain open.

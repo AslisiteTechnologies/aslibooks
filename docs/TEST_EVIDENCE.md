@@ -1,5 +1,12 @@
 # Test evidence
 
+## Complete tenant archive — exact SHA `92720a2c0ac7f62de1846e7730be026b62670fe6` (2026-11-07)
+
+- Local archive writer tests: 2/2; web archive streaming/fallback/cancel tests included in full web suite: 14/14. Full API suite: 74 passed, 87 replica-set/database integration tests skipped because no isolated local `MONGODB_TEST_URI` was configured. API and web typechecks, workspace ESLint, production build and `git diff --check` passed.
+- Hosted MongoDB integration verified authorized archive download, anonymous/viewer/foreign-tenant denial, full attachment byte round-trip, storage ID removal, completion marker, record and attachment hashes, and audit logging: [push #42361955723](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42361955723), [PR #42361959176](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42361959176).
+- The existing Python browser suite now downloads and inspects the full archive in its synthetic financial workflow, confirms original attachment bytes and SHA-256, and still checks records-only NDJSON: [push #42361955780](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42361955780), [PR #42361971452](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42361971452).
+- All CI workflows passed: [push #42361955865](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42361955865), [PR #42361959190](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42361959190). The archive is unencrypted and best-effort rather than point-in-time; it is not a database backup. No staging, restore or provider monitoring rehearsal was performed.
+
 ## Current API lifecycle fix — exact SHA `074b14a229130073db100fba451551b796fb8a4f` (2026-11-07)
 
 - SIGTERM/SIGINT now drain active HTTP requests through `server.close` before disconnecting Mongoose and Better Auth MongoDB clients. Shutdown is idempotent; close errors still run cleanup and use the sanitized `api_shutdown_failed` logger event.

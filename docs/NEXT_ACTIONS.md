@@ -1,5 +1,9 @@
 # Next actions
 
+## Latest completed product gap — complete tenant archive export (2026-11-07)
+
+Source `92720a2c0ac7f62de1846e7730be026b62670fe6` is pushed to `origin/develop/phase-1-foundation`; all six exact-SHA CI/MongoDB/Browser push and PR workflows passed (#42361955865/#42361959190, #42361955723/#42361959176, #42361955780/#42361971452). The archive covers all current tenant accounting collections, audit history and original attachment bytes, verifies attachment checksums during streaming, and emits a completion marker and manifests. Local API tests: 74 passed/87 database-backed skipped; web 14 passed; typecheck, lint, production build and diff check pass. Next independently executable release work: continue risk-based security/accounting acceptance and GST document validation without asserting statutory compliance. Environment-dependent gates remain staging credentials/provider access, database grants, encrypted backup/restore, monitoring/rollback rehearsal; policy/professional gates remain attachment and retention/deletion policy, qualified tax/accounting review, accessibility review and final owner acceptance. Keep `main` and production untouched.
+
 ## Local staging-access check (2026-11-07)
 
 `apps/api/.env` exists and is gitignored/untracked. Its `MONGODB_URI` and `MONGODB_DB_NAME` do not target `aslibooks_staging_synthetic`; the secret values were not displayed or used, and no database connection was made. Do not repurpose this local configuration for staging. A new database-scoped staging credential, confirmed database name, and approved allowlist are still required. The current shell also has no Render CLI, and no Render workspace session is open, so Blueprint validation and provisioning remain owner-access dependent.
