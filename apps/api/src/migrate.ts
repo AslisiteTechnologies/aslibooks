@@ -4,6 +4,7 @@ import { connectDatabase, disconnectDatabase } from './db.js';
 import { assertMigrationTarget } from './migrations/config.js';
 import { migrations } from './migrations/registry.js';
 import { applyMigrations } from './migrations/runner.js';
+import { logSafeError } from './security/safeLogger.js';
 
 async function run() {
   const databaseName = process.env.MONGODB_DB_NAME;
@@ -23,6 +24,6 @@ async function run() {
 }
 
 run().catch(error => {
-  console.error('Data migration run failed. Inspect the target database before retrying.', error);
+  logSafeError('migration_failed', error);
   process.exitCode = 1;
 });

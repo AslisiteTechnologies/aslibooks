@@ -11,12 +11,16 @@ describe('safe error logging', () => {
 
     logSafeError('api_request_failed', error);
     logSafeError('api_startup_failed', { message: 'mongodb://user:password@host/private-db' });
+    logSafeError('index_preparation_failed', error);
+    logSafeError('migration_failed', error);
 
-    expect(log).toHaveBeenCalledTimes(2);
+    expect(log).toHaveBeenCalledTimes(4);
     const lines = log.mock.calls.map(([line]) => String(line));
     expect(lines).toEqual([
       JSON.stringify({ event: 'api_request_failed', errorType: 'Error' }),
       JSON.stringify({ event: 'api_startup_failed', errorType: 'object' }),
+      JSON.stringify({ event: 'index_preparation_failed', errorType: 'Error' }),
+      JSON.stringify({ event: 'migration_failed', errorType: 'Error' }),
     ]);
     expect(lines.join('\n')).not.toMatch(/secret-value|12345|customer@example|secret stack|password|private-db/);
   });

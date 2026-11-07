@@ -21,6 +21,7 @@ import './models/product.js';
 import './models/receipt.js';
 import './models/vendorAdvance.js';
 import './models/vendorPayment.js';
+import { logSafeError } from './security/safeLogger.js';
 
 async function ensureIndexes() {
   await connectDatabase();
@@ -34,6 +35,6 @@ async function ensureIndexes() {
 }
 
 ensureIndexes().catch(error => {
-  console.error('Index preparation failed. No index drops or data migrations were attempted.', error);
+  logSafeError('index_preparation_failed', error);
   process.exitCode = 1;
 });
