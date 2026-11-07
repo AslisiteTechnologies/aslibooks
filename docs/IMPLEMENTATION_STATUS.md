@@ -1,5 +1,9 @@
 # Implementation status
 
+## Auth form keyboard focus handoff — locally and hosted-verified (2026-11-07)
+
+At `6df007aab69e8fb7b406799c688e6c195c67b2aa`, changing from sign-in to signup moves focus to Full name; Tab proceeds to Email; returning to sign-in moves focus to Email. Reproduced the prior body-focus defect in the existing local browser smoke and extended that same narrow smoke with the keyboard regression check—no second browser suite was added. At 390px the smoke passes with no horizontal overflow or page errors. Web typecheck, 11 web tests, workspace lint/build and all six exact-SHA CI/MongoDB/Browser push/PR workflows pass: CI #42356987176/#42356991254, MongoDB #42356987142/#42356991238, Browser #42356987150/#42356991172. This verifies auth-form focus only; full keyboard/screen-reader review remains open.
+
 ## Explicit index-command database target — exact-SHA verified (2026-11-07)
 
 At `b83c833daa5c741b80f619c7a536d0a7d0c6f1a1`, `db:ensure-indexes` requires `ASLIBOOKS_INDEX_DATABASE` to match `MONGODB_DB_NAME` exactly and validates that confirmation before opening a connection. The actual CLI was run without confirmation and exited 1 before connecting; sanitized output contained only the fixed event/type. Focused config test passes 1/1. Full local workspace suite passes 86 tests (API 70, accounting 5, web 11); 86 replica-set tests skip without an isolated database. Typecheck, lint, build and diff check pass. All six exact-SHA CI/MongoDB/Browser push and PR workflows passed: CI #42353955187/#42353959968, MongoDB #42353955181/#42353960029, Browser #42353955172/#42353960118. Do not point it at any existing owner database.

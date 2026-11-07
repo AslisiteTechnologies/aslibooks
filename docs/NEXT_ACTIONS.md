@@ -1,5 +1,9 @@
 # Next actions
 
+## Latest completed local gap — auth-form focus
+
+The keyboard transition from sign-in to signup previously dropped focus to the document body. Fixed at `6df007aab69e8fb7b406799c688e6c195c67b2aa`; the existing 390px auth smoke now checks Enter activation, first-field focus, Tab order and return-to-sign-in focus. Web typecheck, 11 web tests, lint, build and all six exact-SHA CI/MongoDB/Browser workflows passed (CI #42356987176/#42356991254, MongoDB #42356987142/#42356991238, Browser #42356987150/#42356991172). Next independently executable operational step remains Render Blueprint validation, which requires the owner’s Render workspace; then staging setup remains owner-gated as listed below.
+
 ## Owner-dependent gates and next executable steps
 
 Current code is not production-ready. The remaining owner/adviser inputs are: Render workspace access/selection, staging service spend approval and domain; creation of the new synthetic-only Atlas database/user/allowlist; secret-manager values (Mongo URI, auth secret, origins); secure backup destination and approval of its encryption/key custody; RPO/RTO; accountant/legal approval of retention, deletion, attachment and tax behavior; AI provider privacy/retention/spend decisions; full manual accessibility review; final release approval. Do not access the existing screenshot databases or apply the paid Blueprint.

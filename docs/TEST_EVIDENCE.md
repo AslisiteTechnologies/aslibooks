@@ -16,6 +16,14 @@
 
 # Test evidence
 
+## Auth form keyboard focus handoff — exact SHA `6df007aab69e8fb7b406799c688e6c195c67b2aa`
+
+- Reproduced that activating “Create account” left focus on the document body; fixed the mode transition to focus the first field, and returning to sign-in focuses Email.
+- Extended the existing non-mutating 390px local browser smoke to activate the mode switch with Enter, assert Full name receives focus, assert Tab moves to Email, and assert returning to sign-in restores Email focus. No credentials were entered and no account was created. Smoke passed with no horizontal overflow or page errors.
+- Local web typecheck, web tests (11/11), workspace lint, production build and `git diff --check` passed.
+- All six exact-SHA workflows passed: [CI push #42356987176](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42356987176), [CI PR #42356991254](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42356991254), [MongoDB push #42356987142](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42356987142), [MongoDB PR #42356991238](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42356991238), [Browser push #42356987150](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42356987150), [Browser PR #42356991172](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42356991172).
+- This is limited auth keyboard evidence, not a complete manual keyboard or screen-reader review.
+
 ## Explicit MongoDB database selection — exact SHA `3bac65a4272738bafd8a5092984c91768ed3c055`
 
 - New configuration test covers omitted and whitespace-only database names and returns a trimmed explicit name (3 assertions in 1 test).
