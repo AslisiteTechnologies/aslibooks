@@ -1,5 +1,9 @@
 # Aslibooks product audit — 2026-11-06
 
+## Follow-up — tenant record export implementation (2026-11-07)
+
+The current local change adds an owner/admin/accountant-gated NDJSON export from Settings for tenant accounting source records and audit history. The API writes an audit event, filters each source collection by organization, does not expose attachment storage IDs, and explicitly excludes original attachment bytes. API integration assertions cover anonymous, foreign-tenant and viewer denial plus data isolation; the primary browser scenario now downloads the export after recording synthetic invoices, bills, payments and journals. Local typecheck/lint/build/web tests/dependency audit pass; hosted API replica-set and Browser runs are pending the commit. Therefore records export is implemented locally but not yet hosted-verified. The complete archive/delete feature remains missing, and lifecycle policy still requires owner and qualified adviser decisions. This does not change the staging or production readiness conclusion below.
+
 ## Local follow-up — 2026-11-07
 
 During direct browser review of the unauthenticated local web shell, startup with an unavailable API displayed the raw browser text `Failed to fetch` below the sign-in layout and offered no retry. Auth error formatting and an in-card retry action now address that observed defect; a successful retry clears the old error when the API responds with no session. Verification: browser confirmed sign-in and account form Tab traversal, visible focus indication, the friendly connection alert, a retry that remains usable while offline, and zero console errors. Web tests pass 4/4 files / 10/10 tests, workspace typecheck/lint and production web build pass. This did not exercise authenticated financial screens: Docker, Python/Playwright and local MongoDB are absent. No full manual screen-reader review is claimed. These changes remain uncommitted in the requested local batch.

@@ -6,6 +6,19 @@ export function userFacingApiError(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
+export async function downloadOrganizationData(org: string): Promise<{ blob: Blob; filename: string }> {
+  const response = await fetch(`${API_URL}/api/organizations/${org}/export`, { credentials: 'include' });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null) as { error?: string } | null;
+    throw new Error(body?.error || 'Organization data export could not be prepared.');
+  }
+  if (response.headers.get('X-Export-Format') !== 'aslibooks-ndjson-v1')
+    throw new Error('The server returned an unexpected export format.');
+  const disposition = response.headers.get('Content-Disposition') ?? '';
+  const filename = disposition.match(/filename="([^"\r\n]+)"/i)?.[1] ?? 'aslibooks-records.ndjson';
+  return { blob: await response.blob(), filename };
+}
+
 type AuthUser = { id: string; name: string; email: string };
 type SessionResponse = { user: AuthUser } | null;
 export type Organization = { id: string; name: string; slug: string; gstin: string; fiscalYearStartMonth: number; baseCurrency: string; role: string };

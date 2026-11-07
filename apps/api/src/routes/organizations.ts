@@ -22,6 +22,7 @@ import { customerAdvanceRouter } from './customerAdvances.js';
 import { vendorAdvanceRouter } from './vendorAdvances.js';
 import { attachmentRouter } from './attachments.js';
 import { memberRouter, invitationRouter } from './memberships.js';
+import { organizationDataExportRouter } from './organizationDataExport.js';
 
 type AuthUser = { id: string };
 export function organizationRouter(resolveUser: (headers: Headers) => Promise<AuthUser | null>): Router {
@@ -102,6 +103,7 @@ export function organizationRouter(resolveUser: (headers: Headers) => Promise<Au
   router.use('/:organizationId/customer-advances', requireUser, customerAdvanceRouter());
   router.use('/:organizationId/vendor-advances', requireUser, vendorAdvanceRouter());
   router.use('/:organizationId/attachments', requireUser, attachmentRouter());
+  router.use('/:organizationId/export', requireUser, organizationDataExportRouter());
   return router;
 }
 

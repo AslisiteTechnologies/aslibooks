@@ -1,5 +1,6 @@
 """Run against local, disposable Aslibooks API and web servers. See docs/integration-testing.md."""
 from pathlib import Path
+import json
 import os
 from uuid import uuid4
 from playwright.sync_api import expect, sync_playwright
@@ -777,6 +778,26 @@ def test_chart():
             expect(page.get_by_text("Total payment: ₹3.00")).to_be_visible()
             page.get_by_role("button", name="Review and record payment").click()
             expect(page.get_by_text("₹3.00 paid to Payment Allocation Vendor and allocated across 2 bills.", exact=True)).to_be_visible()
+            page.get_by_role("button", name="Open navigation").click()
+            page.get_by_role("button", name="Settings", exact=True).click()
+            assert_accessible(page, "organization records export")
+            with page.expect_download() as records_download:
+                page.get_by_role("button", name="Download organization records").click()
+            records_text = Path(records_download.value.path()).read_text(encoding="utf-8")
+            records = [json.loads(line) for line in records_text.splitlines()]
+            assert records[0]["type"] == "manifest"
+            assert records[0]["format"] == "aslibooks-ndjson" and records[0]["version"] == 1
+            assert records[0]["attachmentContentIncluded"] is False
+            assert {"accounts", "contacts", "products", "invoices", "receipts", "bills", "vendorPayments", "bankTransactions", "journals", "auditEvents"}.issubset(records[0]["collections"])
+            assert any(record["collection"] == "invoices" for record in records if record["type"] == "record")
+            assert any(record["collection"] == "bills" for record in records if record["type"] == "record")
+            assert any(record["collection"] == "journals" for record in records if record["type"] == "record")
+            attachments = [record["record"] for record in records if record["type"] == "record" and record["collection"] == "attachments"]
+            assert attachments and all("storageId" not in attachment for attachment in attachments)
+            assert any(record["record"].get("action") == "organization.data_exported" for record in records if record["type"] == "record" and record["collection"] == "auditEvents")
+            assert records[-1]["type"] == "complete"
+            assert records[-1]["counts"]["invoices"] > 0 and records[-1]["counts"]["bills"] > 0
+            expect(page.get_by_text("Organization records export downloaded. Original attachment files are not included.", exact=True)).to_be_visible()
             page.route("**/api/organizations/**", lambda route: route.fulfill(status=401, content_type="application/json", body='{"error":"Unauthorized"}'), times=1)
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Reports", exact=True).click()

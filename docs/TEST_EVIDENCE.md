@@ -1,5 +1,11 @@
 # Test evidence
 
+## Tenant records export — 2026-11-07 (local change, hosted checks pending)
+
+- Added API integration coverage for anonymous rejection, non-member/foreign-tenant hiding, viewer denial, accountant export access, peer-tenant isolation, attachment `storageId` omission, response headers, completion counts and export audit event. This is replica-set dependent and was skipped locally because neither Docker nor a local MongoDB endpoint is available; exact-SHA MongoDB Actions remain required.
+- Extended `apps/web/e2e/chart.py` to download and parse the records export at the end of its synthetic end-to-end accounting workflow and require invoice, bill and journal records plus a valid completion record. Python syntax compilation passed locally. End-to-end execution remains pending hosted Browser Actions because local Playwright and disposable services are unavailable.
+- Workspace typecheck, lint and full production build pass; unit suite: API 65 passed, accounting 5 passed, web 10 passed (80 total); 85 database-dependent API cases skipped because no local replica set is running. High-severity dependency audit and Python browser-script syntax compilation pass. No hosted test result is claimed for this local change.
+
 ## Auth resilience and data lifecycle draft — source SHA `2ba0d100a525fb631bfccbb052bcb18bae4803a`
 
 - Added pure formatter coverage for browser network errors and preserved server messages: `pnpm --filter @aslibooks/web test` passes 4 files / 10 tests.
