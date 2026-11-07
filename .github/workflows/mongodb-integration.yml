@@ -12,11 +12,11 @@ jobs:
       MONGODB_TEST_URI: mongodb://127.0.0.1:27017/?directConnection=true
       MONGODB_TEST_DB_NAME: aslibooks_test_ci
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
         with:
           version: 10.18.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '22'
       - name: Start isolated MongoDB replica set

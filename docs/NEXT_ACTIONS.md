@@ -1,10 +1,14 @@
 # Next actions
 
-## Active local change — tenant records export (2026-11-07)
+## Current completion checkpoint — 2026-11-07
 
-Based on `e3597904129ce59bc8ebccc9e27c6152396ad3cb`, added a streamed, versioned tenant records export through Settings. API auth/tenant/attachment-sanitization integration assertions and full business-journey Browser download assertions are in place. Local workspace tests pass: 80 tests (65 API, 5 accounting, 10 web); 85 MongoDB-dependent API cases skip. API/web typecheck, lint, production build, high-severity dependency audit, Python browser-script syntax compilation and `git diff --check` pass. MongoDB/browser execution needs hosted Actions because no disposable replica set or Playwright installation is available locally. Review the diff and docs, commit/push only project files on the existing development branch, then verify CI + MongoDB + Browser push/PR runs against the exact SHA. Do not stage `ASLIBOOKS_CODEX_VISION_AND_EXECUTION.md`; do not merge `main` or deploy production.
+Records export is implemented and verified at exact pushed SHA `03b2d689be788957ec602fd6144a22ad6536de5f`; all six push/PR Actions passed: CI #657/#658, MongoDB #592/#593, Browser #376/#377. The first hosted MongoDB attempt failed only in immutable fixture cleanup and was corrected on the next commit; the final run passed. Locally, 80 tests pass and 85 MongoDB-dependent tests skip without a local replica set; typecheck/lint/build/high-severity audit pass. The export excludes attachment bytes and is not a full archive; deletion and lifecycle policy remain pending.
 
-After the exact-SHA checks pass, continue the locally executable release-preparation gaps: verify the release config/runbooks against code and make supported deployment/restore/monitoring steps reproducible without credentials or real data. Keep owner/adviser decisions, staging grants/rehearsal, qualified accounting/tax review, complete attachment archival/deletion behavior, manual accessibility and release approval clearly blocked where external input is needed. Overall status remains development/MVP candidate, not production-ready.
+Next: reconcile release/configuration/security docs to the new verified export, then audit the unclosed master-vision requirements and implement the next non-tax, owner-independent customer-facing gap. Continue repository/remote/CI checks and keep local account/use-test data synthetic. Staging access, restore/monitoring/rollback rehearsal, owner/adviser policy decisions, qualified accounting/tax review, full archive/deletion behavior, manual accessibility and release approval remain open gates. Do not stage the owner-supplied vision file, merge `main` or deploy production. Overall status remains development/MVP candidate, not production-ready.
+
+## Active release-hardening change — GitHub Action runtimes (2026-11-07)
+
+All three workflow files now use Node 24-compatible major releases for checkout, Node, Python and pnpm setup actions. `git diff --check` passes. Commit/push this workflow-only change on the existing development branch and verify CI, MongoDB and Browser push/PR checks on its exact SHA. Confirm the forced Node 24/deprecation warning is gone before closing this item. Do not modify or merge `main`.
 
 ## Current completion checkpoint — 2026-11-07
 

@@ -5,6 +5,7 @@ Local auth-shell manual review (2026-11-07) covers keyboard order, focus indicat
 For each gate attach the exact tested SHA, environment, run link and reviewer. [PROGRESS.md](PROGRESS.md) records verified revisions.
 
 - [ ] CI and MongoDB integration succeed on release candidate (frozen install, typecheck, lint, unit, build, high-severity dependency audit, real replica-set tests).
+- [ ] CI, MongoDB and Browser Actions use supported Node runtimes and complete without deprecated action-runtime warnings on the exact release SHA.
 - [ ] Browser completes sign-in, tenant selection, financial year, membership and role denial.
 - [ ] Chart, contacts, sales, bills, receipts and vendor payments cover audit, tenancy, retries and concurrent changes.
 - [ ] Manual journals, closed periods and reversals pass atomicity and immutability checks.
