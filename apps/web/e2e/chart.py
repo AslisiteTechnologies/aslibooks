@@ -109,39 +109,6 @@ def test_chart():
                 page.get_by_role("button", name="Create invitation").click()
             assert viewer_invitation.value.status == 201, viewer_invitation.value.text()
             expect(page.get_by_text("Invitation created, but email was not sent.", exact=False)).to_be_visible()
-            viewer_page.reload()
-            viewer_page.wait_for_load_state("networkidle", timeout=90000)
-            expect(viewer_page.get_by_text(f"Fixture Shop {run} Books invited you as viewer.", exact=True)).to_be_visible()
-            viewer_page.get_by_role("button", name="Accept invitation").click()
-            expect(viewer_page.get_by_role("navigation", name="Primary navigation")).to_be_visible()
-            viewer_page.set_viewport_size({"width": 390, "height": 844})
-            assert_no_horizontal_overflow(viewer_page)
-            viewer_page.get_by_role("button", name="Open navigation").click()
-            viewer_page.get_by_role("button", name="Contacts", exact=True).click()
-            expect(viewer_page.get_by_role("heading", name="Test Customer")).to_be_visible()
-            expect(viewer_page.get_by_role("button", name="Save contact")).to_have_count(0)
-            viewer_organization_id = viewer_page.evaluate("() => localStorage.getItem('aslibooks.activeOrganizationId')")
-            assert viewer_organization_id
-            write_status = viewer_page.evaluate("""async ([organizationId, apiUrl]) => {
-              const response = await fetch(`${apiUrl}/api/organizations/${organizationId}/contacts`, {
-                method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ displayName: 'Viewer unauthorized contact', roles: ['customer'] }),
-              });
-              return response.status;
-            }""", [viewer_organization_id, os.environ.get("VITE_API_URL", "http://127.0.0.1:4000")])
-            assert write_status == 403, f"Viewer contact creation returned HTTP {write_status}"
-            expect(viewer_page.get_by_role("heading", name="Viewer unauthorized contact")).to_have_count(0)
-            viewer_page.get_by_role("button", name="Open navigation").click()
-            viewer_page.get_by_role("button", name="Sales", exact=True).click()
-            expect(viewer_page.get_by_text("Test Customer")).to_be_visible()
-            expect(viewer_page.get_by_role("button", name="Save draft", exact=True)).to_have_count(0)
-            viewer_page.get_by_role("button", name="Open navigation").click()
-            viewer_page.get_by_role("button", name="Reports", exact=True).click()
-            assert_accessible(viewer_page, "viewer financial reports")
-            expect(viewer_page.get_by_text("Profit and loss", exact=False)).to_be_visible()
-            viewer_page.close()
-            page.get_by_role("button", name="Contacts", exact=True).click()
-            expect(page.get_by_role("heading", name="Viewer unauthorized contact")).to_have_count(0)
             page.get_by_role("button", name="Accounting", exact=True).click()
             page.get_by_label("Account code").fill("E2E-BANK")
             page.get_by_label("Account name").fill("Operating bank")
@@ -190,6 +157,38 @@ def test_chart():
             page.get_by_role("button", name="Save contact").click()
             expect(page.get_by_role("heading", name="Test Customer")).to_be_visible()
             expect(page.get_by_text("GSTIN: 22AAAAA0000A1Z5")).to_be_visible()
+            viewer_page.reload()
+            viewer_page.wait_for_load_state("networkidle", timeout=90000)
+            expect(viewer_page.get_by_text(f"Fixture Shop {run} Books invited you as viewer.", exact=True)).to_be_visible()
+            viewer_page.get_by_role("button", name="Accept invitation").click()
+            expect(viewer_page.get_by_role("navigation", name="Primary navigation")).to_be_visible()
+            viewer_page.set_viewport_size({"width": 390, "height": 844})
+            assert_no_horizontal_overflow(viewer_page)
+            viewer_page.get_by_role("button", name="Open navigation").click()
+            viewer_page.get_by_role("button", name="Contacts", exact=True).click()
+            expect(viewer_page.get_by_role("heading", name="Test Customer")).to_be_visible()
+            expect(viewer_page.get_by_role("button", name="Save contact")).to_have_count(0)
+            viewer_organization_id = viewer_page.evaluate("() => localStorage.getItem('aslibooks.activeOrganizationId')")
+            assert viewer_organization_id
+            write_status = viewer_page.evaluate("""async ([organizationId, apiUrl]) => {
+              const response = await fetch(`${apiUrl}/api/organizations/${organizationId}/contacts`, {
+                method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ displayName: 'Viewer unauthorized contact', roles: ['customer'] }),
+              });
+              return response.status;
+            }""", [viewer_organization_id, os.environ.get("VITE_API_URL", "http://127.0.0.1:4000")])
+            assert write_status == 403, f"Viewer contact creation returned HTTP {write_status}"
+            expect(viewer_page.get_by_role("heading", name="Viewer unauthorized contact")).to_have_count(0)
+            viewer_page.get_by_role("button", name="Open navigation").click()
+            viewer_page.get_by_role("button", name="Sales", exact=True).click()
+            expect(viewer_page.get_by_text("Test Customer")).to_be_visible()
+            expect(viewer_page.get_by_role("button", name="Save draft", exact=True)).to_have_count(0)
+            viewer_page.get_by_role("button", name="Open navigation").click()
+            viewer_page.get_by_role("button", name="Reports", exact=True).click()
+            assert_accessible(viewer_page, "viewer financial reports")
+            expect(viewer_page.get_by_text("Profit and loss", exact=False)).to_be_visible()
+            viewer_page.close()
+            expect(page.get_by_role("heading", name="Viewer unauthorized contact")).to_have_count(0)
             page.get_by_role("heading", name="Test Customer").locator("..").get_by_role("button", name="Edit details").click()
             page.get_by_label("Billing address").last.fill("2 New Harbor Road, Mumbai")
             page.get_by_role("button", name="Save changes").click()
