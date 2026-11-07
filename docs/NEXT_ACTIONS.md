@@ -4,11 +4,11 @@
 
 Records export is implemented and verified at exact pushed SHA `03b2d689be788957ec602fd6144a22ad6536de5f`; all six push/PR Actions passed: CI #657/#658, MongoDB #592/#593, Browser #376/#377. The first hosted MongoDB attempt failed only in immutable fixture cleanup and was corrected on the next commit; the final run passed. Locally, 80 tests pass and 85 MongoDB-dependent tests skip without a local replica set; typecheck/lint/build/high-severity audit pass. The export excludes attachment bytes and is not a full archive; deletion and lifecycle policy remain pending.
 
-Next: reconcile release/configuration/security docs to the new verified export, then audit the unclosed master-vision requirements and implement the next non-tax, owner-independent customer-facing gap. Continue repository/remote/CI checks and keep local account/use-test data synthetic. Staging access, restore/monitoring/rollback rehearsal, owner/adviser policy decisions, qualified accounting/tax review, full archive/deletion behavior, manual accessibility and release approval remain open gates. Do not stage the owner-supplied vision file, merge `main` or deploy production. Overall status remains development/MVP candidate, not production-ready.
+Next: continue closing independent local product gaps from the master vision. Runtime migration is now verified at `c4c0a54a0165ae1f7352128fabc6a9b77ab0a438`; all six exact-SHA push/PR Actions passed (CI #659/#660, MongoDB #594/#595, Browser #378/#379). Keep synthetic test data. Staging access, restore/monitoring/rollback rehearsal, owner/adviser policy decisions, qualified accounting/tax review, full attachment archive/deletion behavior, manual accessibility and release approval remain open gates. Do not stage the owner-supplied vision file, merge `main` or deploy production. Overall status remains development/MVP candidate, not production-ready.
 
-## Active release-hardening change — GitHub Action runtimes (2026-11-07)
+## Verified runtime refresh — 2026-11-07
 
-All three workflow files now use Node 24-compatible major releases for checkout, Node, Python and pnpm setup actions. `git diff --check` passes. Commit/push this workflow-only change on the existing development branch and verify CI, MongoDB and Browser push/PR checks on its exact SHA. Confirm the forced Node 24/deprecation warning is gone before closing this item. Do not modify or merge `main`.
+Completed at `c4c0a54a0165ae1f7352128fabc6a9b77ab0a438`. All six exact-SHA checks passed: CI #659/#660, MongoDB #594/#595, Browser #378/#379. The remaining Ubuntu runner image notice is controlled by GitHub; review it during future dependency/runner maintenance.
 
 ## Current completion checkpoint — 2026-11-07
 

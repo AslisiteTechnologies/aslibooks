@@ -8,9 +8,11 @@
 - Note: the initial source `e6a607c` MongoDB push run #590 failed during fixture teardown because attachment immutability correctly rejects Mongoose `deleteMany`; all 150 assertions, including the new export test, had passed. Teardown now uses raw `AttachmentModel.collection.deleteMany` for the uniquely scoped disposable fixture. Corrected MongoDB push #592 and PR #593 passed.
 - Local checks: API 65 tests, accounting 5, web 10 (80 passed); 85 MongoDB-dependent API cases skipped locally. Workspace typecheck/lint/build, high-severity audit, Python syntax compilation and `git diff --check` pass.
 
-## CI action-runtime refresh — local change (2026-11-07)
+## CI action-runtime refresh — exact SHA `c4c0a54a0165ae1f7352128fabc6a9b77ab0a438` (2026-11-07)
 
-The exact-sha workflows passed but produced deprecation notices because the repository used old major versions of the checkout, setup-node, setup-python and pnpm-setup actions declaring Node 20. Updated `.github/workflows/ci.yml`, `mongodb-integration.yml` and `e2e.yml` to the Node 24 action majors. Official manifests show `runs.using: node24` for the selected action releases ([checkout](https://github.com/actions/checkout/blob/v6/action.yml), [setup-node](https://github.com/actions/setup-node/blob/v6/action.yml), [setup-python](https://github.com/actions/setup-python/blob/v6/action.yml), [pnpm setup](https://github.com/pnpm/action-setup/blob/v6/action.yml)). Hosted workflow verification is pending; no success is claimed until the new exact SHA passes.
+- All six exact-SHA workflows passed: [CI push #659](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42341476105), [CI PR #660](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42341479929), [MongoDB push #594](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42341476093), [MongoDB PR #595](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42341479909), [Browser push #378](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42341475952), and [Browser PR #379](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42341479913).
+- Workflow actions use Node 24-compatible major releases, confirmed from official action manifests. The forced Node 24/deprecation warning no longer appears; GitHub retains a general `ubuntu-latest` image migration notice.
+- No application code changed in this workflow-only commit. These results do not establish staging or production readiness.
 
 ## Auth resilience and data lifecycle draft — source SHA `2ba0d100a525fb631bfccbb052bcb18bae4803a`
 
