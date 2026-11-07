@@ -6,7 +6,7 @@ At `b83c833daa5c741b80f619c7a536d0a7d0c6f1a1`, `db:ensure-indexes` requires `ASL
 
 ## Staging infrastructure template — locally verified, provider validation pending (2026-11-07)
 
-Added `.node-version` and a Render Blueprint template for one small Node API service plus global static web hosting. Both services have auto-deploy disabled; the API database name is fixed to `aslibooks_staging_synthetic`; runtime URI, auth secret and trusted origins are not committed. Static site security response headers are declared. YAML parsed locally and the two service types/configuration were inspected; API and web production builds are run with the Blueprint commands below. No Render CLI/schema validation is available in this environment, no provider resources were created, and deployment remains owner-gated due paid service cost and credentials. Do not apply without owner approval.
+At `03606823225479b4c3f6e9c9a923c71215df9404`, added `.node-version` and a Render Blueprint template for one small Node API service plus global static web hosting. Both services have auto-deploy disabled; the API database name is fixed to `aslibooks_staging_synthetic`; runtime URI, auth secret and trusted origins are not committed. Static site security response headers are declared. YAML parsed locally and both API/web production build commands passed on local Node 24.13; all six exact-SHA CI/MongoDB/Browser workflows passed: CI #42354787596/#42354791267, MongoDB #42354787616/#42354791354, Browser #42354787566/#42354791231. Render CLI v2.36.0 was downloaded to a temporary directory and its official release SHA-256 verified, but Blueprint validation requires selecting the owner’s Render workspace. No provider resources were created, and deployment remains owner-gated due paid service cost and credentials. Do not apply without owner approval.
 
 ## Local product/staging follow-up — committed and hosted-verified (2026-11-07)
 
@@ -40,7 +40,7 @@ Workflow-only source SHA `c4c0a54a0165ae1f7352128fabc6a9b77ab0a438` is pushed an
 
 ## Current verified checkpoint — 2026-11-07
 
-Source commit `6b814e209ede5f34a113f5797161defdd4c950a5` is published to and matches `origin/develop/phase-1-foundation`. All six exact-SHA CI/MongoDB/Browser push and PR checks passed: Browser #42354239725/#42354236021, MongoDB #42354239729/#42354235998, CI #42354239736/#42354236020. Local API/web/accounting unit tests: 86 passed, with 86 replica-set tests skipped locally; hosted MongoDB and full Browser E2E passed. Owner vision file remains untracked and must stay unstaged. Staging-ready and production-approved: no.
+Source commit `03606823225479b4c3f6e9c9a923c71215df9404` is published to and matches `origin/develop/phase-1-foundation`. All six exact-SHA CI/MongoDB/Browser push and PR checks passed: CI #42354787596/#42354791267, MongoDB #42354787616/#42354791354, Browser #42354787566/#42354791231. Local API/web production build commands for the staging Blueprint passed; the preceding full local suite had 86 pass and 86 replica-set tests skipped, while hosted MongoDB and full Browser E2E passed at this SHA. Owner vision file remains untracked and must stay unstaged. Staging-ready and production-approved: no.
 
 ## Local auth resilience and limited manual accessibility review — 2026-11-07
 
