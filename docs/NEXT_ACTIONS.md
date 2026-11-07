@@ -1,5 +1,18 @@
 # Next actions
 
+## Latest hosted verification — owner, viewer and accountant journey (2026-11-07)
+
+Exact source SHA `ba7492b061500fce3ee69e9f242a00b77cddda5b` is on `origin/develop/phase-1-foundation`; all six push/PR workflows passed: CI #42364743250/#42364748170, MongoDB #42364743368/#42364748188, Browser #42364743206/#42364748113. The Browser scenario verifies viewer read-only access, role change to accountant, an accountant-created balanced journal with exact cash/equity lines, unchanged profit, and a balanced balance sheet. The archive streaming integration timeout was raised from Vitest’s default five seconds to 20 seconds after an observed timeout with the 1 MB synthetic attachment under CI load. The owner-supplied vision document remains untracked and untouched. No staging resources were created; production is not ready.
+
+### Next executable work and exact local commands
+
+- Continue a risk-based review of mounted API routes against `docs/ROUTE_SECURITY_MATRIX.md`, prioritizing uncovered role/object-reference combinations and concrete defects. Avoid duplicating covered cases.
+- Keep the GST posting boundary closed until a qualified adviser approves applicable rates, tax journals, credits and filing behavior. Do not call GST compliant.
+- Do not run destructive integration tests against any existing Atlas database. For local replica-set verification, use a separate disposable test database matching `aslibooks_test_*` and run `pnpm --filter @aslibooks/api test`.
+- Recheck the candidate locally with `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm audit --audit-level=high`, and `git diff --check`.
+- Before staging: owner-selected hosting workspace/domain, new synthetic-only Atlas database and database-scoped credential, secret-manager values, approved backup location/key custody and RPO/RTO are required. Then follow `docs/STAGING_RUNBOOK.md` for exact-target index/migration preparation, exact-SHA deployment, golden-flow, grant-denial, monitoring, restore and rollback rehearsals.
+- Keep PR #1 Draft, `main` and production untouched. Overall acceptance remains Partial.
+
 ## Latest completed product gap — complete tenant archive export (2026-11-07)
 
 Source `92720a2c0ac7f62de1846e7730be026b62670fe6` is pushed to `origin/develop/phase-1-foundation`; all six exact-SHA CI/MongoDB/Browser push and PR workflows passed (#42361955865/#42361959190, #42361955723/#42361959176, #42361955780/#42361971452). The archive covers all current tenant accounting collections, audit history and original attachment bytes, verifies attachment checksums during streaming, and emits a completion marker and manifests. Local API tests: 74 passed/87 database-backed skipped; web 14 passed; typecheck, lint, production build and diff check pass. Next independently executable release work: continue risk-based security/accounting acceptance and GST document validation without asserting statutory compliance. Environment-dependent gates remain staging credentials/provider access, database grants, encrypted backup/restore, monitoring/rollback rehearsal; policy/professional gates remain attachment and retention/deletion policy, qualified tax/accounting review, accessibility review and final owner acceptance. Keep `main` and production untouched.
