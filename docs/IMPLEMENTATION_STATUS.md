@@ -1,5 +1,9 @@
 # Implementation status
 
+## Background auth email failure visibility — verified (2026-11-07)
+
+At `7afb60519af6dfba2b56bef3844658203a8dba5f`, Better Auth verification and password-reset messages remain asynchronous and generic to the requester, while provider rejections now emit a redacted `auth_email_delivery_failed` event. The test confirms recipient and reset token are absent from logs. Focused safe-logger/auth-email tests pass 2/2; typecheck/lint/build pass. All six exact-SHA workflows passed: CI #675/#676, MongoDB #610/#611, Browser #394/#395. Live provider delivery/configuration has not been exercised.
+
 ## API and operator error-log redaction — verified (2026-11-07)
 
 At `0b47ec52883a295d5f949de30ce0f9ccd0dbbc90`, API request/startup failures and migration/index-preparation CLI failures now emit only a fixed event name and whether the thrown value is an `Error`; exception messages and stacks are omitted. Regression test verifies removal of a synthetic bearer token, financial amount, email, stack and MongoDB URI/password. Focused test, typecheck, lint and production build pass locally. All six exact-SHA workflows passed: CI #671/#672, MongoDB #606/#607, Browser #390/#391. This does not attest to edge-provider, database audit or third-party service logging configuration.

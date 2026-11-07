@@ -1,5 +1,12 @@
 # Test evidence
 
+## Background auth email failure visibility — exact SHA `7afb60519af6dfba2b56bef3844658203a8dba5f`
+
+- Better Auth verification/password-reset send callbacks remain asynchronous to avoid email-dependent timing differences. Provider errors are caught and logged as a fixed event plus generic error type; recipient, verification/reset URL, token, provider response and stack are omitted.
+- Focused logger and async email-failure tests pass 2/2; typecheck, lint, production build and diff check pass.
+- All six exact-SHA workflows passed: [CI push #675](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42343557057), [CI PR #676](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42343560174), [MongoDB push #610](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42343557086), [MongoDB PR #611](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42343560161), [Browser push #394](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42343557071), and [Browser PR #395](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42343560190).
+- No real email provider was configured or called; staging delivery and provider log behavior remain unverified.
+
 ## API and operator error-log redaction — exact SHA `0b47ec52883a295d5f949de30ce0f9ccd0dbbc90`
 
 - Request-handler, startup, index-preparation and migration failures log only a fixed event name and generic thrown-value type. No exception message or stack is passed to the logger.

@@ -1,5 +1,9 @@
 # Next actions
 
+## Background auth email failure visibility — verified at `7afb605` (2026-11-07)
+
+Provider send failures are now observable through the sanitized logger while auth responses remain asynchronous, generic and enumeration-safe. Focused tests pass 2/2 and all six exact-SHA CI/MongoDB/Browser workflows pass (#675/#676, #610/#611, #394/#395). Live email delivery and provider-side logging require staging credentials.
+
 ## API/operator error-log redaction — verified at `0b47ec5` (2026-11-07)
 
 Runtime and operator-command exception objects are no longer logged. Safe fixed event/type metadata is tested against synthetic secrets, financial values and connection strings. Focused test/typecheck/lint/build and all six exact-SHA CI/MongoDB/Browser workflows pass (#671/#672, #606/#607, #390/#391). Continue reviewing external hosting/provider logs during a staging rehearsal.
@@ -12,7 +16,7 @@ All six exact-SHA workflows passed: CI #665/#666, MongoDB #600/#601, Browser #38
 
 Records export is implemented and verified at exact pushed SHA `03b2d689be788957ec602fd6144a22ad6536de5f`; all six push/PR Actions passed: CI #657/#658, MongoDB #592/#593, Browser #376/#377. The first hosted MongoDB attempt failed only in immutable fixture cleanup and was corrected on the next commit; the final run passed. Locally, 80 tests pass and 85 MongoDB-dependent tests skip without a local replica set; typecheck/lint/build/high-severity audit pass. The export excludes attachment bytes and is not a full archive; deletion and lifecycle policy remain pending.
 
-Next: continue closing independent local product gaps from the master vision. Latest source SHA `0b47ec52883a295d5f949de30ce0f9ccd0dbbc90` has six passing exact-SHA workflows (CI #671/#672, MongoDB #606/#607, Browser #390/#391). Keep synthetic test data. Staging access, restore/monitoring/rollback rehearsal, owner/adviser policy decisions, qualified accounting/tax review, full attachment archive/deletion behavior, manual accessibility and release approval remain open gates. Do not stage the owner-supplied vision file, merge `main` or deploy production. Overall status remains development/MVP candidate, not production-ready.
+Next: continue closing independent local product gaps from the master vision. Latest source SHA `7afb60519af6dfba2b56bef3844658203a8dba5f` passed all six exact-SHA workflows (CI #675/#676, MongoDB #610/#611, Browser #394/#395). Keep synthetic test data. Staging access, restore/monitoring/rollback rehearsal, owner/adviser policy decisions, qualified accounting/tax review, full attachment archive/deletion behavior, manual accessibility and release approval remain open gates. Do not stage the owner-supplied vision file, merge `main` or deploy production. Overall status remains development/MVP candidate, not production-ready.
 
 ## Verified runtime refresh — 2026-11-07
 
