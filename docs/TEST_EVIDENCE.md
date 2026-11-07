@@ -5,7 +5,7 @@
 - `node --version`: `v24.13.0`; `pnpm --version`: `10.18.0`.
 - `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm audit --audit-level=high`, and `git diff --check` passed.
 - Unit test results: API 65, accounting 5, web 10 (80 passed); 85 MongoDB-dependent API tests skipped because `MONGODB_TEST_URI` and a local replica set are unavailable. Do not interpret this as local integration coverage.
-- All three GitHub Actions workflows now run app checks on Node 24. Exact-SHA hosted CI, MongoDB and Browser checks are pending publication.
+- All three GitHub Actions workflows now run app checks on Node 24. At exact SHA `e45532d2b36c51f0999e852f6c29e8a2ab2b8d02`, all six hosted checks passed: [CI push #665](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42342561348), [CI PR #666](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42342564169), [MongoDB push #600](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42342561330), [MongoDB PR #601](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42342564113), [Browser push #384](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42342561315), and [Browser PR #385](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42342564070). Browser checks include the hosted desktop/mobile workflow.
 - Frozen install reports pnpm's ignored `esbuild` build script; production build succeeded using the installed package. Revisit only if CI or supported installs require the native script.
 
 ## Tenant records export — exact source SHA `03b2d689be788957ec602fd6144a22ad6536de5f`

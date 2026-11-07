@@ -1,8 +1,8 @@
 # Implementation status
 
-## Node.js runtime alignment — local verification complete, hosted checks pending (2026-11-07)
+## Node.js runtime alignment — verified (2026-11-07)
 
-Updated all three workflows and the developer/staging instructions from Node 22 to Node 24 LTS. Current workstation runtime is Node `v24.13.0`; `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm lint`, workspace tests (80 passed; 85 MongoDB-dependent tests skipped because no local replica set is configured), `pnpm build`, `pnpm audit --audit-level=high`, and `git diff --check` pass. Exact-SHA GitHub CI, MongoDB replica-set and desktop/mobile Browser runs are required before calling this change hosted-verified. Staging deployment and production approval remain no.
+At exact pushed SHA `e45532d2b36c51f0999e852f6c29e8a2ab2b8d02`, all six workflows passed: CI push/PR #665/#666, MongoDB push/PR #600/#601, Browser push/PR #384/#385. Updated all three workflows and developer/staging instructions from Node 22 to Node 24 LTS. Local Node `v24.13.0`: frozen install, typecheck, lint, 80 unit tests, production build, high-severity dependency audit and diff check pass; 85 DB-dependent tests skip without a local replica set. Staging deployment and production approval remain no.
 
 ## Verified tenant records export — 2026-11-07
 

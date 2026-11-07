@@ -1,14 +1,14 @@
 # Next actions
 
-## Node.js runtime alignment — local gate passed; exact-SHA hosted verification pending (2026-11-07)
+## Node.js runtime alignment — verified at `e45532d` (2026-11-07)
 
-CI, MongoDB and Browser workflows plus developer, staging and deployment instructions now target Node 24 LTS. Local Node `v24.13.0` passed frozen install, typecheck, lint, 80 unit tests, production build and high-severity dependency audit; 85 DB integration tests skipped because there is no local replica set. Push this candidate and wait for all six exact-SHA checks. Continue with the next independent product gap after hosted verification; retain external staging/owner gates.
+All six exact-SHA workflows passed: CI #665/#666, MongoDB #600/#601, Browser #384/#385. Node 24 LTS is now used by workflows and documented for development/staging. Continue with independent product gaps that do not require external provider access; keep staging, policy and approval gates explicit.
 
 ## Current completion checkpoint — 2026-11-07
 
 Records export is implemented and verified at exact pushed SHA `03b2d689be788957ec602fd6144a22ad6536de5f`; all six push/PR Actions passed: CI #657/#658, MongoDB #592/#593, Browser #376/#377. The first hosted MongoDB attempt failed only in immutable fixture cleanup and was corrected on the next commit; the final run passed. Locally, 80 tests pass and 85 MongoDB-dependent tests skip without a local replica set; typecheck/lint/build/high-severity audit pass. The export excludes attachment bytes and is not a full archive; deletion and lifecycle policy remain pending.
 
-Next: continue closing independent local product gaps from the master vision. Runtime migration is now verified at `c4c0a54a0165ae1f7352128fabc6a9b77ab0a438`; all six exact-SHA push/PR Actions passed (CI #659/#660, MongoDB #594/#595, Browser #378/#379). Keep synthetic test data. Staging access, restore/monitoring/rollback rehearsal, owner/adviser policy decisions, qualified accounting/tax review, full attachment archive/deletion behavior, manual accessibility and release approval remain open gates. Do not stage the owner-supplied vision file, merge `main` or deploy production. Overall status remains development/MVP candidate, not production-ready.
+Next: continue closing independent local product gaps from the master vision. Runtime alignment is verified at `e45532d2b36c51f0999e852f6c29e8a2ab2b8d02`; all six exact-SHA push/PR Actions passed (CI #665/#666, MongoDB #600/#601, Browser #384/#385). Keep synthetic test data. Staging access, restore/monitoring/rollback rehearsal, owner/adviser policy decisions, qualified accounting/tax review, full attachment archive/deletion behavior, manual accessibility and release approval remain open gates. Do not stage the owner-supplied vision file, merge `main` or deploy production. Overall status remains development/MVP candidate, not production-ready.
 
 ## Verified runtime refresh — 2026-11-07
 
