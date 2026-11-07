@@ -880,6 +880,11 @@ def test_chart():
             assert records[-1]["counts"]["invoices"] > 0 and records[-1]["counts"]["bills"] > 0
             expect(page.get_by_text("Organization records export downloaded. Original attachment files are not included.", exact=True)).to_be_visible()
             page.get_by_role("button", name="Open navigation").click()
+            page.get_by_role("button", name="Reports", exact=True).click()
+            expect(page.get_by_text("Balance sheet balances", exact=True)).to_be_visible()
+            net_profit_before_accountant = page.evaluate("() => document.body.innerText.match(/Net profit ₹[\\d,.]+/)?.[0] ?? null")
+            assert net_profit_before_accountant, "The financial statements did not show a net profit total"
+            page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Team", exact=True).click()
             role_selector = page.get_by_label(f"Role for {viewer_email}")
             role_selector.click()
@@ -909,7 +914,8 @@ def test_chart():
             expect(viewer_page.get_by_text("Journal posted and recorded in the audit trail.", exact=True)).to_be_visible()
             viewer_page.get_by_role("button", name="Open navigation").click()
             viewer_page.get_by_role("button", name="Reports", exact=True).click()
-            expect(viewer_page.get_by_text("Net profit ₹53.66", exact=False)).to_be_visible()
+            net_profit_after_accountant = viewer_page.evaluate("() => document.body.innerText.match(/Net profit ₹[\\d,.]+/)?.[0] ?? null")
+            assert net_profit_after_accountant == net_profit_before_accountant, "A balance-sheet-only accountant journal changed reported net profit"
             expect(viewer_page.get_by_text("Balance sheet balances", exact=True)).to_be_visible()
             viewer_page.close()
             page.route("**/api/organizations/**", lambda route: route.fulfill(status=401, content_type="application/json", body='{"error":"Unauthorized"}'), times=1)
