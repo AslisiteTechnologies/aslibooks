@@ -1,5 +1,12 @@
 # Test evidence
 
+## API and operator error-log redaction — exact SHA `0b47ec52883a295d5f949de30ce0f9ccd0dbbc90`
+
+- Request-handler, startup, index-preparation and migration failures log only a fixed event name and generic thrown-value type. No exception message or stack is passed to the logger.
+- The regression test injects fake bearer credentials, a synthetic balance, an email, a stack string and a MongoDB URI/password and confirms none appear in emitted log lines. Focused test passes 1/1; typecheck, lint, production build and diff check pass.
+- All six exact-SHA workflows passed: [CI push #671](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42343152973), [CI PR #672](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42343156284), [MongoDB push #606](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42343152948), [MongoDB PR #607](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42343156164), [Browser push #390](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42343152979), and [Browser PR #391](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42343156251).
+- External hosting, managed database, email and AI provider log configuration remains unverified until staging.
+
 ## Node.js 24 LTS runtime alignment — local checks (2026-11-07)
 
 - `node --version`: `v24.13.0`; `pnpm --version`: `10.18.0`.

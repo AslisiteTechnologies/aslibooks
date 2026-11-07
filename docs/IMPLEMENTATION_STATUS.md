@@ -1,5 +1,9 @@
 # Implementation status
 
+## API and operator error-log redaction — verified (2026-11-07)
+
+At `0b47ec52883a295d5f949de30ce0f9ccd0dbbc90`, API request/startup failures and migration/index-preparation CLI failures now emit only a fixed event name and whether the thrown value is an `Error`; exception messages and stacks are omitted. Regression test verifies removal of a synthetic bearer token, financial amount, email, stack and MongoDB URI/password. Focused test, typecheck, lint and production build pass locally. All six exact-SHA workflows passed: CI #671/#672, MongoDB #606/#607, Browser #390/#391. This does not attest to edge-provider, database audit or third-party service logging configuration.
+
 ## Node.js runtime alignment — verified (2026-11-07)
 
 At exact pushed SHA `e45532d2b36c51f0999e852f6c29e8a2ab2b8d02`, all six workflows passed: CI push/PR #665/#666, MongoDB push/PR #600/#601, Browser push/PR #384/#385. Updated all three workflows and developer/staging instructions from Node 22 to Node 24 LTS. Local Node `v24.13.0`: frozen install, typecheck, lint, 80 unit tests, production build, high-severity dependency audit and diff check pass; 85 DB-dependent tests skip without a local replica set. Staging deployment and production approval remain no.

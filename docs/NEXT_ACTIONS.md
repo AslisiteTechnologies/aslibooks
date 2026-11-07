@@ -1,5 +1,9 @@
 # Next actions
 
+## API/operator error-log redaction — verified at `0b47ec5` (2026-11-07)
+
+Runtime and operator-command exception objects are no longer logged. Safe fixed event/type metadata is tested against synthetic secrets, financial values and connection strings. Focused test/typecheck/lint/build and all six exact-SHA CI/MongoDB/Browser workflows pass (#671/#672, #606/#607, #390/#391). Continue reviewing external hosting/provider logs during a staging rehearsal.
+
 ## Node.js runtime alignment — verified at `e45532d` (2026-11-07)
 
 All six exact-SHA workflows passed: CI #665/#666, MongoDB #600/#601, Browser #384/#385. Node 24 LTS is now used by workflows and documented for development/staging. Continue with independent product gaps that do not require external provider access; keep staging, policy and approval gates explicit.
@@ -8,7 +12,7 @@ All six exact-SHA workflows passed: CI #665/#666, MongoDB #600/#601, Browser #38
 
 Records export is implemented and verified at exact pushed SHA `03b2d689be788957ec602fd6144a22ad6536de5f`; all six push/PR Actions passed: CI #657/#658, MongoDB #592/#593, Browser #376/#377. The first hosted MongoDB attempt failed only in immutable fixture cleanup and was corrected on the next commit; the final run passed. Locally, 80 tests pass and 85 MongoDB-dependent tests skip without a local replica set; typecheck/lint/build/high-severity audit pass. The export excludes attachment bytes and is not a full archive; deletion and lifecycle policy remain pending.
 
-Next: continue closing independent local product gaps from the master vision. Runtime alignment is verified at `e45532d2b36c51f0999e852f6c29e8a2ab2b8d02`; all six exact-SHA push/PR Actions passed (CI #665/#666, MongoDB #600/#601, Browser #384/#385). Keep synthetic test data. Staging access, restore/monitoring/rollback rehearsal, owner/adviser policy decisions, qualified accounting/tax review, full attachment archive/deletion behavior, manual accessibility and release approval remain open gates. Do not stage the owner-supplied vision file, merge `main` or deploy production. Overall status remains development/MVP candidate, not production-ready.
+Next: continue closing independent local product gaps from the master vision. Latest source SHA `0b47ec52883a295d5f949de30ce0f9ccd0dbbc90` has six passing exact-SHA workflows (CI #671/#672, MongoDB #606/#607, Browser #390/#391). Keep synthetic test data. Staging access, restore/monitoring/rollback rehearsal, owner/adviser policy decisions, qualified accounting/tax review, full attachment archive/deletion behavior, manual accessibility and release approval remain open gates. Do not stage the owner-supplied vision file, merge `main` or deploy production. Overall status remains development/MVP candidate, not production-ready.
 
 ## Verified runtime refresh — 2026-11-07
 
