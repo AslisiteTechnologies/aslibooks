@@ -1,6 +1,14 @@
 # Test evidence
 
-## Current published checkpoint — exact SHA `81c3b4c80dd78b23de107e2d0dd9a758e0e20ec8` (2026-11-07)
+## Current API lifecycle fix — exact SHA `074b14a229130073db100fba451551b796fb8a4f` (2026-11-07)
+
+- SIGTERM/SIGINT now drain active HTTP requests through `server.close` before disconnecting Mongoose and Better Auth MongoDB clients. Shutdown is idempotent; close errors still run cleanup and use the sanitized `api_shutdown_failed` logger event.
+- If API startup fails after either MongoDB client is opened, cleanup is attempted before the safe startup error is logged.
+- Focused `serverLifecycle.test.ts` and `safeLogger.test.ts`: 3/3 passed. API typecheck, workspace lint, full production build and `git diff --check` passed.
+- All six exact-SHA workflows passed: [CI push #42359327674](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42359327674), [CI PR #42359332338](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42359332338), [MongoDB push #42359327726](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42359327726), [MongoDB PR #42359332337](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42359332337), [Browser push #42359327681](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42359327681), [Browser PR #42359332353](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42359332353).
+- Real platform SIGTERM timing, hung-request termination and staging database outage behavior still require staging rehearsal.
+
+## Previous published checkpoint — exact SHA `81c3b4c80dd78b23de107e2d0dd9a758e0e20ec8` (2026-11-07)
 
 - This documentation-only commit records the auth form focus handoff fixed in source SHA `6df007aab69e8fb7b406799c688e6c195c67b2aa`; no application code changed after that source SHA.
 - All six workflows passed on exact SHA `81c3b4c80dd78b23de107e2d0dd9a758e0e20ec8`: [CI push #42357322056](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42357322056), [CI PR #42357325400](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42357325400), [MongoDB push #42357322076](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42357322076), [MongoDB PR #42357325462](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42357325462), [Browser push #42357322088](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42357322088), [Browser PR #42357325483](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42357325483). The Browser jobs exercise the hosted synthetic desktop/mobile business journey.

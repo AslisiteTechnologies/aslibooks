@@ -4,6 +4,10 @@
 
 `apps/api/.env` exists and is gitignored/untracked. Its `MONGODB_URI` and `MONGODB_DB_NAME` do not target `aslibooks_staging_synthetic`; the secret values were not displayed or used, and no database connection was made. Do not repurpose this local configuration for staging. A new database-scoped staging credential, confirmed database name, and approved allowlist are still required. The current shell also has no Render CLI, and no Render workspace session is open, so Blueprint validation and provisioning remain owner-access dependent.
 
+## Latest completed local reliability gap — API shutdown
+
+At `074b14a229130073db100fba451551b796fb8a4f`, SIGTERM/SIGINT now stop new HTTP requests, let in-flight requests drain, then close the database clients; failed startup also cleans partially opened clients. Focused tests (3/3), API typecheck, workspace lint/build and all six exact-SHA CI/MongoDB/Browser workflows passed. Provider shutdown timeouts and actual staging outage behavior remain unverified until the owner-provisioned staging rehearsal.
+
 ## Latest completed local gap — auth-form focus
 
 The keyboard transition from sign-in to signup previously dropped focus to the document body. Fixed at `6df007aab69e8fb7b406799c688e6c195c67b2aa`; the existing 390px auth smoke now checks Enter activation, first-field focus, Tab order and return-to-sign-in focus. Web typecheck, 11 web tests, lint, build and all six exact-SHA CI/MongoDB/Browser workflows passed (CI #42356987176/#42356991254, MongoDB #42356987142/#42356991238, Browser #42356987150/#42356991172). The next staging step is owner-dependent workspace validation and synthetic environment provisioning.

@@ -1,5 +1,9 @@
 # Implementation status
 
+## Graceful API shutdown and failed-startup cleanup — hosted-verified (2026-11-07)
+
+At `074b14a229130073db100fba451551b796fb8a4f`, shutdown stops accepting new HTTP work, waits for active requests to drain, and only then closes MongoDB clients. A repeated signal shares the same shutdown operation; a server-close error still triggers database cleanup and is reported using the fixed redacted `api_shutdown_failed` event. Startup failures also attempt to close partially opened MongoDB clients. Focused lifecycle/logger tests pass 3/3; API typecheck, workspace lint and production build pass. All six exact-SHA CI/MongoDB/Browser push/PR workflows passed: CI #42359327674/#42359332338, MongoDB #42359327726/#42359332337, Browser #42359327681/#42359332353. This does not replace staging process-signal, platform-timeout, or database-failure rehearsal.
+
 ## Auth form keyboard focus handoff — locally and hosted-verified (2026-11-07)
 
 At `6df007aab69e8fb7b406799c688e6c195c67b2aa`, changing from sign-in to signup moves focus to Full name; Tab proceeds to Email; returning to sign-in moves focus to Email. Reproduced the prior body-focus defect in the existing local browser smoke and extended that same narrow smoke with the keyboard regression check—no second browser suite was added. At 390px the smoke passes with no horizontal overflow or page errors. Web typecheck, 11 web tests, workspace lint/build and all six exact-SHA CI/MongoDB/Browser push/PR workflows pass: CI #42356987176/#42356991254, MongoDB #42356987142/#42356991238, Browser #42356987150/#42356991172. This verifies auth-form focus only; full keyboard/screen-reader review remains open.
