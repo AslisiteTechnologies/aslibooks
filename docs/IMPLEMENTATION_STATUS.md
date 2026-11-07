@@ -40,7 +40,7 @@ Workflow-only source SHA `c4c0a54a0165ae1f7352128fabc6a9b77ab0a438` is pushed an
 
 ## Current verified checkpoint — 2026-11-07
 
-Source commit `03606823225479b4c3f6e9c9a923c71215df9404` is published to and matches `origin/develop/phase-1-foundation`. All six exact-SHA CI/MongoDB/Browser push and PR checks passed: CI #42354787596/#42354791267, MongoDB #42354787616/#42354791354, Browser #42354787566/#42354791231. Local API/web production build commands for the staging Blueprint passed; the preceding full local suite had 86 pass and 86 replica-set tests skipped, while hosted MongoDB and full Browser E2E passed at this SHA. Owner vision file remains untracked and must stay unstaged. Staging-ready and production-approved: no.
+Source commit `1125b1ee83ee9d8c29be5a73fb4912eb3efbf3cc` is published to and matches `origin/develop/phase-1-foundation`. All six exact-SHA CI/MongoDB/Browser push and PR checks passed: CI #42355044451/#42355048760, MongoDB #42355044438/#42355048997, Browser #42355044408/#42355048742. Local API/web production build commands for the staging Blueprint passed at the preceding code source; the full local suite had 86 pass and 86 replica-set tests skipped locally. Hosted MongoDB and full Browser E2E passed on this exact SHA. Owner vision file remains untracked and must stay unstaged. Staging-ready and production-approved: no.
 
 ## Local auth resilience and limited manual accessibility review — 2026-11-07
 
