@@ -1,5 +1,12 @@
 # Test evidence
 
+## Explicit MongoDB database selection — local checks (2026-11-07)
+
+- New configuration test covers omitted and whitespace-only database names and returns a trimmed explicit name (3 assertions in 1 test).
+- `MONGODB_DB_NAME` is now mandatory in both auth and Mongoose connection paths; no module independently falls back to the URI database or `aslibooks`.
+- `.env.example` defaults to `aslibooks_local`; developer docs state that local use must target a dedicated development database and never production/customer data.
+- Focused API configuration, logger and email tests pass 4/4; workspace typecheck, lint, build and diff check pass. Local API restart and `/health/ready` returned 200 with the explicit isolated DB setting. Exact-SHA hosted workflows pending publication.
+
 ## Background auth email failure visibility — exact SHA `7afb60519af6dfba2b56bef3844658203a8dba5f`
 
 - Better Auth verification/password-reset send callbacks remain asynchronous to avoid email-dependent timing differences. Provider errors are caught and logged as a fixed event plus generic error type; recipient, verification/reset URL, token, provider response and stack are omitted.

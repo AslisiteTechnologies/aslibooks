@@ -4,6 +4,7 @@ import { MongoClient } from 'mongodb';
 import { getEmailProviderConfig, sendTransactionalEmail } from './email.js';
 import { configuredTrustedOrigins } from './security/trustedOrigins.js';
 import { sendAuthEmailInBackground } from './authEmail.js';
+import { requireDatabaseName } from './databaseConfig.js';
 
 let client: MongoClient | undefined;
 
@@ -12,12 +13,13 @@ export async function createAuth() {
   const uri = process.env.MONGODB_URI;
   const secret = process.env.BETTER_AUTH_SECRET;
   const baseURL = process.env.BETTER_AUTH_URL;
+  const databaseName = requireDatabaseName(process.env.MONGODB_DB_NAME);
   if (!uri || !secret || !baseURL) throw new Error('MONGODB_URI, BETTER_AUTH_SECRET and BETTER_AUTH_URL are required');
   if (secret.length < 32) throw new Error('BETTER_AUTH_SECRET must be at least 32 characters');
   const emailProvider = getEmailProviderConfig();
   client = new MongoClient(uri);
   await client.connect();
-  const database = client.db(process.env.MONGODB_DB_NAME || 'aslibooks');
+  const database = client.db(databaseName);
   return betterAuth({
     database: mongodbAdapter(database),
     secret,

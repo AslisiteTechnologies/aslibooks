@@ -16,6 +16,8 @@ Attachment storage uses private MongoDB GridFS and is accessible only through te
 
 The API request handler, startup path, migration/index operator commands, and background authentication email delivery now emit only fixed error-event names and generic thrown-value types; regression tests confirm exception messages and stacks containing fake credentials, financial data, email recipients and reset tokens are omitted (source SHA `7afb605`). Continue reviewing cookie lifetime and HTTPS flags, allowed origins, CSRF on business routes, shared rate-limit behavior, dependency advisories, and logging at hosting/managed-database/email/AI provider layers before release. Separate credentials by environment. Keep secrets and financial payloads out of logs and support tickets.
 
+The API requires an explicit `MONGODB_DB_NAME` and passes the same selected database to Mongoose and Better Auth. The development template uses `aslibooks_local` to avoid selecting an existing URI-default database. This is application configuration defense; Atlas credentials should still be limited to the intended non-production cluster and database.
+
 Restore an encrypted backup into a separate isolated database with restricted credentials. Compare tenant counts, journal/audit linkage, unique indexes, trial balance and sample reports as of the restore point. Record elapsed recovery time and data loss against owner-approved recovery objectives. Rehearse before production cutover.
 
 

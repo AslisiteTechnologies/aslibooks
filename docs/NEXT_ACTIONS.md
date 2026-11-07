@@ -1,5 +1,9 @@
 # Next actions
 
+## Explicit MongoDB database selection — local verification passed; hosted checks pending (2026-11-07)
+
+API startup now refuses an omitted/blank `MONGODB_DB_NAME`, and Mongoose/Better Auth share the explicit value. The example uses `aslibooks_local`. Focused tests 4/4, typecheck/lint/build pass; the local API is ready on the isolated database. Publish and wait for exact-SHA CI/MongoDB/Browser checks. Do not run destructive integration tests against the user's Atlas development cluster; use the disposable replica set from CI or a separately provisioned isolated test cluster.
+
 ## Background auth email failure visibility — verified at `7afb605` (2026-11-07)
 
 Provider send failures are now observable through the sanitized logger while auth responses remain asynchronous, generic and enumeration-safe. Focused tests pass 2/2 and all six exact-SHA CI/MongoDB/Browser workflows pass (#675/#676, #610/#611, #394/#395). Live email delivery and provider-side logging require staging credentials.

@@ -1,5 +1,9 @@
 # Implementation status
 
+## Explicit application database selection — local verification complete, hosted checks pending (2026-11-07)
+
+Startup now requires `MONGODB_DB_NAME`; both Mongoose and Better Auth use the same explicit name rather than independently falling back to a URI default. `.env.example` now defaults to `aslibooks_local`, and developer setup warns against pointing local development at production or existing customer data. Focused configuration/logger/email tests pass 4/4; typecheck, lint, build and diff check pass. Local API restarted and readiness returned 200 against configured `aslibooks_local`. Exact-SHA CI/MongoDB/Browser checks are pending publication.
+
 ## Background auth email failure visibility — verified (2026-11-07)
 
 At `7afb60519af6dfba2b56bef3844658203a8dba5f`, Better Auth verification and password-reset messages remain asynchronous and generic to the requester, while provider rejections now emit a redacted `auth_email_delivery_failed` event. The test confirms recipient and reset token are absent from logs. Focused safe-logger/auth-email tests pass 2/2; typecheck/lint/build pass. All six exact-SHA workflows passed: CI #675/#676, MongoDB #610/#611, Browser #394/#395. Live provider delivery/configuration has not been exercised.
