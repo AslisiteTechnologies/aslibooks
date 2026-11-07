@@ -3,6 +3,7 @@ import { mongodbAdapter } from 'better-auth/adapters/mongodb';
 import { MongoClient } from 'mongodb';
 import { getEmailProviderConfig, sendTransactionalEmail } from './email.js';
 import { configuredTrustedOrigins } from './security/trustedOrigins.js';
+import { sendAuthEmailInBackground } from './authEmail.js';
 
 let client: MongoClient | undefined;
 
@@ -27,7 +28,7 @@ export async function createAuth() {
         requireEmailVerification: true,
         revokeSessionsOnPasswordReset: true,
         sendResetPassword: async ({ user, url }: { user: { email: string }; url: string }) => {
-          void sendTransactionalEmail({ to: user.email, subject: 'Reset your Aslibooks password', text: 'Use this single-use link to reset your password: ' + url }, emailProvider).catch(() => undefined);
+          sendAuthEmailInBackground(() => sendTransactionalEmail({ to: user.email, subject: 'Reset your Aslibooks password', text: 'Use this single-use link to reset your password: ' + url }, emailProvider));
         },
       } : {}),
     },
@@ -36,7 +37,7 @@ export async function createAuth() {
         sendOnSignUp: true,
         sendOnSignIn: true,
         sendVerificationEmail: async ({ user, url }: { user: { email: string }; url: string }) => {
-          void sendTransactionalEmail({ to: user.email, subject: 'Verify your Aslibooks email', text: 'Verify your email address to finish setting up your account: ' + url }, emailProvider).catch(() => undefined);
+          sendAuthEmailInBackground(() => sendTransactionalEmail({ to: user.email, subject: 'Verify your Aslibooks email', text: 'Verify your email address to finish setting up your account: ' + url }, emailProvider));
         },
       },
     } : {}),
