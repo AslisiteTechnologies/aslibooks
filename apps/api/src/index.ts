@@ -12,10 +12,17 @@ import { healthRouter } from './routes/health.js';
 import { configuredTrustedOrigins, requireTrustedOrigin } from './security/trustedOrigins.js';
 import { apiResponseHeaders } from './security/responseHeaders.js';
 import { logSafeError } from './security/safeLogger.js';
+import { createGracefulShutdown } from './serverLifecycle.js';
 
 async function start() {
-  const auth = await createAuth();
-  await connectDatabase();
+  let auth: Awaited<ReturnType<typeof createAuth>>;
+  try {
+    auth = await createAuth();
+    await connectDatabase();
+  } catch (error) {
+    await Promise.allSettled([disconnectDatabase(), closeAuthConnection()]);
+    throw error;
+  }
   const authRateLimitStore = createMongoAuthRateLimitStore();
 
   const app = express();
@@ -41,13 +48,17 @@ async function start() {
 
   const port = Number(process.env.PORT ?? 4000);
   const server = app.listen(port, () => console.info(`Aslibooks API listening on ${port}`));
-  async function shutdown() {
-    server.close();
-    await disconnectDatabase();
-    await closeAuthConnection();
-  }
-  process.once('SIGTERM', () => { void shutdown(); });
-  process.once('SIGINT', () => { void shutdown(); });
+  const shutdown = createGracefulShutdown(server, async () => {
+    await Promise.all([disconnectDatabase(), closeAuthConnection()]);
+  });
+  const handleShutdownSignal = () => {
+    void shutdown().catch((error: unknown) => {
+      logSafeError('api_shutdown_failed', error);
+      process.exitCode = 1;
+    });
+  };
+  process.once('SIGTERM', handleShutdownSignal);
+  process.once('SIGINT', handleShutdownSignal);
 }
 
 start().catch((error: unknown) => {
