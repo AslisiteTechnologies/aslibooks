@@ -1,5 +1,7 @@
 import type { Product } from './api';
 
+const MAX_CATALOG_PAGES = 100;
+
 export function getGstSetupIssues(product: Product): string[] {
   const issues: string[] = [];
   if (product.taxCategory === 'not_configured') issues.push('Select a tax category');
@@ -12,7 +14,7 @@ export async function loadAllProducts(fetchPage: (after: string) => Promise<{ pr
   const products: Product[] = [];
   const cursors = new Set<string>();
   let after = '';
-  while (true) {
+  for (let pageNumber = 0; pageNumber < MAX_CATALOG_PAGES; pageNumber += 1) {
     const page = await fetchPage(after);
     products.push(...page.products);
     if (!page.next) return products;
@@ -20,4 +22,5 @@ export async function loadAllProducts(fetchPage: (after: string) => Promise<{ pr
     cursors.add(page.next);
     after = page.next;
   }
+  throw new Error(`Service catalog exceeds the ${MAX_CATALOG_PAGES}-page review limit.`);
 }

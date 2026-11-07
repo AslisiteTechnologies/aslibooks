@@ -38,4 +38,13 @@ describe('GST setup review input completeness', () => {
     await expect(loadAllProducts(async () => ({ products: [], next: 'same-cursor' })))
       .rejects.toThrow('Service catalog pagination did not advance.');
   });
+
+  it('bounds requests when the API returns an endless sequence of distinct cursors', async () => {
+    let calls = 0;
+    await expect(loadAllProducts(async () => {
+      calls += 1;
+      return { products: [], next: `cursor-${calls}` };
+    })).rejects.toThrow('Service catalog exceeds the 100-page review limit.');
+    expect(calls).toBe(100);
+  });
 });

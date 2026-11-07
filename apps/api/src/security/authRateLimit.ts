@@ -7,6 +7,16 @@ import type { RequestHandler } from 'express';
 type AuthRateLimitOptions = { windowMs?: number; limit?: number; store?: Store };
 type RateLimitRecord = { _id: string; prefix: string; totalHits: number; windowStart: number; expiresAt: Date };
 
+export async function ensureAuthRateLimitIndexes(collectionNames = ['aslibooks_auth_rate_limits', 'aslibooks_ai_rate_limits']) {
+  const database = mongoose.connection.db;
+  if (!database) throw new Error('MongoDB must be connected before ensuring authentication rate-limit indexes');
+  for (const name of collectionNames) {
+    await database.collection<RateLimitRecord>(name).createIndex(
+      { expiresAt: 1 }, { expireAfterSeconds: 0, name: 'auth_rate_limit_expiry' },
+    );
+  }
+}
+
 export class MongoAuthRateLimitStore implements Store {
   readonly localKeys = false;
   readonly prefix: string;
@@ -29,7 +39,7 @@ export class MongoAuthRateLimitStore implements Store {
   }
 
   async initialize() {
-    await this.collection.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0, name: 'auth_rate_limit_expiry' });
+    await ensureAuthRateLimitIndexes([this.collectionName]);
   }
 
   async init(options: Options) {

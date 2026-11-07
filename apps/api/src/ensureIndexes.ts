@@ -21,6 +21,7 @@ import './models/product.js';
 import './models/receipt.js';
 import './models/vendorAdvance.js';
 import './models/vendorPayment.js';
+import { ensureAuthRateLimitIndexes } from './security/authRateLimit.js';
 import { logSafeError } from './security/safeLogger.js';
 
 async function ensureIndexes() {
@@ -28,7 +29,8 @@ async function ensureIndexes() {
   try {
     const names = mongoose.modelNames().sort();
     for (const name of names) await mongoose.model(name).createIndexes();
-    console.info(`Ensured declared indexes for ${names.length} Aslibooks MongoDB models: ${names.join(', ')}`);
+    await ensureAuthRateLimitIndexes();
+    console.info(`Ensured declared indexes for ${names.length} Aslibooks MongoDB models and both auth/AI rate-limit TTL collections: ${names.join(', ')}`);
   } finally {
     await disconnectDatabase();
   }

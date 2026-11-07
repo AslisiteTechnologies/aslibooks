@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { MongoAuthRateLimitStore } from './authRateLimit.js';
+import { ensureAuthRateLimitIndexes, MongoAuthRateLimitStore } from './authRateLimit.js';
 
 const uri = process.env.MONGODB_TEST_URI;
 const dbName = process.env.MONGODB_TEST_DB_NAME;
@@ -36,5 +36,17 @@ describe.skipIf(!enabled)('shared MongoDB authentication rate limit store', () =
 
     await second.resetKey(key);
     expect(await first.get(key)).toBeUndefined();
+  });
+
+  it('prepares TTL indexes for both runtime rate-limit collections', async () => {
+    const collectionNames = [`auth_rate_index_test_${new mongoose.Types.ObjectId()}`, `ai_rate_index_test_${new mongoose.Types.ObjectId()}`];
+    await ensureAuthRateLimitIndexes(collectionNames);
+    for (const name of collectionNames) {
+      const indexes = await mongoose.connection.db!.collection(name).listIndexes().toArray();
+      expect(indexes).toContainEqual(expect.objectContaining({
+        name: 'auth_rate_limit_expiry', key: { expiresAt: 1 }, expireAfterSeconds: 0,
+      }));
+      await mongoose.connection.db!.dropCollection(name);
+    }
   });
 });

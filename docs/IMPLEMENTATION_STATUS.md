@@ -1,8 +1,14 @@
 # Implementation status
 
+## Local product/staging follow-up — verified locally, not yet committed (2026-11-07)
+
+Reconciled the pre-existing Playwright manifest/lockfile change by adding one non-mutating, 390px auth/signup smoke (`apps/web/e2e/local-smoke.mjs`); the Python `apps/web/e2e/chart.py` remains the only full browser business journey. The browser smoke passes against `http://localhost:5173`, with no JS errors or horizontal overflow. Bounded GST catalog traversal to 100 pages (10,000 products at the endpoint’s 100-item maximum); focused web tests pass 6/6, including an endless-distinct-cursor case. Full local gates pass: lint, 85 unit tests (API 69, accounting 5, web 11), typecheck, production build, high-severity dependency audit and `git diff --check`. 86 database/replica-set integration tests skip because no isolated test database is configured. Added a cost-estimated synthetic-only staging architecture, scoped-credential gates, exact-SHA rollout/rollback, monitoring and restore steps to `docs/STAGING_RUNBOOK.md`; none has been executed against a staging provider. Existing source/report golden scenario was previously exercised and exact baseline SHA `59c5a0c` has six green hosted checks. Staging-ready and production-approved remain **No**.
+
+Additional operational integrity fix: production Mongoose auto-index creation and API-startup creation of auth/AI rate-limit TTL indexes are removed. The explicit `db:ensure-indexes` operator command now provisions both TTL indexes with model indexes before deployment. The isolated-replica assertion is added but skipped locally without MongoDB; exact-SHA hosted verification is pending.
+
 ## Explicit application database selection — verified (2026-11-07)
 
-At `3bac65a4272738bafd8a5092984c91768ed3c055`, startup requires `MONGODB_DB_NAME`; Mongoose and Better Auth use the same explicit name rather than independently falling back to a URI default. `.env.example` defaults to `aslibooks_local`, and developer setup warns against pointing local development at production or existing customer data. Focused configuration/logger/email tests pass 4/4; typecheck, lint, build and diff check pass. Local API restarted and readiness returned 200 against configured `aslibooks_local`. All six exact-SHA workflows passed: CI #679/#680, MongoDB #614/#615, Browser #398/#399.
+At `3bac65a4272738bafd8a5092984c91768ed3c055`, startup requires `MONGODB_DB_NAME`; Mongoose and Better Auth use the same explicit name rather than independently falling back to a URI default. `.env.example` defaults to `aslibooks_local`, and developer setup warns against pointing local development at production or existing customer data. Local full suite passes 84 (API 69, accounting 5, web 10); 85 DB-dependent tests skip without a local replica set. Typecheck, lint, build, audit and diff check pass. Local API restarted and readiness returned 200 against configured `aslibooks_local`. Source SHA passed all six workflows (#679/#680, #614/#615, #398/#399); documentation HEAD `59c5a0c` also passed all six (#681/#682, #616/#617, #400/#401).
 
 ## Background auth email failure visibility — verified (2026-11-07)
 

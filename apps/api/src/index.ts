@@ -17,7 +17,6 @@ async function start() {
   const auth = await createAuth();
   await connectDatabase();
   const authRateLimitStore = createMongoAuthRateLimitStore();
-  await authRateLimitStore.initialize();
 
   const app = express();
   app.disable('x-powered-by');

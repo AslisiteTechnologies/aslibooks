@@ -1,3 +1,12 @@
+# Local Playwright dependency and bounded GST pagination — 2026-11-07
+
+- `pnpm --filter @aslibooks/web test -- src/gstReadiness.test.ts`: 6/6 passed, including finite traversal, repeated-cursor rejection and a 100-page ceiling for distinct cursors.
+- `pnpm --filter @aslibooks/web test:smoke`: passed against existing local Vite service `http://localhost:5173`; sign-in and account creation forms render at 390px; no horizontal overflow or JavaScript page errors. This smoke submits no credentials and creates no account.
+- `pnpm lint`, `pnpm test` (API 69 passed / 85 DB-dependent skipped, accounting 5 passed, web 11 passed), `pnpm typecheck`, `pnpm build`, `pnpm audit --audit-level=high` (no known vulnerabilities), and `git diff --check`: passed locally.
+- The existing Python `apps/web/e2e/chart.py` full financial browser scenario was not run locally; no local test-only replica set is configured. The committed baseline `59c5a0c` has exact-SHA hosted CI #681/#682, MongoDB #616/#617 and Browser #400/#401 success. Re-run all workflows for the eventual new commit.
+- Staging architecture doc-only preparation is not an environment rehearsal; no credentials, allowlist, backup, alert or rollback has been exercised.
+- Operational index follow-up: production Mongoose `autoIndex` is false; the API no longer creates auth/AI TTL indexes on startup/first use; `db:ensure-indexes` creates both explicitly. Full rerun after this change passes the same 85 runnable workspace tests, skips 86 MongoDB-dependent tests, and passes lint, typecheck, build, dependency audit, responsive smoke and diff check. The new TTL-index integration assertion is among the local skips; hosted MongoDB verification on the new exact SHA remains required.
+
 # Test evidence
 
 ## Explicit MongoDB database selection — exact SHA `3bac65a4272738bafd8a5092984c91768ed3c055`
@@ -7,6 +16,10 @@
 - `.env.example` defaults to `aslibooks_local`; developer docs state that local use must target a dedicated development database and never production/customer data.
 - Focused API configuration, logger and email tests pass 4/4; workspace typecheck, lint, build and diff check pass. Local API restart and `/health/ready` returned 200 with the explicit isolated DB setting.
 - All six exact-SHA workflows passed: [CI push #679](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42346399526), [CI PR #680](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42346403062), [MongoDB push #614](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42346399527), [MongoDB PR #615](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42346403211), [Browser push #398](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42346399528), and [Browser PR #399](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42346403122).
+- The local full workspace suite passes 84 tests (API 69, accounting 5, web 10); 85 DB-dependent tests skip because no local replica set is configured.
+- Lint was independently confirmed to inspect 145 TypeScript/TSX files with zero errors and zero warnings at the current checkout; `eslint.config.mjs` enforces the recommended JavaScript/TypeScript rules plus no-explicit-any and unused-variable checks.
+
+The documentation-only follow-up at exact HEAD `59c5a0cc83d792d349a6460aaeb854857e9fef58` also passed all six workflows: [CI push #681](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42346705311), [CI PR #682](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42346710571), [MongoDB push #616](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42346705334), [MongoDB PR #617](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42346710534), [Browser push #400](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42346705368), and [Browser PR #401](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42346710556).
 
 ## Background auth email failure visibility — exact SHA `7afb60519af6dfba2b56bef3844658203a8dba5f`
 

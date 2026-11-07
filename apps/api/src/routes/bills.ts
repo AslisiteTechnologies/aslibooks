@@ -75,10 +75,8 @@ function billAiRateLimiter(): RequestHandler {
       const hashSecret = process.env.BETTER_AUTH_SECRET;
       if (!hashSecret) { res.status(503).json({ error: 'AI bill assistance is not configured.' }); return; }
       const store = new MongoAuthRateLimitStore({ windowMs: 60 * 60 * 1000, prefix: 'aslibooks:ai-bill:', collectionName: 'aslibooks_ai_rate_limits', hashSecret });
-      const initialize = store.initialize();
       sharedBillAiLimiter = async (request, response, nextRequest) => {
         try {
-          await initialize;
           const hit = await store.increment(request.ip || request.socket.remoteAddress || 'unknown');
           if (hit.totalHits > 20) { response.setHeader('RateLimit-Limit', '20'); response.setHeader('RateLimit-Remaining', '0'); response.setHeader('RateLimit-Reset', String(Math.ceil((hit.resetTime!.getTime() - Date.now()) / 1000))); response.status(429).json({ error: 'Too many AI bill requests. Try again later.' }); return; }
           nextRequest();
