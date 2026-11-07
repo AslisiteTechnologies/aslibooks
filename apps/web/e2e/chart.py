@@ -882,7 +882,7 @@ def test_chart():
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Reports", exact=True).click()
             expect(page.get_by_text("Balance sheet balances", exact=True)).to_be_visible()
-            net_profit_before_accountant = page.evaluate("() => document.body.innerText.match(/Net profit ₹[\\d,.]+/)?.[0] ?? null")
+            net_profit_before_accountant = page.evaluate("() => document.body.innerText.match(/Net profit [−-]?₹[\\d,.]+/)?.[0] ?? null")
             assert net_profit_before_accountant, "The financial statements did not show a net profit total"
             page.get_by_role("button", name="Open navigation").click()
             page.get_by_role("button", name="Team", exact=True).click()
@@ -917,10 +917,12 @@ def test_chart():
             expect(viewer_page.get_by_text("3000 · Owner capital — Debit ₹0.00 / Credit ₹1.00", exact=True)).to_be_visible()
             viewer_page.get_by_role("button", name="Open navigation").click()
             viewer_page.get_by_role("button", name="Reports", exact=True).click()
-            net_profit_after_accountant = viewer_page.evaluate("() => document.body.innerText.match(/Net profit ₹[\\d,.]+/)?.[0] ?? null")
+            expect(viewer_page.get_by_role("heading", name="Profit and loss", exact=True)).to_be_visible()
+            net_profit_after_accountant = viewer_page.evaluate("() => document.body.innerText.match(/Net profit [−-]?₹[\\d,.]+/)?.[0] ?? null")
             assert net_profit_after_accountant == net_profit_before_accountant, (
                 f"A balance-sheet-only accountant journal changed reported net profit: "
-                f"before={net_profit_before_accountant!r}, after={net_profit_after_accountant!r}"
+                f"before={net_profit_before_accountant!r}, after={net_profit_after_accountant!r}; "
+                f"rendered report tail={viewer_page.locator('body').inner_text()[-1200:]!r}"
             )
             expect(viewer_page.get_by_text("Balance sheet balances", exact=True)).to_be_visible()
             viewer_page.close()
