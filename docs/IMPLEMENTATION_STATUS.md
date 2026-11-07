@@ -1,5 +1,9 @@
 # Implementation status
 
+## Node.js runtime alignment — local verification complete, hosted checks pending (2026-11-07)
+
+Updated all three workflows and the developer/staging instructions from Node 22 to Node 24 LTS. Current workstation runtime is Node `v24.13.0`; `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm lint`, workspace tests (80 passed; 85 MongoDB-dependent tests skipped because no local replica set is configured), `pnpm build`, `pnpm audit --audit-level=high`, and `git diff --check` pass. Exact-SHA GitHub CI, MongoDB replica-set and desktop/mobile Browser runs are required before calling this change hosted-verified. Staging deployment and production approval remain no.
+
 ## Verified tenant records export — 2026-11-07
 
 Source `03b2d689be788957ec602fd6144a22ad6536de5f` is pushed to `origin/develop/phase-1-foundation`. All six push and PR Actions passed: CI #657/#658, MongoDB #592/#593, Browser #376/#377. This includes the role-gated versioned NDJSON organization records export in Settings, active membership and tenant filtering, export audit event, streamed record counts, attachment storage-ID and file-byte exclusion, API owner/admin/accountant allow and viewer/nonmember denial, plus a real Browser download after the synthetic financial flow. The first source run (`e6a607c`) exposed only fixture teardown using an immutable Mongoose model delete; switching the disposable fixture cleanup to its raw collection fixed it and the final exact-SHA MongoDB run passed. Local suite: 80 tests pass (65 API, 5 accounting, 10 web); 85 MongoDB-dependent tests skip without local replica set. Typecheck/lint/build/high-severity audit pass. This remains a records export: original attachment files, point-in-time snapshot consistency and organization deletion/archive workflow are absent; data policy needs owner/adviser approval. Owner-supplied vision file remains unstaged. Staging-ready and production-approved: no.

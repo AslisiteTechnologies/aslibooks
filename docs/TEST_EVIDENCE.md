@@ -1,5 +1,13 @@
 # Test evidence
 
+## Node.js 24 LTS runtime alignment — local checks (2026-11-07)
+
+- `node --version`: `v24.13.0`; `pnpm --version`: `10.18.0`.
+- `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm audit --audit-level=high`, and `git diff --check` passed.
+- Unit test results: API 65, accounting 5, web 10 (80 passed); 85 MongoDB-dependent API tests skipped because `MONGODB_TEST_URI` and a local replica set are unavailable. Do not interpret this as local integration coverage.
+- All three GitHub Actions workflows now run app checks on Node 24. Exact-SHA hosted CI, MongoDB and Browser checks are pending publication.
+- Frozen install reports pnpm's ignored `esbuild` build script; production build succeeded using the installed package. Revisit only if CI or supported installs require the native script.
+
 ## Tenant records export — exact source SHA `03b2d689be788957ec602fd6144a22ad6536de5f`
 
 - Added API integration coverage for anonymous rejection, non-member/foreign-tenant hiding, viewer denial, owner/admin/accountant access, peer-tenant isolation, attachment `storageId` omission, response headers, completion counts and export audit event. Local focused API execution skipped because no local MongoDB replica set is available; the exact-SHA MongoDB Actions ran and passed.

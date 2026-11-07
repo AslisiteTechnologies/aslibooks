@@ -1,5 +1,9 @@
 # Next actions
 
+## Node.js runtime alignment — local gate passed; exact-SHA hosted verification pending (2026-11-07)
+
+CI, MongoDB and Browser workflows plus developer, staging and deployment instructions now target Node 24 LTS. Local Node `v24.13.0` passed frozen install, typecheck, lint, 80 unit tests, production build and high-severity dependency audit; 85 DB integration tests skipped because there is no local replica set. Push this candidate and wait for all six exact-SHA checks. Continue with the next independent product gap after hosted verification; retain external staging/owner gates.
+
 ## Current completion checkpoint — 2026-11-07
 
 Records export is implemented and verified at exact pushed SHA `03b2d689be788957ec602fd6144a22ad6536de5f`; all six push/PR Actions passed: CI #657/#658, MongoDB #592/#593, Browser #376/#377. The first hosted MongoDB attempt failed only in immutable fixture cleanup and was corrected on the next commit; the final run passed. Locally, 80 tests pass and 85 MongoDB-dependent tests skip without a local replica set; typecheck/lint/build/high-severity audit pass. The export excludes attachment bytes and is not a full archive; deletion and lifecycle policy remain pending.

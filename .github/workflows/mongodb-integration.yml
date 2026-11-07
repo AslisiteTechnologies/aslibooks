@@ -18,7 +18,7 @@ jobs:
           version: 10.18.0
       - uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: '24'
       - name: Start isolated MongoDB replica set
         run: |
           docker run -d --name aslibooks-test-mongo -p 127.0.0.1:27017:27017 mongo:7 --replSet rs0 --bind_ip_all

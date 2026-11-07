@@ -3,7 +3,7 @@
 ## 2026-11-04 · foundation audit
 
 - Baseline development and draft PR head `8d7a994e15bd4a4af3244411096113a1f8c1e41b`. [CI #181](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/41776328042) and [MongoDB integration #118](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/41776327975) succeeded on that revision. [Draft PR #1](https://github.com/AslisiteTechnologies/aslibooks/pull/1).
-- Checkout contained an untracked pnpm lockfile. Frozen installation with pnpm 10.18.0 succeeded. GitHub uses Node 22. Local Node is 24.13.0.
+- Checkout contained an untracked pnpm lockfile. Frozen installation with pnpm 10.18.0 succeeded. CI and local validation now target Node 24 LTS.
 - Verified actual code against older handoff notes. Better Auth sign-up, cookie session, logout, sign-in and cross-tenant organization list tests exist. Authorized journal/reversal services fence the active membership inside MongoDB transactions. At baseline only organization routes expose business data.
 - Audit found model-level mass deletion and document deletion unguarded. Added middleware and regression assertions alongside bulk-write and persisted-value checks. Test-only cleanup uses raw collection access scoped to fresh fixture IDs or tenant.
 - Existing tests share some ordered fixtures. Root lint delegates to Turbo and no workspace declares a lint task. No formatter script. Browser journeys, staging and restore rehearsal still require evidence.

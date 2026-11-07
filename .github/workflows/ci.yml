@@ -13,7 +13,7 @@ jobs:
           version: 10.18.0
       - uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: '24'
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint

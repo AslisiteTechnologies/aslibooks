@@ -1,6 +1,6 @@
 # Local development
 
-Prerequisites: Node.js 22, pnpm 10.18.0, and a disposable MongoDB replica set for database-backed accounting tests and financial workflows.
+Prerequisites: Node.js 24 LTS, pnpm 10.18.0, and a disposable MongoDB replica set for database-backed accounting tests and financial workflows.
 
 1. Enable Corepack with `corepack enable`, then run `pnpm install` from the repository root.
 2. Copy `.env.example` to `apps/api/.env` and configure local-only values. Set `MONGODB_URI`, `MONGODB_DB_NAME`, `BETTER_AUTH_SECRET` (at least 32 random characters), `BETTER_AUTH_URL=http://localhost:4000`, and `WEB_ORIGIN=http://localhost:5173`. Never reuse production credentials.

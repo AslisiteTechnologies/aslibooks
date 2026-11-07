@@ -4,7 +4,7 @@ This runbook prepares a non-production environment. It does not authorize deploy
 
 ## Runtime configuration
 
-Build with Node 22 and pnpm 10.18.0. Configure the API environment through the hosting secret manager (never commit `.env` files):
+Build with Node 24 LTS and pnpm 10.18.0. Configure the API environment through the hosting secret manager (never commit `.env` files):
 
 | Variable | Staging requirement |
 | --- | --- |
