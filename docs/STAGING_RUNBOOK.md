@@ -8,7 +8,7 @@ Use one small always-on API service and static web hosting, backed by a **new sy
 
 As of 2026-11-07, a reference low-cost shape is a static site plus one paid, always-on Render web service for the Node API (the current smallest listed service is $6/month), with an existing Atlas free cluster only for the new synthetic database. This is an estimate, not a purchase or a provider selection. Do not use a sleeping free API service for a staging rehearsal: Render documents that free web services can spin down and are not for production use. Render’s shared outbound IP ranges can be broad; Atlas must allow only the documented service-region ranges if the owner accepts that exposure, never `0.0.0.0/0`. If that is unacceptable, choose a host with a dedicated static egress IP and re-estimate cost before provisioning. [Render pricing](https://render.com/pricing) · [Render free-service limits](https://render.com/docs/free) · [Render outbound ranges](https://render.com/docs/outbound-ip-addresses).
 
-Keep a monthly backup line item out of the minimum plan only if a manually initiated encrypted `mongodump` is exported to an already-owned, access-controlled storage location and a restore is rehearsed. Do not depend on Atlas M0 backups: the current optional M0 snapshot offer is a gradual private preview, requires a payment method, costs up to $3/month, retains only four daily snapshots and does not support on-demand snapshots. Confirm availability and current terms in the owner’s Atlas account; do not enable it without spending approval. [Atlas free-cluster backup limitations](https://www.mongodb.com/docs/atlas/backup/cloud-backup/free-cluster-backup/).
+Keep a monthly backup line item out of the minimum plan only if a manually initiated database-scoped encrypted `mongodump` is exported to an already-owned, access-controlled storage location and a restore is rehearsed. If the staging DB shares the owner’s Atlas cluster, do not use a cluster-wide snapshot that would also copy unrelated existing databases. Pause/drain writes to the synthetic staging database and dump only `aslibooks_staging_synthetic`. Do not depend on Atlas M0 backups: the current optional M0 snapshot offer is a gradual private preview, requires a payment method, costs up to $3/month, retains only four daily snapshots and does not support on-demand snapshots. It is cluster-level and therefore inappropriate for a synthetic-only backup on a shared cluster. Confirm availability/current terms in the owner’s Atlas account; do not enable it without spending approval. [Atlas free-cluster backup limitations](https://www.mongodb.com/docs/atlas/backup/cloud-backup/free-cluster-backup/).
 
 ### Credential and privilege boundary
 
@@ -94,13 +94,28 @@ The database must be a disposable replica set for integration tests. Never run i
 
 ## Backup and restore rehearsal
 
-Use an encrypted, access-logged backup destination and a separate maintenance identity. Include the application database and both GridFS collections used for attachments (`aslibooks_attachments.files` and `aslibooks_attachments.chunks`, or their actual configured collection names). Protect Better Auth records and audit/journal data as financial data. Define recovery point and recovery time objectives with the owner before accepting a rehearsal.
+Use an encrypted, access-logged backup destination and a separate maintenance identity. For a staging database sharing Atlas with other owner databases, take a database-scoped dump of `aslibooks_staging_synthetic` only; do not take or export a cluster-wide snapshot. Pause/drain API writes to staging for the dump window so this database-only dump is coherent. A dedicated staging cluster can use its provider’s documented cluster snapshot if that cluster contains staging data only. Include both GridFS collections (`aslibooks_attachments.files` and `aslibooks_attachments.chunks`) within the application database. Protect Better Auth records and audit/journal data as financial data. Define recovery point and recovery time objectives with the owner before accepting a rehearsal.
 
-1. Take a consistent MongoDB replica-set backup according to the managed provider’s documented procedure; record backup timestamp, database name, artifact digest and encryption/key reference without printing credentials.
-2. Restore into a new isolated disposable database, never over the source. Keep API traffic disconnected from both source and restored copy.
-3. Set both `MONGODB_DB_NAME` and `ASLIBOOKS_INDEX_DATABASE` to the restored copy’s exact new database name, then run `pnpm --filter @aslibooks/api db:ensure-indexes`.
+1. Use MongoDB Database Tools `mongodump`/`mongorestore` compatible with the target server version. Store the connection URI in a protected tools config file (permissions for the operator only); never put passwords in shell history or command-line arguments. For example, with a private YAML config file containing `uri: "<staging connection URI>"` and mode `0600`:
+
+   ```sh
+   mongodump --config "$MONGODB_TOOLS_CONFIG" --db aslibooks_staging_synthetic --archive="$BACKUP_FILE" --gzip
+   sha256sum "$BACKUP_FILE"
+   ```
+
+   `mongodump --db` limits output to that database, and `--archive --gzip` creates a single compressed archive. Verify this command-line option is supported by the installed Database Tools version. Encrypt the archive with the owner-approved encryption tool before transfer; store its key separately. Record both the pre-encryption and encrypted archive digests, backup timestamp, exact database name, and key reference without printing credentials. See [mongodump archive and config-file options](https://www.mongodb.com/docs/database-tools/mongodump/).
+2. Restore only into a new empty isolated database, never over the source. Keep the API disconnected from source and restored copy. Use a restore-only config URI scoped to the new target database and a different restricted maintenance identity. Example (source archive namespace renamed into the empty restore DB):
+
+   ```sh
+   # Decrypt the backup to a protected temporary file first; never restore from the encrypted bytes.
+   mongorestore --config "$RESTORE_TOOLS_CONFIG" --gzip --archive="$DECRYPTED_BACKUP_FILE" \
+     --nsFrom='aslibooks_staging_synthetic.*' --nsTo="$RESTORE_DB_NAME.*" --stopOnError
+   ```
+
+   The restore config URI must connect to the new target database and the maintenance identity must have restore privileges only there. Do not pass `--drop`; the target must be new and empty. Securely remove the decrypted temporary file after the restore. See [mongorestore archive and namespace options](https://www.mongodb.com/docs/database-tools/mongorestore/).
+3. Set both `MONGODB_DB_NAME` and `ASLIBOOKS_INDEX_DATABASE` to the restore copy’s exact database name, then run `pnpm --filter @aslibooks/api db:ensure-indexes` with the maintenance identity.
 4. Verify expected tenant and document counts, membership/journal/audit linkage, indexes, GridFS file/chunk pairing, a balanced trial balance, and sample GL/P&L/balance-sheet values against the backup cut-off.
-5. Record restore duration and measured data loss against approved objectives. Delete the disposable restored copy under the approved test-data policy. A failed or absent restore rehearsal blocks production approval.
+5. Record dump/restore durations and measured data loss against approved objectives. Delete the disposable restored copy under the approved test-data policy. A failed or absent restore rehearsal blocks production approval.
 
 ## Rollback and incident handling
 

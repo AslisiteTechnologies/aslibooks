@@ -1,8 +1,8 @@
 # Next actions
 
-## Explicit target confirmation for index preparation — locally verified, pending exact-SHA workflows (2026-11-07)
+## Explicit target confirmation for index preparation — exact-SHA verified (2026-11-07)
 
-`db:ensure-indexes` now refuses to connect unless `ASLIBOOKS_INDEX_DATABASE` exactly equals `MONGODB_DB_NAME`; this was verified by invoking the real CLI with confirmation absent and observing exit 1 before connection. Focused config test 1/1; full workspace suite 86 passed (API 70, accounting 5, web 11), 86 DB-backed tests skipped locally. Typecheck, lint, build and diff check pass. The runbook commands now include the exact database confirmation. Review staged files, commit intentionally, push to the existing development branch and verify exact-SHA CI/MongoDB/Browser. Do not direct this command to any existing Atlas database; stage only after a new synthetic DB and restricted credentials exist.
+At `b83c833daa5c741b80f619c7a536d0a7d0c6f1a1`, `db:ensure-indexes` refuses to connect unless `ASLIBOOKS_INDEX_DATABASE` exactly equals `MONGODB_DB_NAME`; invoking the real CLI without confirmation exited 1 before connecting. Focused config test 1/1; full workspace suite 86 passed (API 70, accounting 5, web 11), 86 DB-backed tests skipped locally. Typecheck, lint, build and diff check pass. All six exact-SHA CI/MongoDB/Browser push and PR workflows passed (#42353955187/#42353959968, #42353955181/#42353960029, #42353955172/#42353960118). Next: continue independent product and operational improvements locally; staging deployment and restore rehearsal require owner-provisioned hosting, staging credentials, domain, and secure backup destination. Never direct this command to an existing Atlas database, merge `main`, or deploy production.
 
 ## Local product and staging follow-up — committed and hosted-verified (2026-11-07)
 

@@ -1,8 +1,8 @@
 # Implementation status
 
-## Explicit index-command database target — locally verified, pending hosted checks (2026-11-07)
+## Explicit index-command database target — exact-SHA verified (2026-11-07)
 
-`db:ensure-indexes` now requires `ASLIBOOKS_INDEX_DATABASE` to match `MONGODB_DB_NAME` exactly and validates that confirmation before opening a connection. The actual CLI was run with the target name but without confirmation and exited 1 before connecting; sanitized output contained only the fixed event/type. Focused config test passes 1/1. Full local workspace suite passes 86 tests (API 70, accounting 5, web 11); 86 replica-set tests skip without an isolated database. Typecheck, lint, build and diff check pass. `docs/STAGING_RUNBOOK.md` now sets the guard for staging and restored-copy index preparation. Commit/push and exact-SHA CI/MongoDB/Browser checks remain next; do not point it at any database pictured in the owner’s Atlas screenshot.
+At `b83c833daa5c741b80f619c7a536d0a7d0c6f1a1`, `db:ensure-indexes` requires `ASLIBOOKS_INDEX_DATABASE` to match `MONGODB_DB_NAME` exactly and validates that confirmation before opening a connection. The actual CLI was run without confirmation and exited 1 before connecting; sanitized output contained only the fixed event/type. Focused config test passes 1/1. Full local workspace suite passes 86 tests (API 70, accounting 5, web 11); 86 replica-set tests skip without an isolated database. Typecheck, lint, build and diff check pass. All six exact-SHA CI/MongoDB/Browser push and PR workflows passed: CI #42353955187/#42353959968, MongoDB #42353955181/#42353960029, Browser #42353955172/#42353960118. Do not point it at any existing owner database.
 
 ## Local product/staging follow-up — committed and hosted-verified (2026-11-07)
 
@@ -36,7 +36,7 @@ Workflow-only source SHA `c4c0a54a0165ae1f7352128fabc6a9b77ab0a438` is pushed an
 
 ## Current verified checkpoint — 2026-11-07
 
-Source commit `79615478fdf8ac5bf314404e178162cd81dd7d9e` is published to `origin/develop/phase-1-foundation`. Exact-SHA hosted checks: CI #42353217735/#42353221114, MongoDB #42353217748/#42353221214 and Browser #42353217756/#42353221094 all passed. Local API/web/accounting unit tests: 85 passed, with 86 replica-set tests skipped locally; full Browser E2E ran hosted. Owner vision file remains untracked and must stay unstaged. Staging-ready and production-approved: no.
+Source commit `b83c833daa5c741b80f619c7a536d0a7d0c6f1a1` is published to and matches `origin/develop/phase-1-foundation`. All six exact-SHA CI/MongoDB/Browser push and PR checks passed (#42353955187/#42353959968, #42353955181/#42353960029, #42353955172/#42353960118). Local API/web/accounting unit tests: 86 passed, with 86 replica-set tests skipped locally; hosted MongoDB and full Browser E2E passed. Owner vision file remains untracked and must stay unstaged. Staging-ready and production-approved: no.
 
 ## Local auth resilience and limited manual accessibility review — 2026-11-07
 
