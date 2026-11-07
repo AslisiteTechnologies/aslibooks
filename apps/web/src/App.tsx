@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { api, type Organization } from './api';
+import { api, userFacingApiError, type Organization } from './api';
 import { AuthScreen } from './AuthScreen';
 import { OnboardingScreen } from './OnboardingScreen';
 import { AppBar, Box, Button, Chip, Container, Divider, Drawer, List, ListItem, ListItemButton, ListItemText, Paper, Stack, Toolbar, Typography } from '@mui/material';
@@ -49,7 +49,7 @@ export function App() {
     try {
       const session = await api.session();
       if (!session?.user) {
-        setOrganizations([]); setSelectedId(''); rememberActiveOrganization(undefined); setAuthState('signed-out'); return;
+        setOrganizations([]); setSelectedId(''); rememberActiveOrganization(undefined); setAuthError(''); setAuthState('signed-out'); return;
       }
       const items = await api.organizations();
       setOrganizations(items);
@@ -61,7 +61,7 @@ export function App() {
       setAuthError('');
     } catch (error) {
       setSelectedId(''); rememberActiveOrganization(undefined);
-      setAuthError(error instanceof Error ? error.message : 'Cannot reach API');
+      setAuthError(userFacingApiError(error, 'Cannot reach API'));
       setAuthState('signed-out');
     }
   }
@@ -81,7 +81,7 @@ export function App() {
   }, []);
 
   if (authState === 'loading') return <Box sx={{ p: 5 }} role="status">Loading Aslibooks…</Box>;
-  if (authState === 'signed-out') return <><AuthScreen onAuthenticated={refreshSession} />{authError && <Box role="alert" sx={{ p: 2 }}>{authError}</Box>}</>;
+  if (authState === 'signed-out') return <AuthScreen onAuthenticated={refreshSession} connectionError={authError} onRetryConnection={() => { void refreshSession(); }} />;
   if (authState === 'onboarding') return <OnboardingScreen onCreated={refreshSession} />;
   const sidebar = (
     <Box sx={{ p: 2 }}>

@@ -1,5 +1,13 @@
 # Test evidence
 
+## Local auth resilience follow-up — 2026-11-07 (uncommitted)
+
+- Added pure formatter coverage for browser network errors and preserved server messages: `pnpm --filter @aslibooks/web test` passes 4 files / 10 tests.
+- `pnpm typecheck`, `pnpm lint`, and `pnpm --filter @aslibooks/web build` pass after the auth retry change.
+- Local Vite UI walkthrough: sign-in/registration form fields and actions are keyboard reachable in sequence; focus is visibly indicated; unavailable API produces “Unable to connect to Aslibooks. Check your connection and try again.”; Retry repeats the session check and preserves usable sign-in; browser console has no errors.
+- Limits: unauthenticated local UI only. No local API/MongoDB (Docker, Python and MongoDB binaries unavailable), so authenticated workflow and full manual screen-reader review were not performed. Do not count this as full accessibility or staging acceptance.
+- The complete current workspace command `pnpm test` finished successfully at the runner level: API 12 unit-test files / 65 tests passed, accounting 1 file / 5 tests passed, web 4 files / 10 tests passed; 26 database-dependent API integration files (84 tests) skipped due absent local MongoDB replica set. This is not a full local integration pass. Workspace typecheck, lint, full `pnpm build`, and `pnpm audit --audit-level=high` passed (no known vulnerabilities).
+
 ## Latest exact-SHA execution — 2026-11-06
 
 - At SHA `719cf9358f034e640775bb962666618dc7d30b61`, all six hosted workflows passed: [CI push #42226301324](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42226301324), [CI PR #42226309451](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42226309451), [MongoDB push #42226301093](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42226301093), [MongoDB PR #42226309470](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42226309470), [Browser push #42226301091](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42226301091), [Browser PR #42226309471](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42226309471). This verifies the migration-target confirmation guard plus corrected source-reconciled expense/report assertions.

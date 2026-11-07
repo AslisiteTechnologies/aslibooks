@@ -1,5 +1,11 @@
 # Aslibooks product audit — 2026-11-06
 
+## Local follow-up — 2026-11-07
+
+During direct browser review of the unauthenticated local web shell, startup with an unavailable API displayed the raw browser text `Failed to fetch` below the sign-in layout and offered no retry. Auth error formatting and an in-card retry action now address that observed defect; a successful retry clears the old error when the API responds with no session. Verification: browser confirmed sign-in and account form Tab traversal, visible focus indication, the friendly connection alert, a retry that remains usable while offline, and zero console errors. Web tests pass 4/4 files / 10/10 tests, workspace typecheck/lint and production web build pass. This did not exercise authenticated financial screens: Docker, Python/Playwright and local MongoDB are absent. No full manual screen-reader review is claimed. These changes remain uncommitted in the requested local batch.
+
+A new draft at [DATA_LIFECYCLE_POLICY_DECISIONS.md](DATA_LIFECYCLE_POLICY_DECISIONS.md) sets safe proposed defaults and lists the explicit owner/accounting/legal decisions needed before production. It records the current export boundary precisely: essential reports, full ledger, contact statements and printable invoices exist; a complete tenant archive and deletion workflow do not. The draft is not an approved policy.
+
 ## Latest execution checkpoint
 
 At this update, local `HEAD` and `origin/develop/phase-1-foundation` are both `719cf9358f034e640775bb962666618dc7d30b61`; all six exact-SHA CI/MongoDB/Browser push and PR checks passed. The migration-target confirmation guard is committed and hosted-tested. The latest supported non-tax golden workflow includes receipt attachment, cash expense and report reconciliation. A realistic synthetic account-setup-to-bank-reconciliation UI flow was previously executed; report assertions and source records reconcile to exact journals. Staging-ready is not established: no hosted staging, restricted grants, backup/restore rehearsal, monitoring/alert or rollback exercise has been performed. Production approval remains false, and tax-bearing workflows are not represented as GST compliant.

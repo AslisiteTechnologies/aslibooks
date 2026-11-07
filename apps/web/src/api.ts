@@ -1,5 +1,11 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
+export function userFacingApiError(error: unknown, fallback: string): string {
+  if (error instanceof Error && /^(failed to fetch|network error|networkerror|load failed)$/i.test(error.message.trim()))
+    return 'Unable to connect to Aslibooks. Check your connection and try again.';
+  return error instanceof Error ? error.message : fallback;
+}
+
 type AuthUser = { id: string; name: string; email: string };
 type SessionResponse = { user: AuthUser } | null;
 export type Organization = { id: string; name: string; slug: string; gstin: string; fiscalYearStartMonth: number; baseCurrency: string; role: string };

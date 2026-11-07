@@ -1,8 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Alert, Box, Button, CircularProgress, Container, Link, Paper, Stack, TextField, Typography } from '@mui/material';
-import { api } from './api';
+import { api, userFacingApiError } from './api';
 
-export function AuthScreen({ onAuthenticated }: { onAuthenticated: () => Promise<void> }) {
+export function AuthScreen({ onAuthenticated, connectionError = '', onRetryConnection }: {
+  onAuthenticated: () => Promise<void>;
+  connectionError?: string;
+  onRetryConnection?: () => void;
+}) {
   const [mode, setMode] = useState<'signin' | 'signup' | 'request-reset' | 'reset'>('signin');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -41,7 +45,7 @@ export function AuthScreen({ onAuthenticated }: { onAuthenticated: () => Promise
       await api.signIn(email, password);
       await onAuthenticated();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Authentication failed');
+      setError(userFacingApiError(cause, 'Authentication failed'));
     } finally { setBusy(false); }
   }
 
@@ -60,6 +64,7 @@ export function AuthScreen({ onAuthenticated }: { onAuthenticated: () => Promise
           <Typography variant="h4" fontWeight={800}>Aslibooks</Typography>
           <Typography color="text.secondary">{mode === 'signin' ? 'Sign in to your workspace' : mode === 'signup' ? 'Create your account' : mode === 'request-reset' ? 'Request a password reset' : 'Choose a new password'}</Typography>
         </Box>
+        {connectionError && <Alert severity="error" action={onRetryConnection && <Button color="inherit" size="small" onClick={onRetryConnection}>Retry</Button>}>{connectionError}</Alert>}
         {error && <Alert severity="error">{error}</Alert>}
         {notice && <Alert severity="success">{notice}</Alert>}
         <Stack component="form" spacing={2} onSubmit={(event) => { void submit(event); }}>
