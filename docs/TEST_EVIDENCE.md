@@ -1,10 +1,21 @@
-# Local Playwright dependency and bounded GST pagination — 2026-11-07
+# Test evidence
+
+## Current published checkpoint — exact SHA `81c3b4c80dd78b23de107e2d0dd9a758e0e20ec8` (2026-11-07)
+
+- This documentation-only commit records the auth form focus handoff fixed in source SHA `6df007aab69e8fb7b406799c688e6c195c67b2aa`; no application code changed after that source SHA.
+- All six workflows passed on exact SHA `81c3b4c80dd78b23de107e2d0dd9a758e0e20ec8`: [CI push #42357322056](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42357322056), [CI PR #42357325400](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42357325400), [MongoDB push #42357322076](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42357322076), [MongoDB PR #42357325462](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42357325462), [Browser push #42357322088](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42357322088), [Browser PR #42357325483](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42357325483). The Browser jobs exercise the hosted synthetic desktop/mobile business journey.
+- Local auth checks at `6df007a`: web typecheck, 11 web tests, workspace lint/build, responsive keyboard smoke, no horizontal overflow, and no page errors passed. The full local API suite still skips replica-set integration cases without an isolated MongoDB test URI.
+- Hosted synthetic integration and business journey verification is not a staging deployment or restore/monitoring rehearsal. Staging-ready and production-approved remain unverified.
+
+# Historical test evidence
+
+## Local Playwright dependency and bounded GST pagination — 2026-11-07
 
 ## Exact database target for index operator — local verification (2026-11-07)
 
 - Focused `apps/api/src/indexConfig.test.ts`: 1/1 passed.
 - Ran `pnpm --filter @aslibooks/api db:ensure-indexes` with a synthetic `MONGODB_DB_NAME`, no `ASLIBOOKS_INDEX_DATABASE`, and no `MONGODB_URI`. The command exited 1 with the fixed sanitized error event before attempting a database connection.
-- Full `pnpm test`: API 70 passed / 86 replica-set tests skipped, accounting 5/5, web 11/11. Workspace typecheck, lint, build and `git diff --check` passed. Exact-SHA hosted checks for this follow-up are pending.
+- At the index-command source checkpoint, full `pnpm test`: API 70 passed / 86 replica-set tests skipped, accounting 5/5, web 11/11. Workspace typecheck, lint, build and `git diff --check` passed. All six hosted checks later passed at `b83c833daa5c741b80f619c7a536d0a7d0c6f1a1`.
 
 - `pnpm --filter @aslibooks/web test -- src/gstReadiness.test.ts`: 6/6 passed, including finite traversal, repeated-cursor rejection and a 100-page ceiling for distinct cursors.
 - `pnpm --filter @aslibooks/web test:smoke`: passed against existing local Vite service `http://localhost:5173`; sign-in and account creation forms render at 390px; no horizontal overflow or JavaScript page errors. This smoke submits no credentials and creates no account.
@@ -13,8 +24,6 @@
 - Staging architecture doc-only preparation is not an environment rehearsal; no credentials, allowlist, backup, alert or rollback has been exercised.
 - Operational index follow-up: production Mongoose `autoIndex` is false; the API no longer creates auth/AI TTL indexes on startup/first use; `db:ensure-indexes` creates both explicitly. Full rerun after this change passes 85 runnable workspace tests, skips 86 MongoDB-dependent tests, and passes lint, typecheck, build, dependency audit, responsive smoke and diff check. The new TTL-index integration assertion is among the local skips; it passed in the exact-SHA MongoDB push and PR workflows below.
 - Commit `79615478fdf8ac5bf314404e178162cd81dd7d9e` passed all six exact-SHA workflows: [CI push #42353217735](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42353217735), [CI PR #42353221114](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42353221114), [MongoDB push #42353217748](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42353217748), [MongoDB PR #42353221214](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42353221214), [Browser push #42353217756](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42353217756), [Browser PR #42353221094](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42353221094).
-
-# Test evidence
 
 ## Auth form keyboard focus handoff — exact SHA `6df007aab69e8fb7b406799c688e6c195c67b2aa`
 
