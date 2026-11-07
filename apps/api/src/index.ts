@@ -11,6 +11,7 @@ import mongoose from 'mongoose';
 import { healthRouter } from './routes/health.js';
 import { configuredTrustedOrigins, requireTrustedOrigin } from './security/trustedOrigins.js';
 import { apiResponseHeaders } from './security/responseHeaders.js';
+import { logSafeError } from './security/safeLogger.js';
 
 async function start() {
   const auth = await createAuth();
@@ -34,7 +35,7 @@ async function start() {
   }));
 
   const handleError: ErrorRequestHandler = (error, _req, res, _next) => {
-    console.error('API request failed', error);
+    logSafeError('api_request_failed', error);
     res.status(500).json({ error: 'Internal server error' });
   };
   app.use(handleError);
@@ -51,6 +52,6 @@ async function start() {
 }
 
 start().catch((error: unknown) => {
-  console.error('Aslibooks startup failed', error);
+  logSafeError('api_startup_failed', error);
   process.exitCode = 1;
 });
