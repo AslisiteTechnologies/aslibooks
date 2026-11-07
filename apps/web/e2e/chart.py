@@ -3,6 +3,8 @@ from pathlib import Path
 import hashlib
 import json
 import os
+import subprocess
+import sys
 import tarfile
 from uuid import uuid4
 from playwright.sync_api import expect, sync_playwright
@@ -25,14 +27,23 @@ def assert_accessible(page, state):
     assert not violations, f"WCAG 2.1 A/AA violations on {state}: {violations}"
 
 
+def verify_synthetic_account(email):
+    repository = Path(__file__).resolve().parents[3]
+    subprocess.run(
+        ["pnpm", "--filter", "@aslibooks/api", "exec", "tsx", "e2e/verifySyntheticUser.ts", email],
+        cwd=repository, check=True, stdout=sys.stdout, stderr=sys.stderr,
+    )
+
+
 def test_chart():
     run = uuid4().hex[:12]
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1100, "height": 850})
         page.add_init_script("Object.defineProperty(window, 'showSaveFilePicker', { value: undefined, configurable: true })")
-        def assert_no_horizontal_overflow():
-            assert page.evaluate("() => document.documentElement.scrollWidth <= window.innerWidth"), "Page overflows the viewport horizontally"
+        def assert_no_horizontal_overflow(target_page=None):
+            target_page = target_page or page
+            assert target_page.evaluate("() => document.documentElement.scrollWidth <= window.innerWidth"), "Page overflows the viewport horizontally"
         try:
             page.goto(os.environ.get("ASLIBOOKS_WEB_URL", "http://127.0.0.1:5176"))
             page.wait_for_load_state("networkidle", timeout=90000)
@@ -80,6 +91,57 @@ def test_chart():
             expect(page.get_by_text("Organization settings saved.")).to_be_visible()
             page.get_by_role("button", name="Team", exact=True).click()
             assert_accessible(page, "team management")
+            viewer_email = f"viewer-{run}@example.com"
+            viewer_page = browser.new_page(viewport={"width": 1100, "height": 850})
+            viewer_page.goto(os.environ.get("ASLIBOOKS_WEB_URL", "http://127.0.0.1:5176"))
+            viewer_page.wait_for_load_state("networkidle", timeout=90000)
+            viewer_page.get_by_role("button", name="Create account", exact=True).click()
+            viewer_page.get_by_label("Full name").fill("Synthetic Viewer")
+            viewer_page.get_by_label("Email", exact=False).fill(viewer_email)
+            viewer_page.get_by_label("Password").fill(f"Viewer-{run}!Synthetic")
+            viewer_page.get_by_role("button", name="Create account", exact=True).click()
+            expect(viewer_page.get_by_role("heading", name="Set up your company")).to_be_visible()
+            verify_synthetic_account(viewer_email)
+            page.get_by_label("Verified account email").fill(viewer_email)
+            page.get_by_label("Role").click()
+            page.get_by_role("option", name="Viewer", exact=True).click()
+            with page.expect_response(lambda response: response.url.endswith("/members") and response.request.method == "POST") as viewer_invitation:
+                page.get_by_role("button", name="Create invitation").click()
+            assert viewer_invitation.value.status == 201, viewer_invitation.value.text()
+            expect(page.get_by_text("Invitation created, but email was not sent.", exact=False)).to_be_visible()
+            viewer_page.reload()
+            viewer_page.wait_for_load_state("networkidle", timeout=90000)
+            expect(viewer_page.get_by_text(f"Fixture Shop {run} Books invited you as viewer.", exact=True)).to_be_visible()
+            viewer_page.get_by_role("button", name="Accept invitation").click()
+            expect(viewer_page.get_by_role("navigation", name="Primary navigation")).to_be_visible()
+            viewer_page.set_viewport_size({"width": 390, "height": 844})
+            assert_no_horizontal_overflow(viewer_page)
+            viewer_page.get_by_role("button", name="Open navigation").click()
+            viewer_page.get_by_role("button", name="Contacts", exact=True).click()
+            expect(viewer_page.get_by_role("heading", name="Test Customer")).to_be_visible()
+            expect(viewer_page.get_by_role("button", name="Save contact")).to_have_count(0)
+            viewer_organization_id = viewer_page.evaluate("() => localStorage.getItem('aslibooks.activeOrganizationId')")
+            assert viewer_organization_id
+            write_status = viewer_page.evaluate("""async ([organizationId, apiUrl]) => {
+              const response = await fetch(`${apiUrl}/api/organizations/${organizationId}/contacts`, {
+                method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ displayName: 'Viewer unauthorized contact', roles: ['customer'] }),
+              });
+              return response.status;
+            }""", [viewer_organization_id, os.environ.get("VITE_API_URL", "http://127.0.0.1:4000")])
+            assert write_status == 403, f"Viewer contact creation returned HTTP {write_status}"
+            expect(viewer_page.get_by_role("heading", name="Viewer unauthorized contact")).to_have_count(0)
+            viewer_page.get_by_role("button", name="Open navigation").click()
+            viewer_page.get_by_role("button", name="Sales", exact=True).click()
+            expect(viewer_page.get_by_text("Test Customer")).to_be_visible()
+            expect(viewer_page.get_by_role("button", name="Save draft", exact=True)).to_have_count(0)
+            viewer_page.get_by_role("button", name="Open navigation").click()
+            viewer_page.get_by_role("button", name="Reports", exact=True).click()
+            assert_accessible(viewer_page, "viewer financial reports")
+            expect(viewer_page.get_by_text("Profit and loss", exact=False)).to_be_visible()
+            viewer_page.close()
+            page.get_by_role("button", name="Contacts", exact=True).click()
+            expect(page.get_by_role("heading", name="Viewer unauthorized contact")).to_have_count(0)
             page.get_by_role("button", name="Accounting", exact=True).click()
             page.get_by_label("Account code").fill("E2E-BANK")
             page.get_by_label("Account name").fill("Operating bank")
@@ -824,7 +886,7 @@ def test_chart():
             page.get_by_role("button", name="Reports", exact=True).click()
             expect(page.get_by_text("Your session expired. Sign in again to continue.", exact=True)).to_be_visible()
             expect(page.get_by_text("Sign in to your workspace", exact=True)).to_be_visible()
-            print("Verified signup, tenant switching/isolation, starter chart/opening balances, customer/vendor/service setup, immediate cash expense, edit/archive and catalog pagination, invoice/vendor credits and print views, receipts, partial/final bill payments, account lifecycle, manual journals, bank CSV import/matching/reconciliation, date-filtered ledger dashboard, fiscal close review, session-expiry handling, responsive navigation, CSV export and reconciled reports (INR 54.66 net profit before the separate UI regression expense)")
+            print("Verified owner onboarding, viewer invitation/acceptance and mobile read-only access, tenant switching/isolation, starter chart/opening balances, customer/vendor/service setup, immediate cash expense, edit/archive and catalog pagination, invoice/vendor credits and print views, receipts, partial/final bill payments, account lifecycle, manual journals, bank CSV import/matching/reconciliation, date-filtered ledger dashboard, fiscal close review, session-expiry handling, responsive navigation, CSV export and reconciled reports (INR 54.66 net profit before the separate UI regression expense)")
         finally:
             browser.close()
 
