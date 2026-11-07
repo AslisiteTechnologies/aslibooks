@@ -186,7 +186,7 @@ def test_chart():
             viewer_page.get_by_role("button", name="Open navigation").click()
             viewer_page.get_by_role("button", name="Reports", exact=True).click()
             assert_accessible(viewer_page, "viewer financial reports")
-            expect(viewer_page.get_by_text("Profit and loss", exact=False)).to_be_visible()
+            expect(viewer_page.get_by_role("heading", name="Profit and loss", exact=True)).to_be_visible()
             expect(page.get_by_role("heading", name="Viewer unauthorized contact")).to_have_count(0)
             page.get_by_role("heading", name="Test Customer").locator("..").get_by_role("button", name="Edit details").click()
             page.get_by_label("Billing address").last.fill("2 New Harbor Road, Mumbai")
