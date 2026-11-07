@@ -1,14 +1,18 @@
 # Next actions
 
+## Local staging-access check (2026-11-07)
+
+`apps/api/.env` exists and is gitignored/untracked. Its `MONGODB_URI` and `MONGODB_DB_NAME` do not target `aslibooks_staging_synthetic`; the secret values were not displayed or used, and no database connection was made. Do not repurpose this local configuration for staging. A new database-scoped staging credential, confirmed database name, and approved allowlist are still required. The current shell also has no Render CLI, and no Render workspace session is open, so Blueprint validation and provisioning remain owner-access dependent.
+
 ## Latest completed local gap — auth-form focus
 
-The keyboard transition from sign-in to signup previously dropped focus to the document body. Fixed at `6df007aab69e8fb7b406799c688e6c195c67b2aa`; the existing 390px auth smoke now checks Enter activation, first-field focus, Tab order and return-to-sign-in focus. Web typecheck, 11 web tests, lint, build and all six exact-SHA CI/MongoDB/Browser workflows passed (CI #42356987176/#42356991254, MongoDB #42356987142/#42356991238, Browser #42356987150/#42356991172). Next independently executable operational step remains Render Blueprint validation, which requires the owner’s Render workspace; then staging setup remains owner-gated as listed below.
+The keyboard transition from sign-in to signup previously dropped focus to the document body. Fixed at `6df007aab69e8fb7b406799c688e6c195c67b2aa`; the existing 390px auth smoke now checks Enter activation, first-field focus, Tab order and return-to-sign-in focus. Web typecheck, 11 web tests, lint, build and all six exact-SHA CI/MongoDB/Browser workflows passed (CI #42356987176/#42356991254, MongoDB #42356987142/#42356991238, Browser #42356987150/#42356991172). The next staging step is owner-dependent workspace validation and synthetic environment provisioning.
 
 ## Owner-dependent gates and next executable steps
 
 Current code is not production-ready. The remaining owner/adviser inputs are: Render workspace access/selection, staging service spend approval and domain; creation of the new synthetic-only Atlas database/user/allowlist; secret-manager values (Mongo URI, auth secret, origins); secure backup destination and approval of its encryption/key custody; RPO/RTO; accountant/legal approval of retention, deletion, attachment and tax behavior; AI provider privacy/retention/spend decisions; full manual accessibility review; final release approval. Do not access the existing screenshot databases or apply the paid Blueprint.
 
-Independent next steps: select the owner’s Render workspace and run `render blueprints validate render.yaml` (the local YAML parse/build passed, but CLI semantic validation could not run without a workspace; validation does not create resources); review the planned service/cost; after owner provisioning and approval only, complete the exact staging sequence in `STAGING_RUNBOOK.md`: `pnpm install --frozen-lockfile`; set `MONGODB_DB_NAME=aslibooks_staging_synthetic` and matching `ASLIBOOKS_INDEX_DATABASE`; run `pnpm --filter @aslibooks/api db:ensure-indexes`; then deploy the reviewed SHA manually and complete the golden workflow, grant-denial, monitoring, backup/restore and rollback rehearsals. Keep PR #1 Draft, `main` untouched and production undeployed.
+Next staging steps once owner access is available: install/authenticate the Render CLI in the selected owner workspace; run `render blueprints validate render.yaml` (validation does not create resources); review service cost and domain; then, after owner provisioning and approval only, complete the exact sequence in `STAGING_RUNBOOK.md`: use a new database-scoped credential for `aslibooks_staging_synthetic`, set matching `MONGODB_DB_NAME` and `ASLIBOOKS_INDEX_DATABASE`, run `pnpm --filter @aslibooks/api db:ensure-indexes`, deploy the reviewed SHA manually, and complete the golden workflow, grant-denial, monitoring, backup/restore and rollback rehearsals. Keep PR #1 Draft, `main` untouched and production undeployed.
 
 The Blueprint template’s Node and static build commands are:
 
