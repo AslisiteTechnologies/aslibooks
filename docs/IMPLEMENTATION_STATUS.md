@@ -1,8 +1,8 @@
 # Implementation status
 
-## Explicit application database selection — local verification complete, hosted checks pending (2026-11-07)
+## Explicit application database selection — verified (2026-11-07)
 
-Startup now requires `MONGODB_DB_NAME`; both Mongoose and Better Auth use the same explicit name rather than independently falling back to a URI default. `.env.example` now defaults to `aslibooks_local`, and developer setup warns against pointing local development at production or existing customer data. Focused configuration/logger/email tests pass 4/4; typecheck, lint, build and diff check pass. Local API restarted and readiness returned 200 against configured `aslibooks_local`. Exact-SHA CI/MongoDB/Browser checks are pending publication.
+At `3bac65a4272738bafd8a5092984c91768ed3c055`, startup requires `MONGODB_DB_NAME`; Mongoose and Better Auth use the same explicit name rather than independently falling back to a URI default. `.env.example` defaults to `aslibooks_local`, and developer setup warns against pointing local development at production or existing customer data. Focused configuration/logger/email tests pass 4/4; typecheck, lint, build and diff check pass. Local API restarted and readiness returned 200 against configured `aslibooks_local`. All six exact-SHA workflows passed: CI #679/#680, MongoDB #614/#615, Browser #398/#399.
 
 ## Background auth email failure visibility — verified (2026-11-07)
 

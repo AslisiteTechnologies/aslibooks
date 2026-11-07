@@ -1,8 +1,8 @@
 # Next actions
 
-## Explicit MongoDB database selection — local verification passed; hosted checks pending (2026-11-07)
+## Explicit MongoDB database selection — verified at `3bac65a` (2026-11-07)
 
-API startup now refuses an omitted/blank `MONGODB_DB_NAME`, and Mongoose/Better Auth share the explicit value. The example uses `aslibooks_local`. Focused tests 4/4, typecheck/lint/build pass; the local API is ready on the isolated database. Publish and wait for exact-SHA CI/MongoDB/Browser checks. Do not run destructive integration tests against the user's Atlas development cluster; use the disposable replica set from CI or a separately provisioned isolated test cluster.
+All six exact-SHA workflows passed: CI #679/#680, MongoDB #614/#615, Browser #398/#399. API startup refuses an omitted/blank `MONGODB_DB_NAME`; Mongoose and Better Auth use the same selected name. Local API readiness is 200 on `aslibooks_local`. Do not run destructive integration tests against the user's Atlas development cluster; use the disposable replica set from CI or a separately provisioned isolated test cluster.
 
 ## Background auth email failure visibility — verified at `7afb605` (2026-11-07)
 
@@ -20,7 +20,7 @@ All six exact-SHA workflows passed: CI #665/#666, MongoDB #600/#601, Browser #38
 
 Records export is implemented and verified at exact pushed SHA `03b2d689be788957ec602fd6144a22ad6536de5f`; all six push/PR Actions passed: CI #657/#658, MongoDB #592/#593, Browser #376/#377. The first hosted MongoDB attempt failed only in immutable fixture cleanup and was corrected on the next commit; the final run passed. Locally, 80 tests pass and 85 MongoDB-dependent tests skip without a local replica set; typecheck/lint/build/high-severity audit pass. The export excludes attachment bytes and is not a full archive; deletion and lifecycle policy remain pending.
 
-Next: continue closing independent local product gaps from the master vision. Latest source SHA `7afb60519af6dfba2b56bef3844658203a8dba5f` passed all six exact-SHA workflows (CI #675/#676, MongoDB #610/#611, Browser #394/#395). Keep synthetic test data. Staging access, restore/monitoring/rollback rehearsal, owner/adviser policy decisions, qualified accounting/tax review, full attachment archive/deletion behavior, manual accessibility and release approval remain open gates. Do not stage the owner-supplied vision file, merge `main` or deploy production. Overall status remains development/MVP candidate, not production-ready.
+Next: continue closing independent local product gaps from the master vision. Latest source SHA `3bac65a4272738bafd8a5092984c91768ed3c055` passed all six exact-SHA workflows (CI #679/#680, MongoDB #614/#615, Browser #398/#399). Keep synthetic test data. Staging access, restore/monitoring/rollback rehearsal, owner/adviser policy decisions, qualified accounting/tax review, full attachment archive/deletion behavior, manual accessibility and release approval remain open gates. Do not stage the owner-supplied vision file, merge `main` or deploy production. Overall status remains development/MVP candidate, not production-ready.
 
 ## Verified runtime refresh — 2026-11-07
 

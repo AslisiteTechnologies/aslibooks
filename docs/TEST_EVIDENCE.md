@@ -1,11 +1,12 @@
 # Test evidence
 
-## Explicit MongoDB database selection — local checks (2026-11-07)
+## Explicit MongoDB database selection — exact SHA `3bac65a4272738bafd8a5092984c91768ed3c055`
 
 - New configuration test covers omitted and whitespace-only database names and returns a trimmed explicit name (3 assertions in 1 test).
 - `MONGODB_DB_NAME` is now mandatory in both auth and Mongoose connection paths; no module independently falls back to the URI database or `aslibooks`.
 - `.env.example` defaults to `aslibooks_local`; developer docs state that local use must target a dedicated development database and never production/customer data.
-- Focused API configuration, logger and email tests pass 4/4; workspace typecheck, lint, build and diff check pass. Local API restart and `/health/ready` returned 200 with the explicit isolated DB setting. Exact-SHA hosted workflows pending publication.
+- Focused API configuration, logger and email tests pass 4/4; workspace typecheck, lint, build and diff check pass. Local API restart and `/health/ready` returned 200 with the explicit isolated DB setting.
+- All six exact-SHA workflows passed: [CI push #679](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42346399526), [CI PR #680](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42346403062), [MongoDB push #614](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42346399527), [MongoDB PR #615](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42346403211), [Browser push #398](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42346399528), and [Browser PR #399](https://github.com/AslisiteTechnologies/aslibooks/actions/runs/42346403122).
 
 ## Background auth email failure visibility — exact SHA `7afb60519af6dfba2b56bef3844658203a8dba5f`
 
